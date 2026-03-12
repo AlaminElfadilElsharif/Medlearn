@@ -1,0 +1,430 @@
+﻿
+
+@if (Data == null)
+{
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Course data not available
+    </div>
+}
+else
+{
+    <!-- Mobile View (d-block d-md-none) -->
+    <div class="d-block d-md-none">
+        <!-- Basic Info Section -->
+        <div class="mb-4">
+            <div class="bg-light p-3 rounded mb-3">
+                <h6 class="fw-bold mb-0">
+                    <i class="fas fa-info-circle me-2 text-primary"></i>Basic Information
+                </h6>
+            </div>
+
+            <!-- Title - Mobile -->
+            <div class="mb-3 px-2">
+                <label class="form-label small fw-bold">
+                    Title <span class="text-danger">*</span>
+                </label>
+                <input type="text"
+                       class="form-control form-control-sm @(Errors.ContainsKey("Title") ? "is-invalid" : "")"
+                       placeholder="Enter course title"
+                       value="@Data.Title"
+                       @oninput="@(async (ChangeEventArgs e) => await UpdateTitle(e.Value?.ToString() ?? ""))" />
+                @if (Errors.ContainsKey("Title"))
+                {
+                    <div class="invalid-feedback small">@Errors["Title"]</div>
+                }
+                <small class="text-muted small">@(Data.Title?.Length ?? 0)/200</small>
+            </div>
+
+            <!-- Description - Mobile -->
+            <div class="mb-3 px-2">
+                <label class="form-label small fw-bold">
+                    Description <span class="text-danger">*</span>
+                </label>
+                <textarea class="form-control form-control-sm @(Errors.ContainsKey("Description") ? "is-invalid" : "")"
+                          rows="3"
+                          placeholder="Write course description..."
+                          value="@Data.Description"
+                          @oninput="@(async (ChangeEventArgs e) => await UpdateDescription(e.Value?.ToString() ?? ""))"></textarea>
+                @if (Errors.ContainsKey("Description"))
+                {
+                    <div class="invalid-feedback small">@Errors["Description"]</div>
+                }
+                <small class="text-muted small">@(Data.Description?.Length ?? 0)/1000</small>
+            </div>
+        </div>
+
+        <!-- Pricing & Order Section - Mobile -->
+        <div class="mb-4">
+            <div class="bg-light p-3 rounded mb-3">
+                <h6 class="fw-bold mb-0">
+                    <i class="fas fa-tag me-2 text-primary"></i>Pricing & Order
+                </h6>
+            </div>
+
+            <!-- Price - Mobile -->
+            <div class="mb-3 px-2">
+                <label class="form-label small fw-bold">Price ($)</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">$</span>
+                    <input type="number" step="0.01" min="0"
+                           class="form-control @(Errors.ContainsKey("Price") ? "is-invalid" : "")"
+                           placeholder="0.00"
+                           value="@(Data.Price.ToString("0.00"))"
+                           @oninput="@(async (ChangeEventArgs e) => {
+                           var val = decimal.TryParse(e.Value?.ToString(), out var decVal) ? decVal : 0;
+                           await UpdatePrice(val);
+                       })" />
+            </div>
+            @if (Errors.ContainsKey("Price"))
+            {
+                <div class="invalid-feedback small d-block">@Errors["Price"]</div>
+            }
+        </div>
+
+        <!-- Order - Mobile -->
+        <div class="mb-3 px-2">
+            <label class="form-label small fw-bold">Order in Specialization</label>
+            <input type="number" min="1"
+                   class="form-control form-control-sm @(Errors.ContainsKey("Order") ? "is-invalid" : "")"
+                   placeholder="1"
+                   value="@(Data.Order.ToString())"
+                   @oninput="@(async (ChangeEventArgs e) => {
+                   var val = int.TryParse(e.Value?.ToString(), out var intVal) ? intVal : 1;
+                   await UpdateOrder(val);
+                                          })" />
+            @if (Errors.ContainsKey("Order"))
+            {
+                <div class="invalid-feedback small">@Errors["Order"]</div>
+            }
+        </div>
+    </div>
+
+    <!-- Thumbnail - Mobile -->
+    <div class="mb-4">
+        <div class="bg-light p-3 rounded mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="fas fa-image me-2 text-primary"></i>Course Thumbnail
+            </h6>
+        </div>
+
+        <div class="px-2">
+            <!-- Current Thumbnail - Mobile -->
+            @if (!string.IsNullOrEmpty(Data.ThumbnailUrl))
+            {
+                <div class="mb-3">
+                    <p class="small text-muted mb-2">Current Thumbnail:</p>
+                    <div class="position-relative d-inline-block">
+                        <img src="@Data.ThumbnailUrl"
+                             class="rounded border"
+                             style="width: 100px; height: 75px; object-fit: cover;"
+                             alt="Current thumbnail" />
+                        <button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-1"
+                                type="button" @onclick="RemoveThumbnail"
+                                style="transform: translate(50%, -50%);">
+                            <i class="fas fa-times small"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <!-- Upload New - Mobile -->
+            <div class="border rounded p-3 text-center bg-light"
+                 @onclick="TriggerFileUploadMobile">
+                <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
+                <p class="small mb-1">Tap to upload new thumbnail</p>
+                <p class="text-muted small mb-0">JPG, PNG, GIF (Max 2MB)</p>
+
+                <InputFile class="d-none"
+                           id="mobile-file-upload"
+                           accept=".jpg,.jpeg,.png,.gif"
+                           OnChange="@HandleFileUpload" />
+            </div>
+
+            <!-- New Thumbnail Preview - Mobile -->
+            @if (!string.IsNullOrEmpty(thumbnailPreview))
+            {
+                <div class="mt-3">
+                    <p class="small text-muted">New Thumbnail Preview:</p>
+                    <img src="@thumbnailPreview"
+                         class="rounded border"
+                         style="width: 100%; max-height: 150px; object-fit: cover;"
+                         alt="New thumbnail preview" />
+                </div>
+            }
+            <small class="text-muted small d-block mt-2">
+                <i class="fas fa-info-circle me-1"></i>
+                800x600px recommended
+            </small>
+        </div>
+    </div>
+
+    <!-- Status - Mobile -->
+    <div class="mb-4">
+        <div class="bg-light p-3 rounded mb-3">
+            <h6 class="fw-bold mb-0">
+                <i class="fas fa-toggle-on me-2 text-primary"></i>Course Status
+            </h6>
+        </div>
+
+        <div class="px-2">
+            <div class="card border-0 bg-light">
+                <div class="card-body p-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox"
+                               style="transform: scale(1.2);"
+                               checked="@Data.IsActive"
+                               @onchange="@(async (ChangeEventArgs e) => {
+                               var isChecked = e.Value?.ToString() == "on" || e.Value?.ToString() == "true";
+                               await UpdateIsActive(isChecked);
+                                                                  })" />
+                        <label class="form-check-label fw-bold ms-2">
+                            Active Course
+                        </label>
+                    </div>
+                    <p class="small text-muted mt-2 mb-0">
+                        <i class="fas fa-@(Data.IsActive ? "eye" : "eye-slash") me-1"></i>
+                        @(Data.IsActive
+                                                ? "Visible to users and available for enrollment" 
+                                                                : "Hidden from users and not available for enrollment")
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop View (d-none d-md-block) -->
+<div class="d-none d-md-block">
+    <div class="row">
+        <!-- Title -->
+        <div class="col-12 mb-3">
+            <label class="form-label fw-bold">Title *</label>
+            <input type="text" class="form-control @(Errors.ContainsKey("Title") ? "is-invalid" : "")"
+                   placeholder="Enter course title"
+                   value="@Data.Title"
+                   @oninput="@(async (ChangeEventArgs e) => await UpdateTitle(e.Value?.ToString() ?? ""))" />
+            @if (Errors.ContainsKey("Title"))
+            {
+                <div class="invalid-feedback">@Errors["Title"]</div>
+            }
+            <small class="text-muted">@(Data.Title?.Length ?? 0)/200 characters</small>
+        </div>
+
+        <!-- Description -->
+        <div class="col-12 mb-3">
+            <label class="form-label fw-bold">Description *</label>
+            <textarea class="form-control @(Errors.ContainsKey("Description") ? "is-invalid" : "")"
+                      rows="4"
+                      placeholder="Write course description..."
+                      value="@Data.Description"
+                      @oninput="@(async (ChangeEventArgs e) => await UpdateDescription(e.Value?.ToString() ?? ""))"></textarea>
+            @if (Errors.ContainsKey("Description"))
+            {
+                <div class="invalid-feedback">@Errors["Description"]</div>
+            }
+            <small class="text-muted">@(Data.Description?.Length ?? 0)/1000 characters</small>
+        </div>
+
+        <!-- Price -->
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Price ($)</label>
+            <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" step="0.01" min="0"
+                       class="form-control @(Errors.ContainsKey("Price") ? "is-invalid" : "")"
+                       placeholder="0.00"
+                       value="@(Data.Price.ToString("0.00"))"
+                       @oninput="@(async (ChangeEventArgs e) => {
+                       var val = decimal.TryParse(e.Value?.ToString(), out var decVal) ? decVal : 0;
+                       await UpdatePrice(val);
+                                                  })" />
+            </div>
+            @if (Errors.ContainsKey("Price"))
+            {
+                <div class="invalid-feedback d-block">@Errors["Price"]</div>
+            }
+        </div>
+
+        <!-- Order -->
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Order in Specialization</label>
+            <input type="number" min="1"
+                   class="form-control @(Errors.ContainsKey("Order") ? "is-invalid" : "")"
+                   placeholder="1"
+                   value="@(Data.Order.ToString())"
+                   @oninput="@(async (ChangeEventArgs e) => {
+                   var val = int.TryParse(e.Value?.ToString(), out var intVal) ? intVal : 1;
+                   await UpdateOrder(val);
+                                          })" />
+            @if (Errors.ContainsKey("Order"))
+            {
+                <div class="invalid-feedback">@Errors["Order"]</div>
+            }
+        </div>
+
+        <!-- Thumbnail Upload - Desktop -->
+        <div class="col-12 mb-3">
+            <label class="form-label fw-bold">Thumbnail Image</label>
+
+            <div class="border rounded p-3">
+                <div class="row">
+                    <!-- Current Thumbnail Preview -->
+                    <div class="col-md-4">
+                        @if (!string.IsNullOrEmpty(Data.ThumbnailUrl))
+                        {
+                            <div class="mb-3">
+                                <p class="small text-muted">Current Thumbnail:</p>
+                                <div class="position-relative d-inline-block">
+                                    <img src="@Data.ThumbnailUrl"
+                                         class="img-thumbnail"
+                                         style="max-width: 200px; max-height: 150px; object-fit: cover;"
+                                         alt="Current thumbnail" />
+                                    <button class="btn btn-sm btn-outline-danger mt-2 w-100"
+                                            type="button" @onclick="RemoveThumbnail">
+                                        <i class="fas fa-trash me-1"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Upload New -->
+                    <div class="col-md-8">
+                        <p class="small text-muted">Upload New Thumbnail:</p>
+                        <InputFile class="form-control"
+                                   accept=".jpg,.jpeg,.png,.gif"
+                                   OnChange="@HandleFileUpload" />
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Recommended size: 800x600px. Max file size: 2MB.
+                            Supported formats: JPG, PNG, GIF
+                        </small>
+
+                        <!-- New Thumbnail Preview -->
+                        @if (!string.IsNullOrEmpty(thumbnailPreview))
+                        {
+                            <div class="mt-3">
+                                <p class="small text-muted">New Thumbnail Preview:</p>
+                                <img src="@thumbnailPreview"
+                                     class="img-thumbnail"
+                                     style="max-width: 200px; max-height: 150px; object-fit: cover;"
+                                     alt="New thumbnail preview" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Toggle - Desktop -->
+        <div class="col-12 mb-3">
+            <div class="card border">
+                <div class="card-body">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox"
+                               checked="@Data.IsActive"
+                               @onchange="@(async (ChangeEventArgs e) => {
+                               var isChecked = e.Value?.ToString() == "on" || e.Value?.ToString() == "true";
+                               await UpdateIsActive(isChecked);
+                                                                  })" />
+                        <label class="form-check-label fw-bold">
+                            Active Course
+                        </label>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-@(Data.IsActive ? "eye" : "eye-slash") me-1"></i>
+                        @(Data.IsActive
+                                                ? "This course is visible to users and available for enrollment" 
+                                                                : "This course is hidden from users and cannot be enrolled in")
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+@code {
+    [Parameter] public CourseDto? Data { get; set; }
+    [Parameter] public Dictionary<string, string> Errors { get; set; } = new();
+    [Parameter] public EventCallback<CourseDto> OnDataChanged { get; set; }
+    [Parameter] public EventCallback<InputFileChangeEventArgs> OnThumbnailUploaded { get; set; }
+    [Parameter] public EventCallback OnThumbnailRemoved { get; set; }
+
+    private string? thumbnailPreview;
+
+    private async Task UpdateTitle(string value)
+    {
+        if (Data == null) return;
+        Data.Title = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdateDescription(string value)
+    {
+        if (Data == null) return;
+        Data.Description = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdatePrice(decimal value)
+    {
+        if (Data == null) return;
+        Data.Price = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdateOrder(int value)
+    {
+        if (Data == null) return;
+        Data.Order = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdateIsActive(bool value)
+    {
+        if (Data == null) return;
+        Data.IsActive = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        if (OnThumbnailUploaded.HasDelegate)
+        {
+            await OnThumbnailUploaded.InvokeAsync(e);
+        }
+
+        // Create preview
+        if (e.File != null)
+        {
+            try
+            {
+                var buffer = new byte[e.File.Size];
+                await e.File.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024).ReadAsync(buffer);
+                thumbnailPreview = $"data:{e.File.ContentType};base64,{Convert.ToBase64String(buffer)}";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating preview: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task RemoveThumbnail()
+    {
+        if (OnThumbnailRemoved.HasDelegate)
+        {
+            await OnThumbnailRemoved.InvokeAsync();
+        }
+        thumbnailPreview = null;
+    }
+
+    private async Task TriggerFileUploadMobile()
+    {
+        // JavaScript interop to trigger file input click
+        await JS.InvokeVoidAsync("document.getElementById('mobile-file-upload').click");
+    }
+
+}

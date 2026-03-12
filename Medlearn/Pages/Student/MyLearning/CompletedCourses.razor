@@ -1,0 +1,437 @@
+﻿@page "/student/mylearning/completed"
+
+
+<PageTitle>Completed Courses - MedLearn</PageTitle>
+
+<div class="completed-courses-page">
+    <!-- Loading State -->
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading your completed courses...</p>
+        </div>
+    }
+
+    <!-- Authentication Check -->
+    @if (!isLoading && !isAuthenticated)
+    {
+        <div class="text-center py-5 px-3">
+            <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+            <h4>Authentication Required</h4>
+            <p class="text-muted mb-4">Please log in to view your completed courses</p>
+            <button class="btn btn-primary" @onclick="NavigateToLogin">
+                <i class="fas fa-sign-in-alt me-2"></i> Go to Login
+            </button>
+        </div>
+    }
+
+    <!-- Empty State -->
+    @if (!isLoading && isAuthenticated && !completedEnrollments.Any())
+    {
+        <div class="text-center py-5 px-3">
+            <i class="fas fa-trophy fa-4x text-muted mb-3"></i>
+            <h3 class="mb-3">No completed courses yet</h3>
+            <p class="text-muted mb-4">
+                Complete your enrolled courses to see them here.
+            </p>
+            <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                <button class="btn btn-primary" @onclick="GoToActiveCourses">
+                    <i class="fas fa-play-circle me-2"></i> Continue Learning
+                </button>
+                <button class="btn btn-outline-primary" @onclick="GoToBrowse">
+                    <i class="fas fa-search me-2"></i> Find Courses
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- Content when there are completed enrollments -->
+    @if (!isLoading && isAuthenticated && completedEnrollments.Any())
+    {
+        <!-- Mobile Header -->
+        <div class="d-block d-md-none bg-primary text-white p-3 mb-3">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                    <i class="fas fa-arrow-left fa-lg"></i>
+                </button>
+                <div class="flex-grow-1">
+                    <h5 class="mb-0">Completed Courses</h5>
+                    <small>@completedEnrollments.Count courses</small>
+                </div>
+                <button class="btn btn-link text-white p-0" @onclick="GoToBrowse">
+                    <i class="fas fa-search fa-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="container py-4">
+            <!-- Desktop Breadcrumb & Header -->
+            <div class="d-none d-md-block">
+                <nav aria-label="breadcrumb" class="mb-4">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/student/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="/student/mylearning">My Learning</a></li>
+                        <li class="breadcrumb-item active">Completed Courses</li>
+                    </ol>
+                </nav>
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="mb-0">Completed Courses (@completedEnrollments.Count)</h1>
+                    <button class="btn btn-outline-primary" @onclick="GoToBrowse">
+                        <i class="fas fa-search me-2"></i> Browse Courses
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Overview (Mobile) -->
+            <div class="d-block d-md-none mb-4">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center p-3">
+                                <h4 class="mb-1">@completedEnrollments.Count</h4>
+                                <small class="text-muted">Completed</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center p-3">
+                                <h4 class="mb-1">@GetTotalHoursSpent()</h4>
+                                <small class="text-muted">Total Hours</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Course Grid -->
+            <div class="row g-3 g-md-4">
+                @foreach (var enrollment in completedEnrollments)
+                {
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <!-- Mobile Card -->
+                        <div class="d-block d-md-none">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body p-3">
+                                    <div class="d-flex">
+                                        <!-- Course Icon/Image Placeholder -->
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="rounded-circle bg-@GetCourseColor(enrollment) bg-opacity-10 p-3">
+                                                <i class="fas @GetCourseIcon(enrollment) fa-fw text-@GetCourseColor(enrollment)"></i>
+                                            </div>
+                                        </div>
+
+                                        <!-- Course Info -->
+                                        <div class="flex-grow-1">
+                                            <h6 class="card-title mb-1">@GetCourseTitle(enrollment)</h6>
+                                            <small class="text-muted d-block mb-2">
+                                                <i class="fas fa-calendar-check me-1"></i>
+                                                @enrollment.CompletedDate?.ToString("MMM dd, yyyy")
+                                            </small>
+
+                                            <!-- Rating -->
+                                            @if (enrollment.Review != null)
+                                            {
+                                                <div class="mb-2">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <i class="fas fa-star fa-sm @(i <= enrollment.Review.Rating ? "text-warning" : "text-muted")"></i>
+                                                    }
+                                                </div>
+                                            }
+
+                                            <!-- Actions -->
+                                            <div class="d-flex gap-2 mt-2">
+                                                <button class="btn btn-sm btn-outline-primary flex-grow-1"
+                                                        @onclick="() => ViewCourseDetails(enrollment)">
+                                                    <i class="fas fa-info-circle me-1"></i> Details
+                                                </button>
+                                                @if (enrollment.Review == null)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-warning flex-grow-1"
+                                                            @onclick="() => OpenReview(enrollment)">
+                                                        <i class="fas fa-star me-1"></i> Review
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Desktop Card -->
+                        <div class="d-none d-md-block h-100">
+                            <div class="card h-100 shadow-sm hover-shadow transition">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="rounded-circle bg-@GetCourseColor(enrollment) bg-opacity-10 p-3 me-3">
+                                            <i class="fas @GetCourseIcon(enrollment) fa-fw text-@GetCourseColor(enrollment)"></i>
+                                        </div>
+                                        <h5 class="card-title mb-0">@GetCourseTitle(enrollment)</h5>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar-check me-1"></i>
+                                                Completed
+                                            </small>
+                                            <small class="fw-bold">
+                                                @enrollment.CompletedDate?.ToString("MMM dd, yyyy")
+                                            </small>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                Time spent
+                                            </small>
+                                            <small class="fw-bold">
+                                                @GetTimeSpent(enrollment) hours
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Rating -->
+                                    @if (enrollment.Review != null)
+                                    {
+                                        <div class="mb-3">
+                                            <div class="d-flex align-items-center">
+                                                @for (int i = 1; i <= 5; i++)
+                                                {
+                                                    <i class="fas fa-star @(i <= enrollment.Review.Rating ? "text-warning" : "text-muted") me-1"></i>
+                                                }
+                                                <small class="text-muted ms-2">
+                                                    @enrollment.Review.Rating/5
+                                                </small>
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(enrollment.Review.Comment))
+                                            {
+                                                <p class="small text-muted mt-2 mb-0">
+                                                    "@TruncateText(enrollment.Review.Comment, 60)"
+                                                </p>
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="d-flex gap-2 mt-auto">
+                                        <button class="btn btn-outline-primary btn-sm flex-grow-1"
+                                                @onclick="() => ViewCourseDetails(enrollment)">
+                                            <i class="fas fa-info-circle me-1"></i> Details
+                                        </button>
+                                        @if (enrollment.Review == null)
+                                        {
+                                            <button class="btn btn-outline-warning btn-sm flex-grow-1"
+                                                    @onclick="() => OpenReview(enrollment)">
+                                                <i class="fas fa-star me-1"></i> Review
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-outline-secondary btn-sm flex-grow-1"
+                                                    @onclick="() => EditReview(enrollment)">
+                                                <i class="fas fa-edit me-1"></i> Edit Review
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                                <!-- Certificate Badge (Optional) -->
+                                <div class="card-footer bg-transparent border-0 pt-0">
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-certificate me-1"></i> Certificate Available
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Mobile Bottom Navigation -->
+            <div class="d-block d-md-none fixed-bottom bg-white border-top p-2">
+                <div class="d-flex justify-content-around">
+                    <button class="btn btn-link text-dark" @onclick="GoToDashboard">
+                        <i class="fas fa-home fa-lg"></i>
+                        <small class="d-block">Home</small>
+                    </button>
+                    <button class="btn btn-link text-dark" @onclick="GoToActiveCourses">
+                        <i class="fas fa-play-circle fa-lg"></i>
+                        <small class="d-block">Learning</small>
+                    </button>
+                    <button class="btn btn-link text-primary" @onclick="GoToBrowse">
+                        <i class="fas fa-search fa-lg"></i>
+                        <small class="d-block">Browse</small>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spacer for Mobile Bottom Nav -->
+            <div class="d-block d-md-none" style="height: 70px;"></div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<EnrollmentDto> completedEnrollments = new();
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Check authentication
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+
+            if (!isAuthenticated)
+            {
+                isLoading = false;
+                return;
+            }
+
+            // Load completed enrollments
+            await LoadCompletedCourses();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadCompletedCourses()
+    {
+        try
+        {
+            var enrollments = await EnrollmentService.GetMyEnrollmentsAsync(
+                type: null,
+                completed: true
+            );
+
+            if (enrollments != null)
+            {
+                completedEnrollments = enrollments.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading completed courses: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetCourseTitle(EnrollmentDto enrollment)
+    {
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization => enrollment.Specialization?.Title ?? "Specialization",
+            EnrollmentType.Course => enrollment.Course?.Title ?? "Course",
+            EnrollmentType.Lecture => enrollment.Lecture?.Title ?? "Lecture",
+            _ => "Course"
+        };
+    }
+
+    private string GetCourseIcon(EnrollmentDto enrollment)
+    {
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization => "fa-layer-group",
+            EnrollmentType.Course => "fa-book-open",
+            EnrollmentType.Lecture => "fa-video",
+            _ => "fa-graduation-cap"
+        };
+    }
+
+    private string GetCourseColor(EnrollmentDto enrollment)
+    {
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization => "primary",
+            EnrollmentType.Course => "success",
+            EnrollmentType.Lecture => "info",
+            _ => "secondary"
+        };
+    }
+
+    private double GetTimeSpent(EnrollmentDto enrollment)
+    {
+        if (enrollment.ProgressTrackings == null || !enrollment.ProgressTrackings.Any())
+            return 0;
+
+        var totalSeconds = enrollment.ProgressTrackings.Sum(p => p.TimeSpentSeconds);
+        return Math.Round(totalSeconds / 3600.0, 1);
+    }
+
+    private int GetTotalHoursSpent()
+    {
+        var totalHours = completedEnrollments.Sum(e => GetTimeSpent(e));
+        return (int)Math.Round(totalHours);
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+        return text.Substring(0, maxLength) + "...";
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/account/login", true);
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/student/mylearning");
+    }
+
+    private void GoToDashboard()
+    {
+        Navigation.NavigateTo("/student/dashboard");
+    }
+
+    private void GoToActiveCourses()
+    {
+        Navigation.NavigateTo("/student/mylearning/active");
+    }
+
+    private void GoToBrowse()
+    {
+        Navigation.NavigateTo("/browse");
+    }
+
+    private void ViewCourseDetails(EnrollmentDto enrollment)
+    {
+        var url = enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization when enrollment.SpecializationId.HasValue
+                => $"/specialization/{enrollment.SpecializationId.Value}",
+            EnrollmentType.Course when enrollment.CourseId.HasValue
+                => $"/course/{enrollment.CourseId.Value}",
+            EnrollmentType.Lecture when enrollment.LectureId.HasValue
+                => $"/lecture/{enrollment.LectureId.Value}",
+            _ => "/browse"
+        };
+
+        Navigation.NavigateTo(url);
+    }
+
+    private void OpenReview(EnrollmentDto enrollment)
+    {
+        // Navigate to review page
+        Navigation.NavigateTo($"/student/review/{enrollment.Id}");
+    }
+
+    private void EditReview(EnrollmentDto enrollment)
+    {
+        // Navigate to edit review page
+        Navigation.NavigateTo($"/student/review/edit/{enrollment.Review?.Id}");
+    }
+}

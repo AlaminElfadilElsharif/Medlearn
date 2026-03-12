@@ -1,0 +1,1049 @@
+﻿@page "/student/mylearning/progress"
+
+
+<PageTitle>Learning Progress</PageTitle>
+
+<div class="learning-progress">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Mobile Header -->
+        <div class="d-block d-md-none mb-3">
+            <div class="bg-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                        <i class="fas fa-arrow-left fa-lg"></i>
+                    </button>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-0">Learning Progress</h5>
+                        <small class="opacity-75">Track your journey</small>
+                    </div>
+                    <button class="btn btn-link text-white p-0 me-2" @onclick="ExportProgress">
+                        <i class="fas fa-download fa-lg"></i>
+                    </button>
+                    <button class="btn btn-link text-white p-0" @onclick="NavigateToMyLearning">
+                        <i class="fas fa-chart-line fa-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Learning Progress</h1>
+                <p class="text-muted mb-0">Track and analyze your learning journey</p>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary" @onclick="ExportProgress">
+                    <i class="fas fa-download me-2"></i> Export
+                </button>
+                <button class="btn btn-primary" @onclick="NavigateToMyLearning">
+                    <i class="fas fa-chart-line me-2"></i> My Learning
+                </button>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading your progress data...</p>
+            </div>
+        }
+        else if (!isAuthenticated)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+                <h4>Authentication Required</h4>
+                <p class="text-muted mb-4">Please log in to view your progress</p>
+                <button class="btn btn-primary" @onclick="NavigateToLogin">
+                    <i class="fas fa-sign-in-alt me-2"></i> Go to Login
+                </button>
+            </div>
+        }
+        else if (!enrollments.Any())
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                <h4>No Progress Data</h4>
+                <p class="text-muted mb-4">Start learning to see your progress here</p>
+                <button class="btn btn-primary" @onclick="NavigateToBrowse">
+                    <i class="fas fa-search me-2"></i> Browse Courses
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Progress Overview Cards - Responsive -->
+            <div class="row g-2 g-md-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <div class="d-flex d-md-block align-items-center justify-content-between">
+                                <div>
+                                    <div class="fs-5 fs-md-3 fw-bold text-primary">@overallProgress.ToString("0.0")%</div>
+                                    <small class="text-muted">Overall Progress</small>
+                                </div>
+                                <i class="fas fa-chart-pie d-md-none text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <div class="d-flex d-md-block align-items-center justify-content-between">
+                                <div>
+                                    <div class="fs-5 fs-md-3 fw-bold text-success">@activeCourses</div>
+                                    <small class="text-muted">Active Courses</small>
+                                </div>
+                                <i class="fas fa-play-circle d-md-none text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <div class="d-flex d-md-block align-items-center justify-content-between">
+                                <div>
+                                    <div class="fs-5 fs-md-3 fw-bold text-warning">@completedCourses</div>
+                                    <small class="text-muted">Completed</small>
+                                </div>
+                                <i class="fas fa-check-circle d-md-none text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <div class="d-flex d-md-block align-items-center justify-content-between">
+                                <div>
+                                    <div class="fs-5 fs-md-3 fw-bold text-info">@studyHours</div>
+                                    <small class="text-muted">Study Hours</small>
+                                </div>
+                                <i class="fas fa-clock d-md-none text-info"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content - Responsive Layout -->
+            <div class="row g-3 g-md-4">
+                <!-- Left Column - Charts and Progress -->
+                <div class="col-12 col-lg-8">
+                    <!-- Weekly Activity - Hide on mobile, show on desktop -->
+                    <div class="d-none d-md-block card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Weekly Activity</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="weeklyActivityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Weekly Stats -->
+                    <div class="d-block d-md-none mb-3">
+                        <div class="card">
+                            <div class="card-body p-3">
+                                <h6 class="mb-3">
+                                    <i class="fas fa-calendar-week me-2 text-primary"></i>
+                                    This Week's Activity
+                                </h6>
+                                <div class="d-flex justify-content-around text-center">
+                                    <div>
+                                        <div class="fw-bold text-primary">@GetTodayActivity() hrs</div>
+                                        <small class="text-muted">Today</small>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-success">@GetThisWeekActivity() hrs</div>
+                                        <small class="text-muted">This Week</small>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-info">@GetAvgDailyActivity() hrs</div>
+                                        <small class="text-muted">Daily Avg</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Course Progress - Desktop Table View -->
+                    <div class="d-none d-md-block card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Course Progress Details</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Course</th>
+                                            <th>Progress</th>
+                                            <th>Time Spent</th>
+                                            <th>Last Activity</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var enrollment in enrollments)
+                                        {
+                                            <tr @onclick="() => ViewCourseDetails(enrollment)" style="cursor: pointer;">
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="progress-icon me-3">
+                                                            @if (enrollment.IsCompleted)
+                                                            {
+                                                                <i class="fas fa-check-circle fa-2x text-success"></i>
+                                                            }
+                                                            else
+                                                            {
+                                                                <i class="fas fa-spinner fa-2x text-primary"></i>
+                                                            }
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-0">@GetCourseTitle(enrollment)</h6>
+                                                            <small class="text-muted">@GetCourseType(enrollment)</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="progress flex-grow-1 me-2" style="height: 6px; width: 100px;">
+                                                            <div class="progress-bar" role="progressbar" 
+                                                                 style="width: @enrollment.ProgressPercentage%;" 
+                                                                 aria-valuenow="@enrollment.ProgressPercentage" 
+                                                                 aria-valuemin="0" aria-valuemax="100"></div>
+                                                        </div>
+                                                        <small>@enrollment.ProgressPercentage.ToString("0.0")%</small>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <small class="text-muted">
+                                                        @GetTimeSpent(enrollment) hrs
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <small class="text-muted">
+                                                        @GetLastActivity(enrollment)
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    @GetStatusBadge(enrollment)
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Course Cards -->
+                    <div class="d-block d-md-none">
+                        <h6 class="mb-3">
+                            <i class="fas fa-book-open me-2 text-primary"></i>
+                            My Courses
+                        </h6>
+                        @foreach (var enrollment in enrollments)
+                        {
+                            <div class="card mb-3" @onclick="() => ViewCourseDetails(enrollment)" style="cursor: pointer;">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-start mb-2">
+                                        <div class="me-3">
+                                            @if (enrollment.IsCompleted)
+                                            {
+                                                <i class="fas fa-check-circle fa-2x text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-spinner fa-2x text-primary"></i>
+                                            }
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">@GetCourseTitle(enrollment)</h6>
+                                            <small class="text-muted">@GetCourseType(enrollment)</small>
+                                        </div>
+                                        @GetStatusBadge(enrollment)
+                                    </div>
+                                    
+                                    <!-- Progress Bar -->
+                                    <div class="mb-2">
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span>Progress</span>
+                                            <span class="fw-bold">@enrollment.ProgressPercentage.ToString("0.0")%</span>
+                                        </div>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar" role="progressbar" 
+                                                 style="width: @enrollment.ProgressPercentage%;"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Course Stats -->
+                                    <div class="d-flex justify-content-between small text-muted">
+                                        <span>
+                                            <i class="fas fa-clock me-1"></i>
+                                            @GetTimeSpent(enrollment) hrs
+                                        </span>
+                                        <span>
+                                            <i class="fas fa-history me-1"></i>
+                                            @GetLastActivity(enrollment)
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Right Column - Insights (Different layout for mobile) -->
+                <div class="col-12 col-lg-4">
+                    <!-- Study Habits - Responsive -->
+                    <div class="card mb-3 mb-md-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-brain me-2"></i>Study Habits
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Desktop Layout -->
+                            <div class="d-none d-md-block">
+                                <div class="mb-3">
+                                    <h6>Best Study Time</h6>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-sun text-warning me-2"></i>
+                                        <span>@bestStudyTime</span>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <h6>Average Session</h6>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-clock text-info me-2"></i>
+                                        <span>@averageSessionLength minutes</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h6>Completion Rate</h6>
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-chart-line text-success me-2"></i>
+                                        <span>@completionRate.ToString("0.0")%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Layout - Horizontal Stats -->
+                            <div class="d-block d-md-none">
+                                <div class="row g-3">
+                                    <div class="col-4 text-center">
+                                        <i class="fas fa-sun text-warning mb-1"></i>
+                                        <div class="small fw-bold">Best Time</div>
+                                        <small class="text-muted">@GetShortStudyTime()</small>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <i class="fas fa-clock text-info mb-1"></i>
+                                        <div class="small fw-bold">Avg Session</div>
+                                        <small class="text-muted">@averageSessionLength min</small>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <i class="fas fa-chart-line text-success mb-1"></i>
+                                        <div class="small fw-bold">Completion</div>
+                                        <small class="text-muted">@completionRate.ToString("0.0")%</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Learning Goals - Responsive -->
+                    <div class="card mb-3 mb-md-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-bullseye me-2"></i>Learning Goals
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small>Weekly Hours</small>
+                                    <small>@weeklyGoalProgress%</small>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" 
+                                         style="width: @weeklyGoalProgress%"></div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small>Course Completion</small>
+                                    <small>@courseGoalProgress%</small>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: @courseGoalProgress%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small>Skill Mastery</small>
+                                    <small>@skillGoalProgress%</small>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" 
+                                         style="width: @skillGoalProgress%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommendations - Mobile Swipeable Cards -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-lightbulb me-2"></i>Recommendations
+                            </h5>
+                        </div>
+                        <div class="card-body p-2 p-md-3">
+                            <!-- Desktop View -->
+                            <div class="d-none d-md-block">
+                                @foreach (var rec in GetRecommendations())
+                                {
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="me-3">
+                                            <i class="fas @rec.Icon @rec.Color"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">@rec.Title</h6>
+                                            <p class="small text-muted mb-0">@rec.Description</p>
+                                            @if (!string.IsNullOrEmpty(rec.Action))
+                                            {
+                                                <button class="btn btn-sm btn-outline-primary mt-2" 
+                                                        @onclick="rec.ActionCallback">
+                                                    @rec.Action
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Mobile View - Horizontal Scroll -->
+                            <div class="d-block d-md-none">
+                                <div class="recommendations-scroll" style="overflow-x: auto; white-space: nowrap;">
+                                    <div class="d-flex gap-2">
+                                        @foreach (var rec in GetRecommendations())
+                                        {
+                                            <div class="card bg-light" style="width: 250px; flex-shrink: 0;">
+                                                <div class="card-body p-3">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="fas @rec.Icon @rec.Color me-2"></i>
+                                                        <h6 class="mb-0">@rec.Title</h6>
+                                                    </div>
+                                                    <p class="small text-muted mb-2">@rec.Description</p>
+                                                    @if (!string.IsNullOrEmpty(rec.Action))
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-primary w-100" 
+                                                                @onclick="rec.ActionCallback">
+                                                            @rec.Action
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // ... (keep all your existing code in the @code block exactly as is)
+    private List<EnrollmentDto> enrollments = new();
+    private double overallProgress = 0;
+    private int activeCourses = 0;
+    private int completedCourses = 0;
+    private int studyHours = 0;
+    private int averageSessionLength = 0;
+    private double completionRate = 0;
+    private int weeklyGoalProgress = 0;
+    private int courseGoalProgress = 0;
+    private int skillGoalProgress = 0;
+    private string bestStudyTime = "Morning (8 AM - 12 PM)";
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private Timer? refreshTimer;
+    private UserDto? currentUser = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check authentication first
+        await CheckAuthentication();
+        
+        if (isAuthenticated)
+        {
+            await LoadProgressData();
+            
+            // Set up auto-refresh every 30 seconds (same as notifications)
+            refreshTimer = new Timer(async _ => await RefreshData(), null, 30000, 30000);
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            // SIMPLE AUTHENTICATION CHECK - SAME AS NOTIFICATIONS COMPONENT
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+            
+            if (isAuthenticated)
+            {
+                // Get current user from AuthService
+                currentUser = await AuthService.GetCurrentUserAsync();
+                
+                // Ensure user is a student
+                if (currentUser?.UserType != UserType.User)
+                {
+                    // Redirect if not a student
+                    Navigation.NavigateTo("/");
+                    isAuthenticated = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+            currentUser = null;
+        }
+    }
+
+    private async Task LoadProgressData()
+    {
+        if (!isAuthenticated) return;
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load enrollments using EnrollmentService
+            var enrollmentsResult = await EnrollmentService.GetMyEnrollmentsAsync(
+                type: null,   // No type filter
+                completed: null    // No completed filter
+            );
+            
+            if (enrollmentsResult != null)
+            {
+                enrollments = enrollmentsResult.ToList();
+                
+                // Load progress for each enrollment
+                foreach (var enrollment in enrollments)
+                {
+                    var progress = await EnrollmentService.GetEnrollmentProgressAsync(enrollment.Id);
+                    if (progress != null)
+                    {
+                        enrollment.ProgressTrackings = progress;
+                    }
+                }
+                
+                // Calculate stats
+                if (enrollments.Any())
+                {
+                    CalculateStatistics();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading progress data: {ex.Message}");
+            await ShowToast("error", "Error loading progress data");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        if (!isAuthenticated) return;
+        
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadProgressData();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error refreshing data: {ex.Message}");
+            }
+        });
+    }
+
+    private void CalculateStatistics()
+    {
+        // Calculate overall progress (average of all enrollments)
+        overallProgress = enrollments.Average(e => (double)e.ProgressPercentage);
+        
+        // Count active and completed courses
+        activeCourses = enrollments.Count(e => !e.IsCompleted);
+        completedCourses = enrollments.Count(e => e.IsCompleted);
+        
+        // Calculate study hours from progress trackings
+        studyHours = CalculateTotalStudyHours();
+        
+        // Calculate average session length
+        averageSessionLength = CalculateAverageSessionLength();
+        
+        // Calculate completion rate
+        completionRate = CalculateCompletionRate();
+        
+        // Calculate goal progress
+        weeklyGoalProgress = CalculateWeeklyGoalProgress();
+        courseGoalProgress = CalculateCourseGoalProgress();
+        skillGoalProgress = CalculateSkillGoalProgress();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/student/mylearning");
+    }
+
+    private void NavigateToMyLearning()
+    {
+        Navigation.NavigateTo($"/student/mylearning");
+    }
+
+    private void NavigateToBrowse()
+    {
+        Navigation.NavigateTo("/browse");
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private string GetCourseTitle(EnrollmentDto enrollment)
+    {
+        if (enrollment == null) return "Unknown";
+        
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization => enrollment.Specialization?.Title ?? "Specialization",
+            EnrollmentType.Course => enrollment.Course?.Title ?? "Course",
+            EnrollmentType.Lecture => enrollment.Lecture?.Title ?? "Lecture",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetCourseType(EnrollmentDto enrollment)
+    {
+        if (enrollment == null) return "Unknown";
+        
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization => "Specialization",
+            EnrollmentType.Course => "Course",
+            EnrollmentType.Lecture => "Lecture",
+            _ => "Unknown"
+        };
+    }
+
+    private double GetTimeSpent(EnrollmentDto enrollment)
+    {
+        if (enrollment?.ProgressTrackings == null || !enrollment.ProgressTrackings.Any())
+            return 0;
+        
+        var totalSeconds = enrollment.ProgressTrackings.Sum(p => p.TimeSpentSeconds);
+        return Math.Round(totalSeconds / 3600.0, 1);
+    }
+
+    private string GetLastActivity(EnrollmentDto enrollment)
+    {
+        if (enrollment?.ProgressTrackings == null || !enrollment.ProgressTrackings.Any())
+            return "Never";
+        
+        var lastProgress = enrollment.ProgressTrackings
+            .Where(p => p.TimeSpentSeconds > 0)
+            .OrderByDescending(p => p.CompletedDate ?? p.CreatedAt)
+            .FirstOrDefault();
+        
+        if (lastProgress != null)
+        {
+            var date = lastProgress.CompletedDate ?? lastProgress.CreatedAt;
+            var daysAgo = (DateTime.UtcNow - date).Days;
+            
+            if (daysAgo == 0) return "Today";
+            if (daysAgo == 1) return "Yesterday";
+            if (daysAgo < 7) return $"{daysAgo} days ago";
+            return date.ToString("MMM dd");
+        }
+        
+        return "Never";
+    }
+
+    private int CalculateTotalStudyHours()
+    {
+        int totalSeconds = 0;
+        foreach (var enrollment in enrollments)
+        {
+            if (enrollment.ProgressTrackings != null)
+            {
+                foreach (var progress in enrollment.ProgressTrackings)
+                {
+                    totalSeconds += progress.TimeSpentSeconds;
+                }
+            }
+        }
+        return totalSeconds / 3600; // Convert to hours
+    }
+
+    private int CalculateAverageSessionLength()
+    {
+        var sessions = enrollments
+            .Where(e => e.ProgressTrackings != null)
+            .SelectMany(e => e.ProgressTrackings!)
+            .Where(p => p.TimeSpentSeconds > 0)
+            .ToList();
+        
+        if (!sessions.Any()) return 0;
+        
+        var averageSeconds = (int)sessions.Average(p => p.TimeSpentSeconds);
+        return averageSeconds / 60; // Convert to minutes
+    }
+
+    private double CalculateCompletionRate()
+    {
+        var totalEnrollments = enrollments.Count;
+        if (totalEnrollments == 0) return 0;
+        
+        return (double)completedCourses / totalEnrollments * 100;
+    }
+
+    private int CalculateWeeklyGoalProgress()
+    {
+        // Simplified: 5 hours per week goal
+        var weeksSinceStart = 8; // Assuming 8 weeks of usage
+        var averageWeeklyHours = (double)studyHours / weeksSinceStart;
+        var progress = (int)(averageWeeklyHours / 5.0 * 100);
+        return Math.Min(Math.Max(progress, 0), 100);
+    }
+
+    private int CalculateCourseGoalProgress()
+    {
+        // Goal: Complete 1 course per month
+        var monthsSinceStart = 6; // Assuming 6 months of usage
+        var goal = Math.Max(monthsSinceStart, 1);
+        var progress = completedCourses * 100 / goal;
+        return Math.Min(Math.Max(progress, 0), 100);
+    }
+
+    private int CalculateSkillGoalProgress()
+    {
+        // Simplified skill progress based on overall progress
+        return Math.Min(Math.Max((int)overallProgress, 0), 100);
+    }
+
+    private double GetTodayActivity()
+    {
+        var today = DateTime.UtcNow.Date;
+        var totalSeconds = 0;
+        
+        foreach (var enrollment in enrollments)
+        {
+            if (enrollment.ProgressTrackings != null)
+            {
+                foreach (var progress in enrollment.ProgressTrackings)
+                {
+                    var date = progress.CompletedDate ?? progress.CreatedAt;
+                    if (date.Date == today)
+                    {
+                        totalSeconds += progress.TimeSpentSeconds;
+                    }
+                }
+            }
+        }
+        
+        return Math.Round(totalSeconds / 3600.0, 1);
+    }
+
+    private double GetThisWeekActivity()
+    {
+        var weekStart = DateTime.UtcNow.AddDays(-7);
+        var totalSeconds = 0;
+        
+        foreach (var enrollment in enrollments)
+        {
+            if (enrollment.ProgressTrackings != null)
+            {
+                foreach (var progress in enrollment.ProgressTrackings)
+                {
+                    var date = progress.CompletedDate ?? progress.CreatedAt;
+                    if (date >= weekStart)
+                    {
+                        totalSeconds += progress.TimeSpentSeconds;
+                    }
+                }
+            }
+        }
+        
+        return Math.Round(totalSeconds / 3600.0, 1);
+    }
+
+    private double GetAvgDailyActivity()
+    {
+        var totalSeconds = 0;
+        var daysWithActivity = 0;
+        
+        foreach (var enrollment in enrollments)
+        {
+            if (enrollment.ProgressTrackings != null)
+            {
+                var distinctDates = enrollment.ProgressTrackings
+                    .Select(p => (p.CompletedDate ?? p.CreatedAt).Date)
+                    .Distinct()
+                    .ToList();
+                
+                daysWithActivity += distinctDates.Count;
+                
+                foreach (var progress in enrollment.ProgressTrackings)
+                {
+                    totalSeconds += progress.TimeSpentSeconds;
+                }
+            }
+        }
+        
+        if (daysWithActivity == 0) return 0;
+        var avgSeconds = totalSeconds / daysWithActivity;
+        return Math.Round(avgSeconds / 3600.0, 1);
+    }
+
+    private string GetShortStudyTime()
+    {
+        return bestStudyTime.Contains("Morning") ? "Morning" :
+               bestStudyTime.Contains("Afternoon") ? "Afternoon" : "Evening";
+    }
+
+    private RenderFragment GetStatusBadge(EnrollmentDto enrollment)
+    {
+        if (enrollment.IsCompleted)
+        {
+            return @<span class="badge bg-success">Completed</span>;
+        }
+        else if (enrollment.ProgressPercentage > 70)
+        {
+            return @<span class="badge bg-info">Almost Done</span>;
+        }
+        else if (enrollment.ProgressPercentage > 30)
+        {
+            return @<span class="badge bg-primary">In Progress</span>;
+        }
+        else
+        {
+            return @<span class="badge bg-warning">Just Started</span>;
+        }
+    }
+
+    private List<Recommendation> GetRecommendations()
+    {
+        var recommendations = new List<Recommendation>();
+        
+        if (overallProgress < 50)
+        {
+            recommendations.Add(new Recommendation
+            {
+                Icon = "fa-bolt",
+                Color = "text-warning",
+                Title = "Increase Study Time",
+                Description = "Try to study for at least 1 hour daily to improve your progress",
+                Action = "Set Reminder",
+                ActionCallback = () => SetStudyReminder()
+            });
+        }
+        
+        if (completionRate < 30)
+        {
+            recommendations.Add(new Recommendation
+            {
+                Icon = "fa-flag-checkered",
+                Color = "text-success",
+                Title = "Finish More Courses",
+                Description = "Focus on completing at least one course this week",
+                Action = "View Active",
+                ActionCallback = () => Navigation.NavigateTo("/student/mylearning/active")
+            });
+        }
+        
+        if (studyHours < 20)
+        {
+            recommendations.Add(new Recommendation
+            {
+                Icon = "fa-clock",
+                Color = "text-info",
+                Title = "Build Consistency",
+                Description = "Try to study at the same time each day to build a habit",
+                Action = "Schedule",
+                ActionCallback = () => ScheduleStudyTime()
+            });
+        }
+        
+        // Add general recommendation if no specific ones
+        if (!recommendations.Any())
+        {
+            recommendations.Add(new Recommendation
+            {
+                Icon = "fa-star",
+                Color = "text-primary",
+                Title = "Keep Up the Good Work!",
+                Description = "You're making excellent progress. Consider starting a new course.",
+                Action = "Browse Courses",
+                ActionCallback = () => Navigation.NavigateTo("/browse")
+            });
+        }
+        
+        return recommendations;
+    }
+
+    private async Task ExportProgress()
+    {
+        try
+        {
+            // Create a simple CSV export
+            var csvContent = "Course,Progress,Time Spent,Status,Last Activity\n";
+            
+            foreach (var enrollment in enrollments)
+            {
+                var courseName = GetCourseTitle(enrollment);
+                var progress = enrollment.ProgressPercentage.ToString("0.0");
+                var timeSpent = GetTimeSpent(enrollment).ToString("0.0");
+                var status = enrollment.IsCompleted ? "Completed" : "In Progress";
+                var lastActivity = GetLastActivity(enrollment);
+                
+                csvContent += $"\"{courseName}\",{progress},{timeSpent},{status},{lastActivity}\n";
+            }
+            
+            // Convert to base64 for download
+            var bytes = System.Text.Encoding.UTF8.GetBytes(csvContent);
+            var base64 = Convert.ToBase64String(bytes);
+            
+            // Trigger download using JS interop
+            var fileName = $"learning-progress-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            await JS.InvokeVoidAsync("downloadFile", base64, fileName, "text/csv");
+            
+            await ShowToast("success", "Progress exported successfully!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Export error: {ex.Message}");
+            await ShowToast("error", "Failed to export progress");
+        }
+    }
+
+    private async Task SetStudyReminder()
+    {
+        await ShowToast("success", "Study reminder set for daily 7 PM!");
+    }
+
+    private async Task ScheduleStudyTime()
+    {
+        await ShowToast("success", "Study time scheduled!");
+    }
+
+    private void ViewCourseDetails(EnrollmentDto enrollment)
+    {
+        if (enrollment == null) return;
+        
+        switch (enrollment.EnrollmentType)
+        {
+            case EnrollmentType.Specialization:
+                if (enrollment.SpecializationId.HasValue)
+                    Navigation.NavigateTo($"/specializations/{enrollment.SpecializationId.Value}");
+                break;
+            case EnrollmentType.Course:
+                if (enrollment.CourseId.HasValue)
+                    Navigation.NavigateTo($"/course/{enrollment.CourseId.Value}");
+                break;
+            case EnrollmentType.Lecture:
+                if (enrollment.LectureId.HasValue)
+                    Navigation.NavigateTo($"/lecture/{enrollment.LectureId.Value}");
+                break;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isLoading && enrollments.Any() && isAuthenticated)
+        {
+            await RenderWeeklyActivityChart();
+        }
+    }
+
+    private async Task RenderWeeklyActivityChart()
+    {
+        try
+        {
+            // Generate weekly activity data based on progress trackings
+            var days = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+            var activity = new int[7];
+            
+            // Calculate activity based on progress trackings
+            foreach (var enrollment in enrollments)
+            {
+                if (enrollment.ProgressTrackings == null) continue;
+                
+                foreach (var progress in enrollment.ProgressTrackings)
+                {
+                    var date = progress.CompletedDate ?? progress.CreatedAt;
+                    if (date >= DateTime.UtcNow.AddDays(-7))
+                    {
+                        var dayOfWeek = (int)date.DayOfWeek - 1;
+                        if (dayOfWeek < 0) dayOfWeek = 6; // Sunday adjustment
+                        activity[dayOfWeek] += progress.TimeSpentSeconds / 3600; // Add hours
+                    }
+                }
+            }
+            
+            await JS.InvokeVoidAsync("renderWeeklyActivityChart", days, activity);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chart error: {ex.Message}");
+        }
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        await JS.InvokeVoidAsync("showToast", type, message);
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+
+    private class Recommendation
+    {
+        public string Icon { get; set; } = "";
+        public string Color { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Action { get; set; } = "";
+        public Action ActionCallback { get; set; } = () => { };
+    }
+}

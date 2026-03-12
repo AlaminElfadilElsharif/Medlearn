@@ -1,0 +1,995 @@
+﻿@page "/admin/payments"
+
+
+<PageTitle>Payment Requests</PageTitle>
+
+<div class="payment-requests">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Header - Responsive -->
+        <div class="row g-0 mb-3 mb-md-4">
+            <div class="col-12">
+                <!-- Mobile Header -->
+                <div class="d-block d-md-none">
+                    <div class="bg-primary text-white p-3">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-link text-white p-0 me-3" @onclick="GoToDashboard">
+                                <i class="fas fa-arrow-left fa-lg"></i>
+                            </button>
+                            <h5 class="mb-0 flex-grow-1">Payment Requests</h5>
+                            <span class="badge bg-warning ms-2">@pendingCount</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Header -->
+                <div class="d-none d-md-flex justify-content-between align-items-center">
+                    <div>
+                        <h1>Payment Requests</h1>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item">
+                                    <a href="/admin">Admin</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page">Payments</li>
+                            </ol>
+                        </nav>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary me-2" @onclick='() => Navigation.NavigateTo("/admin/payments/stats")'>
+                            <i class="fas fa-chart-bar me-2"></i> View Stats
+                        </button>
+                        <span class="badge bg-danger">@pendingCount pending</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Show unauthorized message if not admin (same for both) -->
+        @if (!isAuthenticated)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+                <h4>Authentication Required</h4>
+                <p class="text-muted mb-4">Please login to access payment requests</p>
+                <button class="btn btn-primary" @onclick="GoToLogin">
+                    <i class="fas fa-sign-in-alt me-2"></i> Go to Login
+                </button>
+            </div>
+        }
+        else if (currentUser?.UserType != UserType.Admin)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-shield-alt fa-3x text-muted mb-3"></i>
+                <h4>Access Denied</h4>
+                <p class="text-muted mb-4">Admin privileges required to access payment requests</p>
+                <button class="btn btn-outline-primary" @onclick="GoToDashboard">
+                    <i class="fas fa-tachometer-alt me-2"></i> Go to Dashboard
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Filters - Responsive -->
+            <div class="card mb-3 mb-md-4">
+                <div class="card-body p-3 p-md-4">
+                    <!-- Mobile Filter Toggle -->
+                    <div class="d-block d-md-none mb-3">
+                        <button class="btn btn-outline-primary w-100" @onclick="ToggleMobileFilters">
+                            <i class="fas fa-filter me-2"></i>
+                            Filters
+                            @if (!string.IsNullOrEmpty(searchTerm) || !string.IsNullOrEmpty(statusFilter) || !string.IsNullOrEmpty(typeFilter))
+                            {
+                                <span class="badge bg-primary ms-2">Active</span>
+                            }
+                        </button>
+                    </div>
+
+                    <!-- Mobile Filters (Collapsible) -->
+                    <div class="@(showMobileFilters ? "d-block" : "d-none") d-md-block">
+                        <div class="row g-2 g-md-3">
+                            <div class="col-12 col-md-3">
+                                <div class="input-group input-group-sm d-md-flex">
+                                    <span class="input-group-text bg-white border-end-0">
+                                        <i class="fas fa-search text-muted"></i>
+                                    </span>
+                                    <input type="text" class="form-control border-start-0 ps-0"
+                                           placeholder="Search users..."
+                                           value="@searchTerm"
+                                           @oninput="async (e) => await HandleSearchInput(e)" />
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <select class="form-select form-select-sm" @onchange="async (e) => await HandleStatusFilterChange(e)">
+                                    <option value="" selected="@(string.IsNullOrEmpty(statusFilter))">All Status</option>
+                                    <option value="0" selected="@(statusFilter == "0")">Pending</option>
+                                    <option value="1" selected="@(statusFilter == "1")">Approved</option>
+                                    <option value="2" selected="@(statusFilter == "2")">Rejected</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <select class="form-select form-select-sm" @onchange="async (e) => await HandleTypeFilterChange(e)">
+                                    <option value="" selected="@(string.IsNullOrEmpty(typeFilter))">All Types</option>
+                                    <option value="0" selected="@(typeFilter == "0")">Lecture</option>
+                                    <option value="1" selected="@(typeFilter == "1")">Course</option>
+                                    <option value="2" selected="@(typeFilter == "2")">Specialization</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <select class="form-select form-select-sm" @onchange="async (e) => await HandlePageSizeChange(e)">
+                                    <option value="10" selected="@(pageSize == 10)">10 per page</option>
+                                    <option value="15" selected="@(pageSize == 15)">15 per page</option>
+                                    <option value="25" selected="@(pageSize == 25)">25 per page</option>
+                                    <option value="50" selected="@(pageSize == 50)">50 per page</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-secondary btn-sm flex-grow-1" @onclick="ClearFilters">
+                                        <i class="fas fa-times"></i>
+                                        <span class="d-none d-md-inline ms-2">Clear</span>
+                                    </button>
+                                    <button class="btn btn-primary btn-sm flex-grow-1" @onclick="ExportToExcel" disabled="@isExporting">
+                                        @if (isExporting)
+                                        {
+                                            <span class="spinner-border spinner-border-sm"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-file-export"></i>
+                                        }
+                                        <span class="d-none d-md-inline ms-2">Export</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards - Responsive -->
+            <div class="row g-2 g-md-3 mb-3 mb-md-4">
+                <div class="col-6 col-md-3">
+                    <div class="card bg-primary text-white h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title mb-0 mb-md-1 small text-white-50">Total</h6>
+                                    <h4 class="mb-0">@totalCount</h4>
+                                </div>
+                                <i class="fas fa-credit-card fa-lg fa-md-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-warning text-white h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title mb-0 mb-md-1 small text-white-50">Pending</h6>
+                                    <h4 class="mb-0">@pendingCount</h4>
+                                </div>
+                                <i class="fas fa-clock fa-lg fa-md-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-success text-white h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title mb-0 mb-md-1 small text-white-50">Approved</h6>
+                                    <h4 class="mb-0">@approvedCount</h4>
+                                </div>
+                                <i class="fas fa-check-circle fa-lg fa-md-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card bg-danger text-white h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title mb-0 mb-md-1 small text-white-50">Rejected</h6>
+                                    <h4 class="mb-0">@rejectedCount</h4>
+                                </div>
+                                <i class="fas fa-times-circle fa-lg fa-md-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Requests List/Table -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center p-3 p-md-4">
+                    <h5 class="mb-0">Payment Requests</h5>
+                    <div>
+                        <span class="text-muted small me-2 d-none d-md-inline">Showing @filteredPayments.Count of @totalCount</span>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshData">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0 p-md-3">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading payment requests...</p>
+                        </div>
+                    }
+                    else if (!filteredPayments.Any())
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                            <h5>No payment requests found</h5>
+                            <p class="text-muted">Try adjusting your search or filters</p>
+                            <button class="btn btn-outline-primary" @onclick="ClearFilters">
+                                <i class="fas fa-redo me-2"></i> Clear All Filters
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Mobile Card View (d-block d-md-none) -->
+                        <div class="d-block d-md-none">
+                            @foreach (var payment in filteredPayments)
+                            {
+                                <div class="card mb-3 border-0 border-bottom rounded-0 @GetMobileCardClass(payment.Status)">
+                                    <div class="card-body p-3">
+                                        <!-- Header with Invoice and Status -->
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <div class="fw-bold">@payment.InvoiceNumber</div>
+                                                <small class="text-muted">@payment.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                            </div>
+                                            <span class="badge @GetStatusBadge(payment.Status)">@payment.Status</span>
+                                        </div>
+
+                                        <!-- User Info -->
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="avatar-sm me-2">
+                                                @if (!string.IsNullOrEmpty(payment.User?.ProfileImageUrl))
+                                                {
+                                                    <img src="@payment.User.ProfileImageUrl"
+                                                         class="rounded-circle"
+                                                         width="40" height="40"
+                                                         alt="User"
+                                                         onerror="this.onerror=null;this.src='/images/default-avatar.png'" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                                         style="width: 40px; height: 40px;">
+                                                        @GetInitials(payment.User?.FirstName, payment.User?.LastName)
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold">@payment.User?.FirstName @payment.User?.LastName</div>
+                                                <small class="text-muted">@payment.User?.Email</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Item Details -->
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Type</small>
+                                                <span class="badge @GetTypeBadge(payment.EnrollmentType)">
+                                                    @payment.EnrollmentType
+                                                </span>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Amount</small>
+                                                <span class="fw-bold">$@payment.Amount.ToString("N2")</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <small class="text-muted d-block">Item</small>
+                                            <div class="fw-bold small">@GetItemName(payment)</div>
+                                        </div>
+
+                                        <!-- Rejection Reason (if any) -->
+                                        @if (payment.Status == PaymentStatus.Rejected && !string.IsNullOrEmpty(payment.RejectionReason))
+                                        {
+                                            <div class="alert alert-danger p-2 small mb-2">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                @payment.RejectionReason
+                                            </div>
+                                        }
+
+                                        <!-- Actions -->
+                                        <div class="d-flex gap-2 mt-3">
+                                            <button class="btn btn-outline-info btn-sm flex-grow-1"
+                                                    @onclick="() => ViewPaymentDetails(payment.Id)">
+                                                <i class="fas fa-eye me-1"></i> Details
+                                            </button>
+
+                                            @if (payment.Status == PaymentStatus.Pending)
+                                            {
+                                                <button class="btn btn-outline-success btn-sm flex-grow-1"
+                                                        @onclick="async () => await ProcessPayment(payment.Id, true)">
+                                                    <i class="fas fa-check me-1"></i> Approve
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm flex-grow-1"
+                                                        @onclick="async () => await ProcessPayment(payment.Id, false)">
+                                                    <i class="fas fa-times me-1"></i> Reject
+                                                </button>
+                                            }
+                                            else if (payment.InvoicePdfUrl != null)
+                                            {
+                                                <a href="@payment.InvoicePdfUrl" target="_blank"
+                                                   class="btn btn-outline-danger btn-sm flex-grow-1">
+                                                    <i class="fas fa-file-pdf me-1"></i> Invoice
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Desktop Table View (d-none d-md-block) -->
+                        <div class="d-none d-md-block table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>User</th>
+                                        <th>Type</th>
+                                        <th>Item</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in filteredPayments)
+                                    {
+                                        <tr class="@GetTableRowClass(payment.Status)">
+                                            <td>
+                                                <div>
+                                                    <strong>@payment.InvoiceNumber</strong>
+                                                    @if (payment.Status == PaymentStatus.Pending)
+                                                    {
+                                                        <span class="badge bg-warning ms-1">NEW</span>
+                                                    }
+                                                </div>
+                                                @if (payment.InvoicePdfUrl != null)
+                                                {
+                                                    <small>
+                                                        <a href="@payment.InvoicePdfUrl" target="_blank"
+                                                           class="text-decoration-none" title="View Invoice">
+                                                            <i class="fas fa-file-pdf me-1 text-danger"></i>
+                                                            Invoice
+                                                        </a>
+                                                    </small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-sm me-2">
+                                                        @if (!string.IsNullOrEmpty(payment.User?.ProfileImageUrl))
+                                                        {
+                                                            <img src="@payment.User.ProfileImageUrl"
+                                                                 class="rounded-circle"
+                                                                 width="32" height="32"
+                                                                 alt="User"
+                                                                 onerror="this.onerror=null;this.src='/images/default-avatar.png'" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                                                 style="width: 32px; height: 32px;">
+                                                                @GetInitials(payment.User?.FirstName, payment.User?.LastName)
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <div>@payment.User?.FirstName @payment.User?.LastName</div>
+                                                        <small class="text-muted">@payment.User?.Email</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetTypeBadge(payment.EnrollmentType)">
+                                                    @payment.EnrollmentType
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div>@GetItemName(payment)</div>
+                                                <small class="text-muted">@GetItemDetails(payment)</small>
+                                            </td>
+                                            <td class="fw-bold text-nowrap">$@payment.Amount.ToString("N2")</td>
+                                            <td>
+                                                <div>@payment.CreatedAt.ToString("MMM dd")</div>
+                                                <small class="text-muted">@payment.CreatedAt.ToString("yyyy")</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetStatusBadge(payment.Status)">
+                                                    @payment.Status
+                                                </span>
+                                                @if (payment.Status == PaymentStatus.Rejected && !string.IsNullOrEmpty(payment.RejectionReason))
+                                                {
+                                                    <br />
+                                                    <small class="text-muted" title="@payment.RejectionReason">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        @TruncateText(payment.RejectionReason, 20)
+                                                    </small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <button class="btn btn-outline-info"
+                                                            @onclick="() => ViewPaymentDetails(payment.Id)"
+                                                            title="View Details">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    @if (payment.Status == PaymentStatus.Pending)
+                                                    {
+                                                        <button class="btn btn-outline-success"
+                                                                @onclick="async () => await ProcessPayment(payment.Id, true)"
+                                                                title="Approve">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-danger"
+                                                                @onclick="async () => await ProcessPayment(payment.Id, false)"
+                                                                title="Reject">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination (same for both) -->
+                        @if (totalPages > 1)
+                        {
+                            <nav class="mt-3 mt-md-4">
+                                <ul class="pagination justify-content-center pagination-sm d-md-flex">
+                                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                        <button class="page-link" @onclick="async () => await ChangePage(currentPage - 1)">
+                                            <i class="fas fa-chevron-left"></i>
+                                            <span class="d-none d-md-inline ms-1">Previous</span>
+                                        </button>
+                                    </li>
+
+                                    <!-- Mobile: Show current page only -->
+                                    <li class="page-item d-block d-md-none">
+                                        <span class="page-link">@currentPage of @totalPages</span>
+                                    </li>
+
+                                    <!-- Desktop: Show all pages -->
+                                    <div class="d-none d-md-flex">
+                                        @for (int i = 1; i <= totalPages; i++)
+                                        {
+                                            if (i == 1 || i == totalPages || (i >= currentPage - 2 && i <= currentPage + 2))
+                                            {
+                                            <li class="page-item @(currentPage == i ? "active" : "")">
+                                                <button class="page-link" @onclick="async () => await ChangePage(i)">@i</button>
+                                            </li>
+                                        }
+                                        else if (i == currentPage - 3 || i == currentPage + 3)
+                                        {
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        }
+                                    }
+                        </div>
+
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="async () => await ChangePage(currentPage + 1)">
+                                <span class="d-none d-md-inline me-1">Next</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </li>
+                        </ul>
+                        </nav>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+</div>
+
+@code {
+    private List<PaymentRequestDto> payments = new();
+    private List<PaymentRequestDto> filteredPayments = new();
+    private string searchTerm = "";
+    private string statusFilter = "";
+    private string typeFilter = "";
+    private int currentPage = 1;
+    private int pageSize = 15;
+    private int totalCount = 0;
+    private int totalPages = 1;
+    private int pendingCount = 0;
+    private int approvedCount = 0;
+    private int rejectedCount = 0;
+    private bool isLoading = true;
+    private bool isExporting = false;
+    private bool isAuthenticated = false;
+    private bool showMobileFilters = false;
+    private Timer? searchTimer;
+    private Timer? refreshTimer;
+    private UserDto? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+
+        if (isAuthenticated && currentUser?.UserType == UserType.Admin)
+        {
+            await LoadPayments();
+
+            // Auto-refresh every 30 seconds for pending payments
+            refreshTimer = new Timer(async _ => await RefreshIfHasPending(), null, 30000, 30000);
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+
+            if (isAuthenticated)
+            {
+                currentUser = await AuthService.GetCurrentUserAsync();
+
+                if (currentUser?.UserType != UserType.Admin)
+                {
+                    await JS.InvokeVoidAsync("console.warn", "Non-admin user tried to access admin payments");
+                }
+            }
+            else
+            {
+                currentUser = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+            currentUser = null;
+        }
+    }
+
+    private async Task RefreshIfHasPending()
+    {
+        if (pendingCount > 0)
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    await LoadPayments();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in auto-refresh: {ex.Message}");
+                }
+            });
+        }
+    }
+
+    private async Task LoadPayments()
+    {
+        if (!isAuthenticated || currentUser?.UserType != UserType.Admin)
+            return;
+
+        isLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Parse filters
+            PaymentStatus? status = null;
+            if (!string.IsNullOrEmpty(statusFilter) && int.TryParse(statusFilter, out int statusValue))
+            {
+                status = (PaymentStatus)statusValue;
+            }
+
+            // Get payment requests from service
+            var paymentRequests = await PaymentService.GetPaymentRequestsAsync(
+                status: status,
+                search: searchTerm,
+                page: currentPage,
+                pageSize: pageSize);
+
+            if (paymentRequests != null)
+            {
+                payments = paymentRequests;
+                totalCount = payments.Count;
+
+                // Calculate stats from current filtered list
+                pendingCount = payments.Count(p => p.Status == PaymentStatus.Pending);
+                approvedCount = payments.Count(p => p.Status == PaymentStatus.Approved);
+                rejectedCount = payments.Count(p => p.Status == PaymentStatus.Rejected);
+
+                ApplyFilters();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowToast("error", $"Error loading payments: {ex.Message}");
+            Console.WriteLine($"LoadPayments error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var query = payments.AsQueryable();
+
+        // Apply type filter
+        if (!string.IsNullOrEmpty(typeFilter) && int.TryParse(typeFilter, out int typeValue))
+        {
+            var enumType = (EnrollmentType)typeValue;
+            query = query.Where(p => p.EnrollmentType == enumType);
+        }
+
+        // Sort by status (pending first) and date
+        filteredPayments = query
+            .OrderByDescending(p => p.Status == PaymentStatus.Pending)
+            .ThenByDescending(p => p.CreatedAt)
+            .ToList();
+
+        totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    }
+
+    private void ToggleMobileFilters()
+    {
+        showMobileFilters = !showMobileFilters;
+    }
+
+    private string GetMobileCardClass(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Pending => "bg-warning bg-opacity-10",
+            PaymentStatus.Approved => "bg-success bg-opacity-10",
+            PaymentStatus.Rejected => "bg-danger bg-opacity-10",
+            _ => ""
+        };
+    }
+
+    private async Task HandleSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+
+        // Debounce search
+        searchTimer?.Dispose();
+        searchTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                currentPage = 1;
+                await LoadPayments();
+                searchTimer?.Dispose();
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task HandleStatusFilterChange(ChangeEventArgs e)
+    {
+        statusFilter = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        await LoadPayments();
+    }
+
+    private async Task HandleTypeFilterChange(ChangeEventArgs e)
+    {
+        typeFilter = e.Value?.ToString() ?? "";
+        currentPage = 1;
+        await LoadPayments();
+    }
+
+    private async Task HandlePageSizeChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            pageSize = newSize;
+            currentPage = 1;
+            await LoadPayments();
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || page > totalPages) return;
+
+        currentPage = page;
+        await LoadPayments();
+    }
+
+    private async Task ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+        typeFilter = "";
+        currentPage = 1;
+        pageSize = 15;
+        showMobileFilters = false;
+        await LoadPayments();
+    }
+
+    private async Task RefreshData()
+    {
+        if (!isAuthenticated) return;
+
+        currentPage = 1;
+        await LoadPayments();
+        await ShowToast("success", "Data refreshed");
+    }
+
+    private string GetTableRowClass(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Pending => "table-warning",
+            PaymentStatus.Approved => "table-success",
+            PaymentStatus.Rejected => "table-danger",
+            _ => ""
+        };
+    }
+
+    private string GetTypeBadge(EnrollmentType type)
+    {
+        return type switch
+        {
+            EnrollmentType.Lecture => "bg-info",
+            EnrollmentType.Course => "bg-primary",
+            EnrollmentType.Specialization => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusBadge(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Approved => "bg-success",
+            PaymentStatus.Pending => "bg-warning",
+            PaymentStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetItemName(PaymentRequestDto payment)
+    {
+        if (payment == null) return "Unknown";
+
+        return payment.EnrollmentType switch
+        {
+            EnrollmentType.Lecture => payment.Lecture?.Title ?? "Lecture",
+            EnrollmentType.Course => payment.Course?.Title ?? "Course",
+            EnrollmentType.Specialization => payment.Specialization?.Title ?? "Specialization",
+            _ => "Unknown Item"
+        };
+    }
+
+    private string GetItemDetails(PaymentRequestDto payment)
+    {
+        if (payment == null) return "";
+
+        return payment.EnrollmentType switch
+        {
+            EnrollmentType.Lecture => payment.LectureId?.ToString() ?? "N/A",
+            EnrollmentType.Course => payment.CourseId?.ToString() ?? "N/A",
+            EnrollmentType.Specialization => payment.SpecializationId?.ToString() ?? "N/A",
+            _ => ""
+        };
+    }
+
+    private string GetInitials(string? firstName, string? lastName)
+    {
+        if (string.IsNullOrEmpty(firstName) && string.IsNullOrEmpty(lastName))
+            return "U";
+
+        var firstInitial = string.IsNullOrEmpty(firstName) ? "" : firstName[0].ToString();
+        var lastInitial = string.IsNullOrEmpty(lastName) ? "" : lastName[0].ToString();
+
+        return $"{firstInitial}{lastInitial}";
+    }
+
+    private async Task ProcessPayment(int paymentId, bool approve)
+    {
+        if (currentUser == null || currentUser.UserType != UserType.Admin)
+        {
+            await ShowToast("error", "Admin privileges required");
+            return;
+        }
+
+        if (approve)
+        {
+            bool confirmed = await JS.InvokeAsync<bool>("confirm",
+                "Are you sure you want to approve this payment? This will grant the user access to the content and transfer funds to the doctor.");
+
+            if (!confirmed) return;
+
+            try
+            {
+                var updateDto = new UpdatePaymentRequestDto
+                {
+                    Status = PaymentStatus.Approved,
+                    RejectionReason = null
+                };
+
+                var result = await PaymentService.UpdatePaymentStatusAsync(paymentId, updateDto);
+
+                if (result)
+                {
+                    await ShowToast("success", "Payment approved successfully");
+                    await LoadPayments();
+                }
+                else
+                {
+                    await ShowToast("error", "Failed to approve payment");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowToast("error", $"Error approving payment: {ex.Message}");
+            }
+        }
+        else
+        {
+            var reason = await JS.InvokeAsync<string>("prompt", "Please enter rejection reason:");
+
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                try
+                {
+                    var updateDto = new UpdatePaymentRequestDto
+                    {
+                        Status = PaymentStatus.Rejected,
+                        RejectionReason = reason
+                    };
+
+                    var result = await PaymentService.UpdatePaymentStatusAsync(paymentId, updateDto);
+
+                    if (result)
+                    {
+                        await ShowToast("success", "Payment rejected successfully");
+                        await LoadPayments();
+                    }
+                    else
+                    {
+                        await ShowToast("error", "Failed to reject payment");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await ShowToast("error", $"Error rejecting payment: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    private async Task ExportToExcel()
+    {
+        if (currentUser?.UserType != UserType.Admin)
+        {
+            await ShowToast("error", "Admin privileges required");
+            return;
+        }
+
+        isExporting = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Get all data (not just current page) for export
+            PaymentStatus? status = null;
+            if (!string.IsNullOrEmpty(statusFilter) && int.TryParse(statusFilter, out int statusValue))
+            {
+                status = (PaymentStatus)statusValue;
+            }
+
+            // Get all payment requests without pagination for export
+            var allPayments = await PaymentService.GetPaymentRequestsAsync(
+                status: status,
+                search: searchTerm,
+                page: 1,
+                pageSize: 10000); // Large number to get all for export
+
+            if (allPayments == null || !allPayments.Any())
+            {
+                await ShowToast("error", "No data to export");
+                isExporting = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            // Create CSV content
+            var csvContent = new StringBuilder();
+            csvContent.AppendLine("Invoice Number,User Name,User Email,Type,Item,Amount,Status,Created Date,Invoice URL");
+
+            foreach (var payment in allPayments)
+            {
+                var userName = $"{payment.User?.FirstName} {payment.User?.LastName}";
+                var userEmail = payment.User?.Email ?? "N/A";
+                var itemName = GetItemName(payment);
+                var invoiceUrl = payment.InvoicePdfUrl ?? "N/A";
+
+                // Escape quotes in CSV
+                userName = userName?.Replace("\"", "\"\"") ?? "";
+                userEmail = userEmail?.Replace("\"", "\"\"") ?? "";
+                itemName = itemName?.Replace("\"", "\"\"") ?? "";
+                invoiceUrl = invoiceUrl?.Replace("\"", "\"\"") ?? "";
+
+                csvContent.AppendLine($"\"{payment.InvoiceNumber}\",\"{userName}\",\"{userEmail}\",\"{payment.EnrollmentType}\",\"{itemName}\",\"{payment.Amount}\",\"{payment.Status}\",\"{payment.CreatedAt:yyyy-MM-dd HH:mm}\",\"{invoiceUrl}\"");
+            }
+
+            // Create download
+            var fileName = $"PaymentRequests_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            var bytes = Encoding.UTF8.GetBytes(csvContent.ToString());
+            var base64 = Convert.ToBase64String(bytes);
+
+            await JS.InvokeVoidAsync("downloadFile", fileName, base64, "text/csv");
+
+            await ShowToast("success", "Export completed successfully");
+        }
+        catch (Exception ex)
+        {
+            await ShowToast("error", $"Export failed: {ex.Message}");
+            Console.WriteLine($"Export error: {ex.Message}");
+        }
+        finally
+        {
+            isExporting = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ViewPaymentDetails(int paymentId)
+    {
+        Navigation.NavigateTo($"/admin/payments/review/{paymentId}");
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/account/login");
+    }
+
+    private void GoToDashboard()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+
+        return text.Substring(0, maxLength) + "...";
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        await JS.InvokeVoidAsync("showToast", type, message);
+    }
+
+    public void Dispose()
+    {
+        searchTimer?.Dispose();
+        refreshTimer?.Dispose();
+    }
+}

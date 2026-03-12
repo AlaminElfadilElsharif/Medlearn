@@ -1,0 +1,1223 @@
+﻿@page "/"
+
+
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+<!-- Loading Overlay -->
+@if (isLoading)
+{
+    <div class="position-fixed top-0 start-0 w-100 h-100 bg-white bg-opacity-90 d-flex justify-content-center align-items-center" style="z-index: 9999;">
+        <div class="text-center">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h4 class="mt-3 d-none d-md-block">Loading...</h4>
+            <p class="text-muted d-md-none mt-2">Loading...</p>
+        </div>
+    </div>
+}
+
+<!-- Content based on user type -->
+@if (!isLoading)
+{
+    if (!isAuthenticated)
+    {
+        <!-- PUBLIC/GUEST HOME PAGE - Two Column Layout -->
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Left Column - Main Content (8 columns on desktop, 12 on mobile) -->
+                <div class="col-12 col-lg-8">
+                    <PublicHomeView FeaturedSpecializations="featuredSpecializations"
+                                    RecentReviews="recentReviews"
+                                    TotalCourses="totalCourses"
+                                    TotalUsers="totalUsers"
+                                    TotalInstructors="totalInstructors"
+                                    OverallRating="overallRating"
+                                    OnBrowseAll='() => Navigation.NavigateTo("/browse")'
+                                    OnViewSpecialization='(id) => Navigation.NavigateTo($"/specializations/{id}")'
+                                    OnLogin='() => Navigation.NavigateTo("/account/login")'
+                                    OnRegister='() => Navigation.NavigateTo("/account/register")' />
+                </div>
+
+                <!-- Right Column - Announcements (4 columns on desktop, 12 on mobile) -->
+                <div class="col-12 col-lg-4 mt-4 mt-lg-0">
+                    <div class="sticky-sidebar" style="position: sticky; top: 20px;">
+                        <!-- Show login prompt for guests instead of messages -->
+                        <div class="card mb-4">
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <i class="fas fa-envelope fa-3x text-muted"></i>
+                                </div>
+                                <h5>Stay Connected</h5>
+                                <p class="text-muted small">Login to access your messages and communicate with instructors</p>
+                                <button class="btn btn-primary w-100" @onclick='() => Navigation.NavigateTo("/account/login")'>
+                                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <Announcements Title="Platform Announcements"
+                                       Subtitle="Stay updated with the latest news"
+                                       ShowOnlyImportant="false"
+                                       MaxItems="5"
+                                       CompactMode="true"
+                                       ShowImages="false" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else if (currentUser?.UserType == UserType.Admin)
+    {
+        <!-- ADMIN HOME PAGE - Two Column Layout -->
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Left Column - Main Content (8 columns on desktop, 12 on mobile) -->
+                <div class="col-12 col-lg-8">
+                    <AdminHomeView User="currentUser"
+                                   PendingPayments="pendingPayments"
+                                   PendingWithdrawals="pendingWithdrawals"
+                                   RecentPayments="recentPayments"
+                                   RecentWithdrawals="recentWithdrawals"
+                                   PopularContent="popularContent"
+                                   TotalUsers="totalUsers"
+                                   TotalDoctors="totalDoctors"
+                                   TotalStudents="totalStudents"
+                                   TotalRevenue="totalRevenue"
+                                   OnViewUsers='() => Navigation.NavigateTo("/admin/users")'
+                                   OnViewPayments='() => Navigation.NavigateTo("/admin/payments")'
+                                   OnViewWithdrawals='() => Navigation.NavigateTo("/admin/withdrawals")'
+                                   OnViewContent="OnViewContentHandler" />
+                </div>
+
+                <!-- For ADMIN HOME PAGE - Messages & Announcements sidebar -->
+<div class="col-12 col-lg-4 mt-4 mt-lg-0">
+    <div class="sticky-sidebar" style="position: sticky; top: 20px;">
+        <!-- Messages Widget - Top of sidebar for authenticated users -->
+        <div class="mb-4">
+            <MessageInboxWidget MaxMessages="5" 
+                               ShowComposeButton="true"
+                               AutoRefresh="true"
+                               RefreshInterval="60000" />
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">Quick Actions</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" @onclick="ComposeMessage">
+                        <i class="fas fa-pen me-2"></i>New Message
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/messages")'>
+                        <i class="fas fa-inbox me-2"></i>View All Messages
+                        @if (unreadCount > 0)
+                        {
+                            <span class="badge bg-danger ms-2">@unreadCount</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Announcements component - comment must be outside the component tag -->
+        <Announcements Title="Administrative Announcements"
+                       Subtitle="Platform updates"
+                       ShowOnlyImportant="false"
+                       MaxItems="4"
+                       CompactMode="true"
+                       ShowImages="false" />
+    </div>
+</div>
+
+            
+            </div>
+        </div>
+    }
+    else if (currentUser?.UserType == UserType.Doctor)
+    {
+        <!-- DOCTOR HOME PAGE - Two Column Layout -->
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Left Column - Main Content (8 columns on desktop, 12 on mobile) -->
+                <div class="col-12 col-lg-8">
+                    <DoctorHomeView User="currentUser"
+                                    RecentEnrollments="doctorRecentEnrollments"
+                                    RecentReviews="doctorRecentReviews"
+                                    MySpecializations="mySpecializations"
+                                    MyCourses="myCourses"
+                                    MyLectures="myLectures"
+                                    MonthlyRevenue="monthlyRevenue"
+                                    TotalStudents="doctorTotalStudents"
+                                    AverageRating="doctorAverageRating"
+                                    AvailableBalance="doctorAvailableBalance"
+                                    PendingWithdrawals="pendingDoctorWithdrawals"
+                                    OnCreateContent='() => Navigation.NavigateTo("/createspecialization")'
+                                    OnViewAllContent='() => Navigation.NavigateTo("/doctor/content")'
+                                    OnViewReviews='() => Navigation.NavigateTo("/doctor/reviews")'
+                                    OnWithdraw='() => Navigation.NavigateTo("/doctor/withdraw")'
+                                    OnViewStudent='(id) => Navigation.NavigateTo($"/doctor/students/{id}")'
+                                    OnViewSpecialization='(id) => Navigation.NavigateTo($"/specializations/{id}")'
+                                    OnViewCourse='(id) => Navigation.NavigateTo($"/courses/{id}")'
+                                    OnViewLecture='(id) => Navigation.NavigateTo($"/lectures/{id}")' />
+                </div>
+
+               <!-- For DOCTOR HOME PAGE - Messages & Announcements sidebar -->
+<div class="col-12 col-lg-4 mt-4 mt-lg-0">
+    <div class="sticky-sidebar" style="position: sticky; top: 20px;">
+        <!-- Messages Widget - Top of sidebar for authenticated users -->
+        <div class="mb-4">
+            <MessageInboxWidget MaxMessages="5" 
+                               ShowComposeButton="true"
+                               AutoRefresh="true"
+                               RefreshInterval="60000" />
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">Quick Actions</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" @onclick="ComposeMessage">
+                        <i class="fas fa-pen me-2"></i>New Message
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/messages")'>
+                        <i class="fas fa-inbox me-2"></i>View All Messages
+                        @if (unreadCount > 0)
+                        {
+                            <span class="badge bg-danger ms-2">@unreadCount</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Announcements component -->
+        <Announcements Title="Doctor Announcements"
+                       Subtitle="Updates for instructors"
+                       ShowOnlyImportant="false"
+                       MaxItems="4"
+                       CompactMode="true"
+                       ShowImages="false" />
+    </div>
+</div>
+            
+            </div>
+        </div>
+    }
+    else if (currentUser?.UserType == UserType.User)
+    {
+        <!-- STUDENT HOME PAGE - Two Column Layout -->
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Left Column - Main Content (8 columns on desktop, 12 on mobile) -->
+                <div class="col-12 col-lg-8">
+                    <StudentHomeView User="currentUser"
+                                     RecentEnrollments="studentRecentEnrollments"
+                                     CompletedEnrollments="studentCompletedEnrollments"
+                                     RecommendedSpecializations="recommendedSpecializations"
+                                     InProgressCount="studentStats.InProgressEnrollments"
+                                     CompletedCount="studentStats.CompletedEnrollments"
+                                     AverageProgress="studentStats.AverageProgress"
+                                     PendingPayments="studentPendingPayments"
+                                     OnContinueLearning='(enrollment) => ContinueLearning(enrollment)'
+                                     OnBrowseAll='() => Navigation.NavigateTo("/browse")'
+                                     OnViewSpecialization='(id) => Navigation.NavigateTo($"/specializations/{id}")'
+                                     OnViewPayments='() => Navigation.NavigateTo("/student/payments")'
+                                     OnWriteReview='(enrollment) => WriteReview(enrollment)' />
+                </div>
+
+                <!-- For STUDENT HOME PAGE - Messages & Announcements sidebar -->
+<div class="col-12 col-lg-4 mt-4 mt-lg-0">
+    <div class="sticky-sidebar" style="position: sticky; top: 20px;">
+        <!-- Messages Widget - Top of sidebar for authenticated users -->
+        <div class="mb-4">
+            <MessageInboxWidget MaxMessages="5" 
+                               ShowComposeButton="true"
+                               AutoRefresh="true"
+                               RefreshInterval="60000" />
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">Quick Actions</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" @onclick="ComposeMessage">
+                        <i class="fas fa-pen me-2"></i>New Message
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/messages")'>
+                        <i class="fas fa-inbox me-2"></i>View All Messages
+                        @if (unreadCount > 0)
+                        {
+                            <span class="badge bg-danger ms-2">@unreadCount</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Announcements component -->
+        <Announcements Title="Student Announcements"
+                       Subtitle="Latest updates for your learning"
+                       ShowOnlyImportant="false"
+                       MaxItems="4"
+                       CompactMode="true"
+                       ShowImages="false" />
+    </div>
+</div>
+            
+            </div>
+        </div>
+    }
+}
+
+<!-- Global Styles -->
+<style>
+    /* Global styles */
+    .home-page {
+        min-height: 100vh;
+        background-color: #f8f9fc;
+    }
+
+    .hover-card {
+        transition: all 0.3s ease;
+    }
+
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+        }
+
+    .cta-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* Sticky sidebar */
+    .sticky-sidebar {
+        position: sticky;
+        top: 20px;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        padding-right: 5px;
+    }
+
+        .sticky-sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sticky-sidebar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .sticky-sidebar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+            .sticky-sidebar::-webkit-scrollbar-thumb:hover {
+                background: #555;
+            }
+
+    /* Sidebar card spacing */
+    .sticky-sidebar > * {
+        margin-bottom: 1.5rem;
+    }
+
+    .sticky-sidebar > :last-child {
+        margin-bottom: 0;
+    }
+
+    /* Mobile optimizations */
+    @@media (max-width: 768px) {
+        .mobile-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+            .mobile-bottom-nav .nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: #6c757d;
+                text-decoration: none;
+                font-size: 12px;
+            }
+
+                .mobile-bottom-nav .nav-item.active {
+                    color: #0d6efd;
+                }
+
+                .mobile-bottom-nav .nav-item i {
+                    font-size: 20px;
+                    margin-bottom: 2px;
+                }
+        /* Remove sticky on mobile */
+        .sticky-sidebar {
+            position: static;
+            max-height: none;
+            overflow-y: visible;
+            padding-right: 0;
+        }
+        
+        .sticky-sidebar > * {
+            margin-bottom: 1rem;
+        }
+    }
+
+    /* Horizontal scroll for mobile */
+    .horizontal-scroll-wrapper {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+        .horizontal-scroll-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+    /* Stat cards */
+    .stat-card {
+        transition: transform 0.2s;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+    .stat-icon i {
+        font-size: 2rem;
+        opacity: 0.3;
+    }
+
+    .rating-stars i {
+        font-size: 0.9rem;
+    }
+
+    /* Container padding */
+    .container-fluid {
+        padding: 1rem;
+    }
+
+    @@media (min-width: 992px) {
+        .container-fluid {
+            padding: 2rem;
+        }
+    }
+
+    /* Quick action cards */
+    .card {
+        border: none;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+
+    .card-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 1rem;
+    }
+
+    .btn-outline-primary, .btn-outline-secondary {
+        border-width: 2px;
+        font-weight: 500;
+    }
+</style>
+
+@code {
+    // Add these new properties
+    private int unreadCount = 0;
+
+    // Keep all your existing properties
+    private UserDto? currentUser;
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+
+    // Common data for public view
+    private List<SpecializationDto> featuredSpecializations = new();
+    private List<ReviewDto> recentReviews = new();
+    private int totalCourses = 0;
+    private int totalUsers = 0;
+    private int totalInstructors = 0;
+    private decimal overallRating = 0;
+
+    // Admin data
+    private int pendingPayments = 0;
+    private int pendingWithdrawals = 0;
+    private List<PaymentRequestDto> recentPayments = new();
+    private List<WithdrawalRequestDto> recentWithdrawals = new();
+    private List<PopularContentDto> popularContent = new();
+    private int totalDoctors = 0;
+    private int totalStudents = 0;
+    private decimal totalRevenue = 0;
+
+    // Doctor data
+    private List<EnrollmentDto> doctorRecentEnrollments = new();
+    private List<ReviewDto> doctorRecentReviews = new();
+    private List<SpecializationDto> mySpecializations = new();
+    private List<CourseDto> myCourses = new();
+    private List<LectureDto> myLectures = new();
+    private decimal monthlyRevenue = 0;
+    private int doctorTotalStudents = 0;
+    private decimal doctorAverageRating = 0;
+    private decimal doctorAvailableBalance = 0;
+    private int pendingDoctorWithdrawals = 0;
+
+    // Student data
+    private List<EnrollmentDto> studentRecentEnrollments = new();
+    private List<EnrollmentDto> studentCompletedEnrollments = new();
+    private List<SpecializationDto> recommendedSpecializations = new();
+    private StudentStats studentStats = new();
+    private int studentPendingPayments = 0;
+
+    // User profile for recommendations
+    private HashSet<int> _favoriteDoctors = new();
+    private HashSet<string> _userInterests = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private void OnViewContentHandler((int id, string type) contentInfo)
+    {
+        NavigateToContent(contentInfo.id, contentInfo.type);
+    }
+
+    private string GetPageTitle()
+    {
+        if (!isAuthenticated) return "Medical Learning Platform - Home";
+        return currentUser?.UserType switch
+        {
+            UserType.Admin => "Admin Home",
+            UserType.Doctor => $"Dr. {currentUser.FirstName}'s Home",
+            UserType.User => $"{currentUser.FirstName}'s Learning Home",
+            _ => "Home"
+        };
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Check authentication
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+
+            if (isAuthenticated)
+            {
+                currentUser = await AuthService.GetCurrentUserAsync();
+                
+                // Load unread message count for authenticated users
+                await LoadUnreadCount();
+            }
+
+            // Load featured specializations (for everyone)
+            await LoadFeaturedSpecializations();
+
+            if (!isAuthenticated)
+            {
+                // Public view - load reviews
+                await LoadPublicReviews();
+                CalculatePublicStats();
+            }
+            else if (currentUser?.UserType == UserType.Admin)
+            {
+                // Admin view
+                await LoadAdminData();
+            }
+            else if (currentUser?.UserType == UserType.Doctor)
+            {
+                // Doctor view
+                await LoadDoctorData();
+            }
+            else if (currentUser?.UserType == UserType.User)
+            {
+                // Student view
+                await LoadStudentData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading home page: {ex.Message}");
+            await JS.InvokeVoidAsync("console.error", "Home page error: " + ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // Add this new method to load unread count
+    private async Task LoadUnreadCount()
+    {
+        try
+        {
+            unreadCount = await MessageService.GetUnreadCountAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading unread count: {ex.Message}");
+        }
+    }
+
+    // Add this method for composing new messages
+    private void ComposeMessage()
+    {
+        Navigation.NavigateTo("/messages/compose");
+    }
+
+    // Keep all your existing methods below...
+    private async Task LoadFeaturedSpecializations()
+    {
+        try
+        {
+            var specializations = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: true,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 8
+            );
+
+            if (specializations != null)
+            {
+                featuredSpecializations = specializations.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading specializations: {ex.Message}");
+        }
+    }
+
+    private async Task LoadPublicReviews()
+    {
+        try
+        {
+            var allReviews = new List<ReviewDto>();
+
+            foreach (var spec in featuredSpecializations.Take(3))
+            {
+                try
+                {
+                    var response = await ReviewService.GetSpecializationReviewsAsync(spec.Id, 1, 2);
+
+                    if (response != null)
+                    {
+                        if (response is Newtonsoft.Json.Linq.JObject jsonObj)
+                        {
+                            var reviews = jsonObj["reviews"]?.ToObject<List<ReviewDto>>();
+                            if (reviews != null)
+                                allReviews.AddRange(reviews);
+                        }
+                        else
+                        {
+                            var reviewsProperty = response.GetType().GetProperty("Reviews");
+                            if (reviewsProperty != null)
+                            {
+                                var reviews = reviewsProperty.GetValue(response) as List<ReviewDto>;
+                                if (reviews != null)
+                                    allReviews.AddRange(reviews);
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            recentReviews = allReviews.OrderByDescending(r => r.ReviewDate).Take(4).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading reviews: {ex.Message}");
+        }
+    }
+
+    private void CalculatePublicStats()
+    {
+        totalCourses = featuredSpecializations.Sum(s => s.Courses?.Count ?? 0) + featuredSpecializations.Count;
+        totalUsers = featuredSpecializations.Sum(s => s.TotalEnrollments);
+        totalInstructors = featuredSpecializations
+            .Where(s => s.DoctorId.HasValue)
+            .Select(s => s.DoctorId.Value)
+            .Distinct()
+            .Count();
+
+        if (recentReviews.Any())
+        {
+            overallRating = (decimal)recentReviews.Average(r => r.Rating);
+        }
+    }
+
+    private async Task LoadAdminData()
+    {
+        try
+        {
+            // Load payments
+            var payments = await PaymentService.GetPaymentRequestsAsync(pageSize: 10);
+            if (payments != null)
+            {
+                recentPayments = payments.OrderByDescending(p => p.CreatedAt).Take(5).ToList();
+                pendingPayments = payments.Count(p => p.Status == PaymentStatus.Pending);
+            }
+
+            // Load withdrawals
+            var withdrawals = await WithdrawalService.GetAdminWithdrawalsAsync(pageSize: 10);
+            if (withdrawals != null)
+            {
+                recentWithdrawals = withdrawals.OrderByDescending(w => w.RequestDate).Take(5).ToList();
+                pendingWithdrawals = withdrawals.Count(w => w.Status == WithdrawalStatus.Pending);
+            }
+
+            // Load users
+            var users = await UserService.GetUsersAsync(pageSize: 100);
+            if (users != null)
+            {
+                totalDoctors = users.Count(u => u.UserType == UserType.Doctor);
+                totalStudents = users.Count(u => u.UserType == UserType.User);
+                totalUsers = users.Count;
+            }
+
+            // Load dashboard stats if available
+            var dashboardStats = await UserService.GetUserDashboardAsync();
+            if (dashboardStats != null)
+            {
+                // Extract values from dashboard stats
+                // This depends on the structure of your DashboardStatsDto
+            }
+
+            // Sample popular content
+            popularContent = new List<PopularContentDto>();
+
+            foreach (var spec in featuredSpecializations.Take(5))
+            {
+                popularContent.Add(new PopularContentDto
+                {
+                    ContentType = "Specialization",
+                    ContentId = spec.Id,
+                    Title = spec.Title,
+                    EnrollmentCount = spec.TotalEnrollments,
+                    Revenue = spec.TotalEnrollments * spec.Price,
+                    AverageRating = spec.AverageRating
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading admin data: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDoctorData()
+    {
+        try
+        {
+            // Load doctor's specializations
+            var specializations = await SpecializationService.GetMySpecializationsAsync();
+            if (specializations != null)
+            {
+                mySpecializations = specializations;
+
+                // Load courses for each specialization
+                myCourses.Clear();
+                foreach (var spec in mySpecializations)
+                {
+                    var courses = await CourseService.GetCoursesBySpecializationAsync(spec.Id);
+                    if (courses != null)
+                    {
+                        var doctorCourses = courses.Where(c => c.DoctorId == currentUser?.Id).ToList();
+                        myCourses.AddRange(doctorCourses);
+                    }
+                }
+
+                // Load lectures for each course
+                myLectures.Clear();
+                foreach (var course in myCourses)
+                {
+                    var lectures = await LectureService.GetLecturesByCourseAsync(course.Id);
+                    if (lectures != null)
+                    {
+                        var doctorLectures = lectures.Where(l => l.DoctorId == currentUser?.Id).ToList();
+                        myLectures.AddRange(doctorLectures);
+                    }
+                }
+            }
+
+            // Calculate total students (unique students across all content)
+            var allEnrollments = new List<EnrollmentDto>();
+
+            // Get enrollments for doctor's content
+            var contentEnrollments = await EnrollmentService.GetDoctorContentEnrollmentsAsync();
+            if (contentEnrollments != null)
+            {
+                allEnrollments = contentEnrollments.ToList();
+                doctorTotalStudents = allEnrollments.Select(e => e.UserId).Distinct().Count();
+
+                // Calculate monthly revenue
+                var currentMonth = DateTime.Now.Month;
+                var currentYear = DateTime.Now.Year;
+                monthlyRevenue = allEnrollments
+                    .Where(e => e.EnrollmentDate.Month == currentMonth && e.EnrollmentDate.Year == currentYear)
+                    .Sum(e => e.PricePaid);
+
+                // Get recent enrollments
+                doctorRecentEnrollments = allEnrollments
+                    .OrderByDescending(e => e.EnrollmentDate)
+                    .Take(5)
+                    .ToList();
+            }
+
+            // Calculate average rating
+            var allRatings = new List<decimal>();
+            allRatings.AddRange(mySpecializations.Where(s => s.AverageRating > 0).Select(s => s.AverageRating));
+            allRatings.AddRange(myCourses.Where(c => c.AverageRating > 0).Select(c => c.AverageRating));
+            allRatings.AddRange(myLectures.Where(l => l.AverageRating > 0).Select(l => l.AverageRating));
+            doctorAverageRating = allRatings.Any() ? allRatings.Average() : 0;
+
+            // Load balance
+            var balance = await WithdrawalService.GetDoctorBalanceAsync();
+            doctorAvailableBalance = balance?.AvailableBalance ?? 0;
+
+            // Load pending withdrawals
+            var withdrawals = await WithdrawalService.GetMyWithdrawalsAsync();
+            if (withdrawals != null)
+            {
+                pendingDoctorWithdrawals = withdrawals.Count(w => w.Status == WithdrawalStatus.Pending);
+            }
+
+            // Load recent reviews
+            await LoadDoctorRecentReviews();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading doctor data: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDoctorRecentReviews()
+    {
+        try
+        {
+            var allReviews = new List<ReviewDto>();
+
+            // Load reviews for specializations
+            foreach (var spec in mySpecializations.Take(3))
+            {
+                var response = await ReviewService.GetSpecializationReviewsAsync(spec.Id, 1, 2);
+                if (response != null)
+                {
+                    var reviews = ExtractReviewsFromResponse(response);
+                    if (reviews != null)
+                        allReviews.AddRange(reviews);
+                }
+            }
+
+            // Load reviews for courses
+            foreach (var course in myCourses.Take(3))
+            {
+                var response = await ReviewService.GetCourseReviewsAsync(course.Id, 1, 2);
+                if (response != null)
+                {
+                    var reviews = ExtractReviewsFromResponse(response);
+                    if (reviews != null)
+                        allReviews.AddRange(reviews);
+                }
+            }
+
+            // Load reviews for lectures
+            foreach (var lecture in myLectures.Take(3))
+            {
+                var response = await ReviewService.GetLectureReviewsAsync(lecture.Id, 1, 2);
+                if (response != null)
+                {
+                    var reviews = ExtractReviewsFromResponse(response);
+                    if (reviews != null)
+                        allReviews.AddRange(reviews);
+                }
+            }
+
+            doctorRecentReviews = allReviews.OrderByDescending(r => r.ReviewDate).Take(5).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading doctor reviews: {ex.Message}");
+        }
+    }
+
+    private List<ReviewDto>? ExtractReviewsFromResponse(object response)
+    {
+        if (response == null) return null;
+
+        try
+        {
+            if (response is Newtonsoft.Json.Linq.JObject jsonObj)
+            {
+                return jsonObj["reviews"]?.ToObject<List<ReviewDto>>();
+            }
+
+            var reviewsProperty = response.GetType().GetProperty("Reviews");
+            if (reviewsProperty != null)
+            {
+                return reviewsProperty.GetValue(response) as List<ReviewDto>;
+            }
+
+            if (response is List<ReviewDto> reviewList)
+            {
+                return reviewList;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error extracting reviews: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    private async Task LoadStudentData()
+    {
+        try
+        {
+            // Load student's enrollments
+            var enrollments = await EnrollmentService.GetMyEnrollmentsAsync();
+            if (enrollments != null)
+            {
+                var enrollmentList = enrollments.ToList();
+
+                studentStats.TotalEnrollments = enrollmentList.Count;
+                studentStats.InProgressEnrollments = enrollmentList.Count(e => !e.IsCompleted);
+                studentStats.CompletedEnrollments = enrollmentList.Count(e => e.IsCompleted);
+
+                if (enrollmentList.Any())
+                {
+                    var totalProgress = enrollmentList.Sum(e => (decimal)e.ProgressPercentage);
+                    studentStats.AverageProgress = Math.Round(totalProgress / enrollmentList.Count, 2);
+                }
+
+                studentRecentEnrollments = enrollmentList
+                    .Where(e => !e.IsCompleted)
+                    .OrderByDescending(e => e.EnrollmentDate)
+                    .Take(3)
+                    .ToList();
+
+                studentCompletedEnrollments = enrollmentList
+                    .Where(e => e.IsCompleted)
+                    .OrderByDescending(e => e.CompletedDate)
+                    .Take(3)
+                    .ToList();
+            }
+
+            // Build user profile from enrollments
+            await BuildUserProfile();
+
+            // Load ALL specializations for recommendations (not just featured)
+            var allSpecializations = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: null,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 50
+            );
+
+            if (allSpecializations != null)
+            {
+                // Get IDs of specializations the user is already enrolled in
+                var enrolledSpecializationIds = studentRecentEnrollments
+                    .Where(e => e.SpecializationId.HasValue)
+                    .Select(e => e.SpecializationId.Value)
+                    .Union(studentCompletedEnrollments
+                        .Where(e => e.SpecializationId.HasValue)
+                        .Select(e => e.SpecializationId.Value))
+                    .ToHashSet();
+
+                // Get enrolled course IDs
+                var enrolledCourseIds = studentRecentEnrollments
+                    .Where(e => e.CourseId.HasValue)
+                    .Select(e => e.CourseId.Value)
+                    .Union(studentCompletedEnrollments
+                        .Where(e => e.CourseId.HasValue)
+                        .Select(e => e.CourseId.Value))
+                    .ToHashSet();
+
+                // Get enrolled lecture IDs
+                var enrolledLectureIds = studentRecentEnrollments
+                    .Where(e => e.LectureId.HasValue)
+                    .Select(e => e.LectureId.Value)
+                    .Union(studentCompletedEnrollments
+                        .Where(e => e.LectureId.HasValue)
+                        .Select(e => e.LectureId.Value))
+                    .ToHashSet();
+
+                // Calculate relevance scores for ALL specializations
+                var scoredSpecializations = allSpecializations
+                    .Where(s => !enrolledSpecializationIds.Contains(s.Id))
+                    .Select(s => new
+                    {
+                        Specialization = s,
+                        Score = CalculateRelevanceScore(
+                            s,
+                            currentUser,
+                            enrolledCourseIds,
+                            enrolledLectureIds,
+                            _favoriteDoctors,
+                            _userInterests,
+                            enrolledSpecializationIds
+                        )
+                    })
+                    .OrderByDescending(x => x.Score)
+                    .Take(4)
+                    .Select(x => x.Specialization)
+                    .ToList();
+
+                recommendedSpecializations = scoredSpecializations;
+            }
+
+            // Check pending payments
+            var payments = await PaymentService.GetMyPaymentRequestsAsync();
+            if (payments != null)
+            {
+                studentPendingPayments = payments.Count(p => p.Status == PaymentStatus.Pending);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading student data: {ex.Message}");
+        }
+    }
+
+    private async Task BuildUserProfile()
+    {
+        try
+        {
+            // Build favorite doctors from enrollments
+            var allEnrollments = studentRecentEnrollments
+                .Union(studentCompletedEnrollments)
+                .ToList();
+
+            foreach (var enrollment in allEnrollments)
+            {
+                if (enrollment.Specialization?.DoctorId != null)
+                    _favoriteDoctors.Add(enrollment.Specialization.DoctorId.Value);
+
+                if (enrollment.Course?.DoctorId != null)
+                    _favoriteDoctors.Add(enrollment.Course.DoctorId.Value);
+
+                if (enrollment.Lecture?.DoctorId != null)
+                    _favoriteDoctors.Add(enrollment.Lecture.DoctorId.Value);
+            }
+
+            // Extract interests from titles and descriptions
+            var keywords = new List<string>();
+
+            foreach (var enrollment in allEnrollments)
+            {
+                if (enrollment.Specialization?.Title != null)
+                    keywords.AddRange(ExtractKeywords(enrollment.Specialization.Title));
+
+                if (enrollment.Course?.Title != null)
+                    keywords.AddRange(ExtractKeywords(enrollment.Course.Title));
+
+                if (enrollment.Lecture?.Title != null)
+                    keywords.AddRange(ExtractKeywords(enrollment.Lecture.Title));
+            }
+
+            // Count keyword frequency and keep top interests
+            _userInterests = keywords
+                .GroupBy(k => k.ToLower())
+                .OrderByDescending(g => g.Count())
+                .Take(5)
+                .Select(g => g.Key)
+                .ToHashSet();
+
+            Console.WriteLine($"User interests: {string.Join(", ", _userInterests)}");
+            Console.WriteLine($"Favorite doctors: {string.Join(", ", _favoriteDoctors)}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error building user profile: {ex.Message}");
+        }
+    }
+
+    private List<string> ExtractKeywords(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return new List<string>();
+
+        var medicalKeywords = new[]
+        {
+            "medicine", "surgery", "pediatrics", "cardiology", "neurology",
+            "radiology", "dermatology", "psychiatry", "oncology", "orthopedics",
+            "gynecology", "ophthalmology", "pathology", "anesthesiology", "urology",
+            "emergency", "internal", "family", "preventive", "sports", "geriatrics",
+            "immunology", "endocrinology", "gastroenterology", "nephrology", "pulmonology",
+            "rheumatology", "infectious", "critical care", "neonatology", "hematology"
+        };
+
+        var foundKeywords = new List<string>();
+        var lowerText = text.ToLower();
+
+        foreach (var keyword in medicalKeywords)
+        {
+            if (lowerText.Contains(keyword))
+            {
+                foundKeywords.Add(keyword);
+            }
+        }
+
+        return foundKeywords;
+    }
+
+    private double CalculateRelevanceScore(
+        SpecializationDto spec,
+        UserDto? user,
+        HashSet<int> enrolledCourseIds,
+        HashSet<int> enrolledLectureIds,
+        HashSet<int> favoriteDoctors,
+        HashSet<string> userInterests,
+        HashSet<int> enrolledSpecializationIds)
+    {
+        double score = 0;
+
+        // 1. Category/Interest matching
+        var specText = (spec.Title + " " + spec.Description).ToLower();
+        foreach (var interest in userInterests)
+        {
+            if (specText.Contains(interest))
+            {
+                score += 10;
+            }
+        }
+
+        // 2. Favorite doctor matching
+        if (spec.DoctorId.HasValue && favoriteDoctors.Contains(spec.DoctorId.Value))
+        {
+            score += 15;
+        }
+
+        // 3. Related to previously enrolled content
+        if (spec.Courses != null)
+        {
+            var relatedCourseIds = spec.Courses.Select(c => c.Id).ToHashSet();
+            if (relatedCourseIds.Overlaps(enrolledCourseIds))
+            {
+                score += 8;
+            }
+
+            var specLectureIds = spec.Courses
+                .Where(c => c.Lectures != null)
+                .SelectMany(c => c.Lectures.Select(l => l.Id))
+                .ToHashSet();
+
+            if (specLectureIds.Overlaps(enrolledLectureIds))
+            {
+                score += 5;
+            }
+        }
+
+        // 4. Popularity boost
+        score += (double)spec.AverageRating * 2;
+        score += Math.Log10(spec.TotalEnrollments + 1);
+
+        // 5. Featured boost
+        if (spec.IsFeatured)
+        {
+            score += 3;
+        }
+
+        // 6. Recency boost
+        var daysOld = (DateTime.UtcNow - spec.CreatedAt).TotalDays;
+        if (daysOld < 30)
+        {
+            score += 5;
+        }
+        else if (daysOld < 90)
+        {
+            score += 2;
+        }
+
+        // 7. Price preference
+        if (spec.Price == 0)
+        {
+            score += 1;
+        }
+
+        return Math.Round(score, 2);
+    }
+
+    private void NavigateToContent(int id, string type)
+    {
+        switch (type.ToLower())
+        {
+            case "specialization":
+                Navigation.NavigateTo($"/specializations/{id}");
+                break;
+            case "course":
+                Navigation.NavigateTo($"/courses/{id}");
+                break;
+            case "lecture":
+                Navigation.NavigateTo($"/lectures/{id}");
+                break;
+        }
+    }
+
+    private void ContinueLearning(EnrollmentDto enrollment)
+    {
+        if (enrollment == null) return;
+
+        switch (enrollment.EnrollmentType)
+        {
+            case EnrollmentType.Specialization:
+                if (enrollment.SpecializationId.HasValue)
+                    Navigation.NavigateTo($"/student/mylearning/specialization/{enrollment.SpecializationId.Value}");
+                break;
+            case EnrollmentType.Course:
+                if (enrollment.CourseId.HasValue)
+                    Navigation.NavigateTo($"/student/mylearning/course/{enrollment.CourseId.Value}");
+                break;
+            case EnrollmentType.Lecture:
+                if (enrollment.LectureId.HasValue)
+                    Navigation.NavigateTo($"/student/mylearning/lecture/{enrollment.LectureId.Value}");
+                break;
+        }
+    }
+
+    private void WriteReview(EnrollmentDto enrollment)
+    {
+        if (enrollment != null && enrollment.Id > 0)
+        {
+            Navigation.NavigateTo($"/student/reviews/create?enrollmentId={enrollment.Id}");
+        }
+    }
+
+    // Helper class
+    private class StudentStats
+    {
+        public int TotalEnrollments { get; set; }
+        public int InProgressEnrollments { get; set; }
+        public int CompletedEnrollments { get; set; }
+        public decimal AverageProgress { get; set; }
+    }
+}

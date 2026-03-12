@@ -1,0 +1,1281 @@
+﻿@page "/student/payments/make"
+
+
+<PageTitle>Make Payment</PageTitle>
+
+<div class="make-payment">
+    <!-- Add loading state -->
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center align-items-center min-vh-100">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="ms-3">Loading payment page...</span>
+        </div>
+    }
+    else if (!isAuthenticated)
+    {
+        <!-- Authentication required -->
+        <div class="d-flex justify-content-center align-items-center min-vh-100">
+            <div class="text-center px-3">
+                <i class="fas fa-lock fa-4x text-muted mb-4"></i>
+                <h3>Authentication Required</h3>
+                <p class="text-muted mb-4">You need to be logged in to make a payment</p>
+                <button class="btn btn-primary" @onclick="NavigateToLogin">
+                    <i class="fas fa-sign-in-alt me-2"></i> Login to Continue
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Desktop Header (Hidden on Mobile) -->
+        <div class="d-none d-md-block container-fluid py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1>Make Payment</h1>
+                    <p class="text-muted mb-0">Enroll in lectures, courses, or specializations</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary" @onclick="GoBack">
+                        <i class="fas fa-arrow-left me-2"></i> Back to History
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Header (Visible only on Mobile) -->
+        <div class="d-block d-md-none">
+            <div class="bg-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                        <i class="fas fa-arrow-left fa-lg"></i>
+                    </button>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-0">Make Payment</h5>
+                        <small>Enroll in content</small>
+                    </div>
+                    <button class="btn btn-link text-white p-0" @onclick="ContactSupport">
+                        <i class="fas fa-headset fa-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="container-fluid px-0 px-md-3">
+            <div class="row g-0 g-md-3">
+                <!-- Payment Form -->
+                <div class="col-lg-8">
+                    <!-- Mobile: Selection Cards (Visible on Mobile) -->
+                    <div class="d-block d-md-none">
+                        <!-- Type Selection Card -->
+                        <div class="card border-0 rounded-0">
+                            <div class="card-body">
+                                <h6 class="fw-bold mb-3">
+                                    <i class="fas fa-tag me-2 text-primary"></i>Select Content Type
+                                </h6>
+                                <div class="btn-group w-100 mb-3" role="group">
+                                    <button type="button"
+                                            class="btn @(selectedType == 0 ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => SetMobileType(0)">
+                                        <i class="fas fa-video me-1"></i> Lecture
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(selectedType == 1 ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => SetMobileType(1)">
+                                        <i class="fas fa-book me-1"></i> Course
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(selectedType == 2 ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => SetMobileType(2)">
+                                        <i class="fas fa-layer-group me-1"></i> Specialization
+                                    </button>
+                                </div>
+
+                                <!-- Mobile Item Selection -->
+                                @if (selectedType.HasValue)
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Select @GetTypeName(selectedType.Value)</label>
+                                        <select class="form-select" @bind="selectedItemId" @bind:after="OnItemChanged">
+                                            <option value="">Choose...</option>
+                                            @if (availableItems != null && availableItems.Any())
+                                            {
+                                                @foreach (var item in availableItems)
+                                                {
+                                                    <option value="@item.Id">@item.Title - $@item.Price.ToString("N2")</option>
+                                                }
+                                            }
+                                            else if (isLoadingItems)
+                                            {
+                                                <option value="">Loading...</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="">No items available</option>
+                                            }
+                                        </select>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop: Original Form (Hidden on Mobile) -->
+                    <div class="d-none d-md-block card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Select What to Enroll In</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <select class="form-select" @bind="selectedType" @bind:after="OnTypeChanged">
+                                            <option value="">Select Type</option>
+                                            <option value="0">Lecture</option>
+                                            <option value="1">Course</option>
+                                            <option value="2">Specialization</option>
+                                        </select>
+                                        <label>What would you like to enroll in?</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        @if (selectedType.HasValue)
+                                        {
+                                            <select class="form-select" @bind="selectedItemId" @bind:after="OnItemChanged">
+                                                <option value="">Select @GetTypeName(selectedType.Value)</option>
+                                                @if (availableItems != null && availableItems.Any())
+                                                {
+                                                    @foreach (var item in availableItems)
+                                                    {
+                                                        <option value="@item.Id">@item.Title - $@item.Price.ToString("N2")</option>
+                                                    }
+                                                }
+                                                else if (isLoadingItems)
+                                                {
+                                                    <option value="">Loading...</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="">No items available</option>
+                                                }
+                                            </select>
+                                            <label>Select @GetTypeName(selectedType.Value)</label>
+                                        }
+                                        else
+                                        {
+                                            <select class="form-select" disabled>
+                                                <option>Select type first</option>
+                                            </select>
+                                            <label>Select Item</label>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Item Details (Responsive) -->
+                    @if (selectedItem != null)
+                    {
+                        <!-- Mobile Item Card -->
+                        <div class="d-block d-md-none card border-0 rounded-0 border-top">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="fw-bold mb-0">@selectedItem.Title</h6>
+                                    <span class="badge bg-primary">$@selectedItem.Price.ToString("N2")</span>
+                                </div>
+                                <p class="small text-muted mb-2">@GetItemDescription(selectedItem)</p>
+
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Type</small>
+                                        <span class="badge bg-light text-dark">@GetTypeName(selectedType!.Value)</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Duration</small>
+                                        <span class="badge bg-light text-dark">@GetItemDuration(selectedItem)</span>
+                                    </div>
+                                </div>
+
+                                <!-- Mobile Collapsible Features -->
+                                <div class="accordion accordion-flush" id="featuresAccordion">
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button collapsed p-2" type="button"
+                                                    data-bs-toggle="collapse" data-bs-target="#featuresList">
+                                                <small class="fw-bold">What's included</small>
+                                            </button>
+                                        </h2>
+                                        <div id="featuresList" class="accordion-collapse collapse">
+                                            <div class="accordion-body p-2">
+                                                <ul class="list-unstyled mb-0 small">
+                                                    @foreach (var feature in GetItemFeatures(selectedItem))
+                                                    {
+                                                        <li class="mb-1">
+                                                            <i class="fas fa-check text-success me-2"></i>
+                                                            @feature
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Desktop Item Details -->
+                        <div class="d-none d-md-block card mt-4 border-primary">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h5 class="mb-1">@selectedItem.Title</h5>
+                                        <p class="text-muted mb-0">@GetItemDescription(selectedItem)</p>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="display-6 fw-bold text-primary">$@selectedItem.Price.ToString("N2")</div>
+                                        <small class="text-muted">Total Amount</small>
+                                    </div>
+                                </div>
+
+                                <!-- Item Features -->
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <small class="text-muted">Type</small>
+                                        <div class="fw-bold">@GetTypeName(selectedType!.Value)</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Duration</small>
+                                        <div class="fw-bold">@GetItemDuration(selectedItem)</div>
+                                    </div>
+                                </div>
+
+                                <!-- What's Included -->
+                                <h6 class="mb-2">What's included:</h6>
+                                <ul class="list-unstyled">
+                                    @foreach (var feature in GetItemFeatures(selectedItem))
+                                    {
+                                        <li class="mb-1">
+                                            <i class="fas fa-check text-success me-2"></i>
+                                            @feature
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Payment Method Card (Responsive) -->
+                    <div class="card border-0 border-top border-md">
+                        <div class="card-body">
+                            <!-- Desktop Title -->
+                            <h5 class="d-none d-md-block mb-0">Payment Method</h5>
+
+                            <!-- Mobile Title -->
+                            <h6 class="d-block d-md-none fw-bold mb-3">
+                                <i class="fas fa-credit-card me-2 text-primary"></i>Payment Method
+                            </h6>
+
+                            <!-- Payment Method Options -->
+                            <div class="mb-4">
+                                <div class="row g-2">
+                                    <!-- Bank Transfer -->
+                                    <div class="col-12 col-md-4">
+                                        <div class="payment-option @(paymentMethod == "bank" ? "selected" : "")"
+                                             @onclick='() => paymentMethod =" bank" '>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="paymentMethodMobile"
+                                                       id="bankTransfer" checked="@(paymentMethod == "bank")" />
+                                                <label class="form-check-label w-100" for="bankTransfer">
+                                                    <i class="fas fa-university me-2"></i> Bank Transfer
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Credit Card -->
+                                    <div class="col-12 col-md-4">
+                                        <div class="payment-option @(paymentMethod == "credit" ? "selected" : "")"
+                                             @onclick='() => paymentMethod =" credit" '>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="paymentMethodMobile"
+                                                       id="creditCard" checked="@(paymentMethod == "credit")" />
+                                                <label class="form-check-label w-100" for="creditCard">
+                                                    <i class="fas fa-credit-card me-2"></i> Credit/Debit Card
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Digital Wallet -->
+                                    <div class="col-12 col-md-4">
+                                        <div class="payment-option @(paymentMethod == "wallet" ? "selected" : "")"
+                                             @onclick='() => paymentMethod =" wallet" '>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="paymentMethodMobile"
+                                                       id="digitalWallet" checked="@(paymentMethod == "wallet")" />
+                                                <label class="form-check-label w-100" for="digitalWallet">
+                                                    <i class="fas fa-wallet me-2"></i> Digital Wallet
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Instructions (Collapsible on Mobile) -->
+                            <div class="d-none d-md-block alert alert-info">
+                                <h6><i class="fas fa-info-circle me-2"></i>Payment Instructions</h6>
+                                <ol class="mb-0">
+                                    <li>Complete the payment using your preferred method</li>
+                                    <li>Upload the payment receipt/confirmation</li>
+                                    <li>Our admin will verify and approve your payment</li>
+                                    <li>You'll get access once approved</li>
+                                </ol>
+                            </div>
+
+                            <!-- Mobile Instructions Accordion -->
+                            <div class="d-block d-md-none mb-3">
+                                <details>
+                                    <summary class="text-primary small fw-bold">
+                                        <i class="fas fa-info-circle me-1"></i> View Payment Instructions
+                                    </summary>
+                                    <div class="mt-2 p-2 bg-light rounded">
+                                        <ol class="small mb-0 ps-3">
+                                            <li>Complete the payment</li>
+                                            <li>Upload payment receipt</li>
+                                            <li>Wait for admin verification</li>
+                                            <li>Get access once approved</li>
+                                        </ol>
+                                    </div>
+                                </details>
+                            </div>
+
+                            <!-- Upload Receipt -->
+                            <div class="mb-4">
+                                <h6 class="mb-3">Upload Payment Receipt</h6>
+
+                                <!-- Desktop Upload -->
+                                <div class="d-none d-md-block border rounded p-4 text-center">
+                                    <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted mb-3">
+                                        Upload your payment receipt (PDF, JPG, PNG)
+                                    </p>
+                                    <InputFile class="form-control" OnChange="OnFileSelected"
+                                               accept=".pdf,.jpg,.jpeg,.png" />
+                                </div>
+
+                                <!-- Mobile Upload -->
+                                <div class="d-block d-md-none">
+                                    <div class="upload-area p-3 text-center border rounded bg-light"
+                                         @onclick="TriggerFileUpload">
+                                        <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
+                                        <p class="small mb-1">Tap to upload receipt</p>
+                                        <p class="text-muted small mb-0">PDF, JPG, PNG (Max 5MB)</p>
+                                    </div>
+                                    <InputFile id="mobile-file-upload" class="d-none" OnChange="OnFileSelected"
+                                               accept=".pdf,.jpg,.jpeg,.png" />
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(fileName))
+                                {
+                                    <div class="mt-2">
+                                        <span class="badge bg-success p-2">
+                                            <i class="fas fa-check me-2"></i> @fileName
+                                            <button type="button" class="btn-close btn-close-white ms-2"
+                                                    @onclick="ClearFile"></button>
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Terms & Conditions -->
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="terms" @bind="acceptTerms" />
+                                <label class="form-check-label small" for="terms">
+                                    I agree to the <a href="#" class="text-decoration-none">Terms & Conditions</a>
+                                </label>
+                            </div>
+
+                            <!-- Desktop Submit Button -->
+                            <div class="d-none d-md-grid">
+                                <button class="btn btn-primary btn-lg" @onclick="SubmitPayment"
+                                        disabled="@(!CanSubmit)">
+                                    @if (isSubmitting)
+                                    {
+                                        <span>
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                            Processing...
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            <i class="fas fa-paper-plane me-2"></i>
+                                            Submit Payment Request
+                                        </span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar - Summary (Responsive) -->
+                <div class="col-lg-4">
+                    <!-- Desktop Sidebar -->
+                    <div class="d-none d-md-block">
+                        <!-- Order Summary -->
+                        <div class="card sticky-top mb-4" style="top: 20px;">
+                            <div class="card-header">
+                                <h5 class="mb-0">Order Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                @if (selectedItem != null)
+                                {
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>@selectedItem.Title</span>
+                                            <span class="fw-bold">$@selectedItem.Price.ToString("N2")</span>
+                                        </div>
+                                        <small class="text-muted">@GetTypeName(selectedType!.Value)</small>
+                                    </div>
+
+                                    <hr />
+
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span class="fw-bold">Total Amount</span>
+                                        <span class="display-6 fw-bold text-primary">$@selectedItem.Price.ToString("N2")</span>
+                                    </div>
+
+                                    <!-- Bank Details -->
+                                    <div class="alert alert-light">
+                                        <h6><i class="fas fa-university me-2"></i>Bank Details</h6>
+                                        <div class="small">
+                                            <div class="mb-1">
+                                                <strong>Bank:</strong> Example Bank
+                                            </div>
+                                            <div class="mb-1">
+                                                <strong>Account:</strong> 1234 5678 9012
+                                            </div>
+                                            <div class="mb-1">
+                                                <strong>Name:</strong> Learning Platform
+                                            </div>
+                                            <div>
+                                                <strong>Reference:</strong> Your Name + Invoice #
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">Select an item to see order summary</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Support -->
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <i class="fas fa-headset fa-2x text-primary mb-3"></i>
+                                <h6>Need Help?</h6>
+                                <p class="text-muted small mb-3">
+                                    Contact our support team for assistance with payments
+                                </p>
+                                <button class="btn btn-outline-primary w-100" @onclick="ContactSupport">
+                                    <i class="fas fa-envelope me-2"></i> Contact Support
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Bottom Sheet Summary (Visible on Mobile) -->
+                    <div class="d-block d-md-none fixed-bottom bg-white border-top p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                @if (selectedItem != null)
+                                {
+                                    <small class="text-muted d-block">Total Amount</small>
+                                    <span class="h5 fw-bold text-primary">$@selectedItem.Price.ToString("N2")</span>
+                                }
+                                else
+                                {
+                                    <small class="text-muted">Select an item to continue</small>
+                                }
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-primary" @onclick="ViewBankDetails">
+                                    <i class="fas fa-university"></i>
+                                </button>
+                                <button class="btn btn-primary" @onclick="SubmitPayment"
+                                        disabled="@(!CanSubmit)">
+                                    @if (isSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    }
+                                    else
+                                    {
+                                        <span>Submit</span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Terms for Mobile -->
+                        @if (selectedItem != null && !acceptTerms)
+                        {
+                            <small class="text-danger d-block">
+                                <i class="fas fa-exclamation-circle me-1"></i>Please agree to terms
+                            </small>
+                        }
+                    </div>
+
+                    <!-- Spacer for mobile fixed bottom -->
+                    <div class="d-block d-md-none" style="height: 80px;"></div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+<style>
+    /* Payment Page Specific Styles */
+
+    /* Payment option cards */
+    .payment-option {
+        padding: 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .payment-option:hover {
+            border-color: #0d6efd;
+            background-color: #f8f9fa;
+        }
+
+        .payment-option.selected {
+            border-color: #0d6efd;
+            background-color: #e7f1ff;
+        }
+
+    /* Mobile upload area */
+    .upload-area {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .upload-area:active {
+            background-color: #e9ecef !important;
+        }
+
+    /* Mobile selection cards */
+    @@media (max-width: 767.98px) {
+        .card {
+            border-radius: 0 !important;
+            margin-bottom: 1px !important;
+        }
+
+            .card:first-child {
+                border-top-left-radius: 0 !important;
+                border-top-right-radius: 0 !important;
+            }
+
+        .btn-group .btn {
+            font-size: 0.9rem;
+            padding: 0.5rem;
+        }
+
+            .btn-group .btn i {
+                font-size: 1rem;
+            }
+        /* Improve touch targets */
+        .form-check-input {
+            width: 1.2em;
+            height: 1.2em;
+            margin-top: 0.15em;
+        }
+
+        .btn {
+            min-height: 44px; /* Minimum touch target size */
+        }
+        /* Accordion styling */
+        .accordion-button {
+            background-color: #f8f9fa;
+        }
+
+            .accordion-button:not(.collapsed) {
+                color: #0d6efd;
+                background-color: #e7f1ff;
+            }
+    }
+
+    /* Desktop adjustments */
+    @@media (min-width: 768px) {
+        .payment-option .form-check {
+            margin-bottom: 0;
+        }
+
+        .payment-option .form-check-input {
+            margin-top: 0.3em;
+        }
+    }
+
+    /* Loading state */
+    .min-vh-100 {
+        min-height: 100vh;
+    }
+
+    /* Toast notifications */
+    .toast-container {
+        z-index: 1060;
+    }
+
+    /* Badge styling */
+    .badge.bg-light {
+        background-color: #f8f9fa !important;
+        color: #212529 !important;
+        border: 1px solid #dee2e6;
+    }
+
+    /* File upload badge with close button */
+    .badge .btn-close {
+        font-size: 0.5rem;
+        background-size: 0.5rem;
+    }
+
+    /* Sticky sidebar */
+    .sticky-top {
+        z-index: 1020;
+    }
+
+    /* Mobile bottom sheet */
+    .fixed-bottom {
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+        z-index: 1030;
+    }
+
+    /* Improve spacing on mobile */
+    @@media (max-width: 767.98px) {
+        .container-fluid {
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .row.g-0 {
+            margin-left: 0;
+            margin-right: 0;
+        }
+    }
+
+    /* Animation for mobile interactions */
+    .btn:active {
+        transform: scale(0.98);
+    }
+
+    .upload-area:active {
+        transform: scale(0.98);
+    }
+
+    /* Custom scrollbar for mobile */
+    @@media (max-width: 767.98px) {
+        ::-webkit-scrollbar {
+            width: 3px;
+            height: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #0d6efd;
+            border-radius: 3px;
+        }
+    }
+</style>
+@code {
+    // ... (keep all your existing code in the @code block exactly as is)
+    private class ItemInfo
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public decimal Price { get; set; }
+        public string Description { get; set; } = "";
+        public int? EstimatedDurationHours { get; set; }
+        public int? EstimatedDurationMinutes { get; set; }
+    }
+
+    private List<ItemInfo> availableItems = new();
+    private ItemInfo? selectedItem = null;
+    private int? selectedType = null;
+    private int? selectedItemId = null;
+    private string paymentMethod = "bank";
+    private string fileName = "";
+    private IBrowserFile? invoiceFile = null;
+    private bool acceptTerms = false;
+    private bool isSubmitting = false;
+    private bool isLoadingItems = false;
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private UserDto? currentUser = null;
+
+    private bool CanSubmit => selectedItem != null &&
+                             selectedType.HasValue &&
+                             selectedItemId.HasValue &&
+                             !string.IsNullOrEmpty(paymentMethod) &&
+                             invoiceFile != null &&
+                             acceptTerms &&
+                             !isSubmitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check authentication
+        await CheckAuthentication();
+
+        if (isAuthenticated)
+        {
+            // Get current user
+            currentUser = await AuthService.GetCurrentUserAsync();
+
+            // Check for query parameters for auto-selection
+            await CheckUrlParameters();
+        }
+
+        isLoading = false;
+    }
+
+    private async Task SetMobileType(int type)
+    {
+        selectedType = type;
+        await OnTypeChanged();
+    }
+
+    private async Task CheckUrlParameters()
+    {
+        try
+        {
+            var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+            var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+            var typeParam = queryParams["type"];
+            var idParam = queryParams["id"];
+
+            if (!string.IsNullOrEmpty(typeParam) && !string.IsNullOrEmpty(idParam))
+            {
+                // Auto-select based on URL parameters
+                selectedType = typeParam.ToLower() switch
+                {
+                    "lecture" => (int)EnrollmentType.Lecture,
+                    "course" => (int)EnrollmentType.Course,
+                    "specialization" => (int)EnrollmentType.Specialization,
+                    _ => null
+                };
+
+                if (selectedType.HasValue && int.TryParse(idParam, out int id))
+                {
+                    selectedItemId = id;
+                    await LoadAvailableItems();
+
+                    // Auto-select the item
+                    OnItemChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing URL parameters: {ex.Message}");
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+        }
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/account/login");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/student/payments");
+    }
+
+    private async Task ContactSupport()
+    {
+        await JS.InvokeVoidAsync("window.open", "mailto:support@learningplatform.com", "_blank");
+    }
+
+    private void ViewBankDetails()
+    {
+        // Show bank details modal or alert for mobile
+        JS.InvokeVoidAsync("alert",
+            "Bank: Example Bank\nAccount: 1234 5678 9012\nName: Learning Platform");
+    }
+
+    private async Task OnTypeChanged()
+    {
+        selectedItemId = null;
+        selectedItem = null;
+        availableItems.Clear();
+
+        await LoadAvailableItems();
+        StateHasChanged();
+    }
+
+    private void OnItemChanged()
+    {
+        if (selectedItemId.HasValue && selectedItemId > 0)
+        {
+            selectedItem = availableItems.FirstOrDefault(item => item.Id == selectedItemId);
+        }
+        else
+        {
+            selectedItem = null;
+        }
+
+        StateHasChanged();
+    }
+
+    private void TriggerFileUpload()
+    {
+        JS.InvokeVoidAsync("document.getElementById('mobile-file-upload').click()");
+    }
+
+    private void ClearFile()
+    {
+        fileName = "";
+        invoiceFile = null;
+        StateHasChanged();
+    }
+
+    private async Task LoadAvailableItems()
+    {
+        if (!selectedType.HasValue) return;
+
+        isLoadingItems = true;
+        StateHasChanged();
+
+        try
+        {
+            var type = (EnrollmentType)selectedType.Value;
+
+            switch (type)
+            {
+                case EnrollmentType.Lecture:
+                    await LoadAvailableLectures();
+                    break;
+
+                case EnrollmentType.Specialization:
+                    await LoadSpecializations();
+                    break;
+
+                case EnrollmentType.Course:
+                    await LoadCourses();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading items: {ex.Message}");
+            await ShowToast("error", $"Error loading items: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingItems = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAvailableLectures()
+    {
+        try
+        {
+            // Get all specializations
+            var specializations = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: null,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 50);
+
+            if (specializations == null || !specializations.Any())
+            {
+                availableItems = new List<ItemInfo>();
+                return;
+            }
+
+            var allLectures = new List<ItemInfo>();
+
+            // For each specialization, get courses, then lectures
+            foreach (var spec in specializations)
+            {
+                try
+                {
+                    var courses = await CourseService.GetCoursesBySpecializationAsync(spec.Id);
+                    if (courses != null && courses.Any())
+                    {
+                        foreach (var course in courses)
+                        {
+                            try
+                            {
+                                var lectures = await LectureService.GetLecturesByCourseAsync(course.Id);
+                                if (lectures != null && lectures.Any())
+                                {
+                                    // Filter out free preview lectures (they're already free)
+                                    var paidLectures = lectures.Where(l => l.Price > 0);
+
+                                    allLectures.AddRange(paidLectures.Select(l => new ItemInfo
+                                    {
+                                        Id = l.Id,
+                                        Title = $"{l.Title} (Course: {course.Title})",
+                                        Price = l.Price,
+                                        Description = l.Description,
+                                        EstimatedDurationMinutes = l.EstimatedDurationMinutes
+                                    }));
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error loading lectures for course {course.Id}: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading courses for specialization {spec.Id}: {ex.Message}");
+                }
+            }
+
+            availableItems = allLectures.DistinctBy(x => x.Id).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading lectures: {ex.Message}");
+            availableItems = new List<ItemInfo>();
+            throw;
+        }
+    }
+
+    private async Task LoadSpecializations()
+    {
+        try
+        {
+            var specializations = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: null,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 100);
+
+            if (specializations != null)
+            {
+                availableItems = specializations
+                    .Select(s => new ItemInfo
+                    {
+                        Id = s.Id,
+                        Title = s.Title,
+                        Price = s.Price,
+                        Description = s.Description,
+                        EstimatedDurationHours = s.EstimatedDurationHours
+                    })
+                    .ToList();
+            }
+            else
+            {
+                availableItems = new List<ItemInfo>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading specializations: {ex.Message}");
+            availableItems = new List<ItemInfo>();
+        }
+    }
+
+    private async Task LoadCourses()
+    {
+        try
+        {
+            var allSpecializations = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: null,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 50);
+
+            if (allSpecializations != null && allSpecializations.Any())
+            {
+                var allCourses = new List<ItemInfo>();
+
+                foreach (var spec in allSpecializations)
+                {
+                    try
+                    {
+                        var courses = await CourseService.GetCoursesBySpecializationAsync(spec.Id);
+                        if (courses != null && courses.Any())
+                        {
+                            allCourses.AddRange(courses.Select(c => new ItemInfo
+                            {
+                                Id = c.Id,
+                                Title = $"{c.Title} (Specialization: {spec.Title})",
+                                Price = c.Price,
+                                Description = c.Description
+                            }));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error loading courses for specialization {spec.Id}: {ex.Message}");
+                    }
+                }
+
+                availableItems = allCourses;
+            }
+            else
+            {
+                availableItems = new List<ItemInfo>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading courses: {ex.Message}");
+            availableItems = new List<ItemInfo>();
+        }
+    }
+
+    private string GetTypeName(int typeValue)
+    {
+        return typeValue switch
+        {
+            0 => "Lecture",
+            1 => "Course",
+            2 => "Specialization",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetItemDescription(ItemInfo item)
+    {
+        if (string.IsNullOrEmpty(item.Description))
+            return "No description available";
+
+        return item.Description.Length > 150 ? item.Description.Substring(0, 150) + "..." : item.Description;
+    }
+
+    private string GetItemDuration(ItemInfo item)
+    {
+        if (selectedType == (int)EnrollmentType.Lecture && item.EstimatedDurationMinutes.HasValue)
+        {
+            return $"{item.EstimatedDurationMinutes} minutes";
+        }
+
+        if (selectedType == (int)EnrollmentType.Specialization && item.EstimatedDurationHours.HasValue)
+        {
+            return $"{item.EstimatedDurationHours} hours";
+        }
+
+        return "Self-paced";
+    }
+
+    private List<string> GetItemFeatures(ItemInfo item)
+    {
+        var features = new List<string>
+        {
+            "Lifetime access",
+            "Certificate of completion",
+            "Downloadable resources"
+        };
+
+        if (selectedType == (int)EnrollmentType.Specialization)
+        {
+            features.Add("Multiple courses included");
+            features.Add("Progress tracking");
+            features.Add("Specialization certificate");
+        }
+        else if (selectedType == (int)EnrollmentType.Course)
+        {
+            features.Add("Multiple lectures");
+            features.Add("Quizzes and assignments");
+            features.Add("Course completion certificate");
+        }
+        else if (selectedType == (int)EnrollmentType.Lecture)
+        {
+            features.Add("Individual lecture access");
+            features.Add("Lecture completion badge");
+            features.Add("All lecture materials");
+        }
+
+        return features;
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            fileName = file.Name;
+            invoiceFile = file;
+
+            // Validate file size (max 5MB)
+            const long maxFileSize = 5 * 1024 * 1024; // 5MB
+            if (file.Size > maxFileSize)
+            {
+                await ShowToast("error", "File size must be less than 5MB");
+                fileName = "";
+                invoiceFile = null;
+                return;
+            }
+
+            // Validate file type
+            var validExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
+            var fileExtension = System.IO.Path.GetExtension(file.Name).ToLower();
+
+            if (!validExtensions.Contains(fileExtension))
+            {
+                await ShowToast("error", "Please upload PDF, JPG, JPEG, or PNG files only");
+                fileName = "";
+                invoiceFile = null;
+                return;
+            }
+
+            await ShowToast("success", "File uploaded successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error uploading file: {ex.Message}");
+            await ShowToast("error", $"Error uploading file: {ex.Message}");
+            fileName = "";
+            invoiceFile = null;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SubmitPayment()
+    {
+        if (!CanSubmit || selectedItem == null || !selectedType.HasValue || !selectedItemId.HasValue || invoiceFile == null)
+        {
+            await ShowToast("error", "Please fill all required fields and upload a receipt");
+            return;
+        }
+
+        // Double-check authentication before submitting
+        if (!isAuthenticated)
+        {
+            await ShowToast("error", "Your session has expired. Please login again.");
+            Navigation.NavigateTo("/account/login");
+            return;
+        }
+
+        isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            if (currentUser == null)
+            {
+                currentUser = await AuthService.GetCurrentUserAsync();
+
+                if (currentUser == null)
+                {
+                    await ShowToast("error", "You must be logged in to make a payment");
+                    Navigation.NavigateTo("/account/login", true);
+                    return;
+                }
+            }
+
+            // Create payment request DTO
+            var createDto = new CreatePaymentRequestDto
+            {
+                EnrollmentType = (EnrollmentType)selectedType.Value
+            };
+
+            // Set appropriate ID based on type
+            switch ((EnrollmentType)selectedType.Value)
+            {
+                case EnrollmentType.Lecture:
+                    createDto.LectureId = selectedItemId;
+                    break;
+                case EnrollmentType.Course:
+                    createDto.CourseId = selectedItemId;
+                    break;
+                case EnrollmentType.Specialization:
+                    createDto.SpecializationId = selectedItemId;
+                    break;
+                default:
+                    await ShowToast("error", "Invalid enrollment type selected");
+                    return;
+            }
+
+            // Create payment request
+            using var stream = invoiceFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+
+            var paymentRequest = await PaymentService.CreatePaymentRequestAsync(
+                createDto,
+                stream,
+                invoiceFile.Name
+            );
+
+            if (paymentRequest != null)
+            {
+                await ShowToast("success",
+                    $"Payment request submitted successfully! Invoice: {paymentRequest.InvoiceNumber}");
+
+                // Navigate to payment history
+                Navigation.NavigateTo("/student/payments");
+            }
+            else
+            {
+                await ShowToast("error", "Failed to submit payment request");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error submitting payment: {ex.Message}");
+            await ShowToast("error", $"Error submitting payment: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", type, message);
+        }
+        catch
+        {
+            await JS.InvokeVoidAsync("alert", message);
+        }
+    }
+}

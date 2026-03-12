@@ -1,0 +1,124 @@
+﻿
+
+<div class="presentation-container" style="position: relative; width: 100%; height: 100%;">
+    <div class="presentation-controls bg-dark p-2 d-flex justify-content-between align-items-center">
+        <div class="text-white">
+            <i class="fas fa-file-powerpoint me-2"></i>Presentation - @Material.Title
+        </div>
+        <div>
+            @if (Material.IsDownloadable)
+            {
+                <button class="btn btn-sm btn-outline-light me-2" @onclick="DownloadFile" title="Download">
+                    <i class="fas fa-download"></i>
+                </button>
+            }
+            <button class="btn btn-sm btn-outline-light" @onclick="FullScreen" title="Full Screen">
+                <i class="fas fa-expand-arrows-alt"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="presentation-display-area" 
+         style="height: calc(100% - 60px); background: white; position: relative;"
+         @ref="presentationContainerRef">
+        
+        @if (isLoading)
+        {
+            <div class="loading-overlay">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2 text-white">
+                    Loading presentation viewer...
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-file-powerpoint fa-4x text-danger mb-3"></i>
+                <h5>@Material.Title</h5>
+                <p class="text-muted">Presentation preview not available. For PowerPoint files, please download the file to view.</p>
+                @if (Material.IsDownloadable)
+                {
+                    <button class="btn btn-danger mt-3" @onclick="DownloadFile">
+                        <i class="fas fa-download me-2"></i> Download Presentation
+                    </button>
+                }
+            </div>
+        }
+    </div>
+    
+    <!-- Progress tracking section -->
+    @if (CurrentProgress != null && IsAuthenticated && HasAccess)
+    {
+        <ProgressSection Progress="CurrentProgress" 
+                        IsLoading="isLoading"
+                        OnMarkAsCompleted="HandleMarkAsCompleted"
+                        ProgressPercentage="0" />
+    }
+</div>
+
+<style>
+    .presentation-container {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+@code {
+    [Parameter] public LearningMaterialDto Material { get; set; }
+    [Parameter] public ProgressTrackingDto? CurrentProgress { get; set; }
+    [Parameter] public int CurrentEnrollmentId { get; set; }
+    [Parameter] public bool IsAuthenticated { get; set; }
+    [Parameter] public bool HasAccess { get; set; }
+    [Parameter] public EventCallback<ProgressUpdateEventArgs> OnProgressUpdated { get; set; }
+    [Parameter] public EventCallback OnMarkAsCompleted { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+    
+    private ElementReference presentationContainerRef;
+    private bool isLoading = false;
+    
+    private async Task FullScreen()
+    {
+        try
+        {
+            // Implement full screen logic
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error entering fullscreen: {ex.Message}");
+        }
+    }
+    
+    private async Task DownloadFile()
+    {
+        try
+        {
+            // Implement download logic
+            await OnError.InvokeAsync("Download not implemented");
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync($"Download failed: {ex.Message}");
+        }
+    }
+    
+    private async Task HandleMarkAsCompleted()
+    {
+        await OnMarkAsCompleted.InvokeAsync();
+    }
+}

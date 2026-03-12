@@ -1,0 +1,1433 @@
+﻿@page "/browse"
+
+
+<PageTitle>Browse Learning Materials</PageTitle>
+
+<div class="browse-content">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Mobile Header -->
+        <div class="d-block d-md-none">
+            <div class="bg-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <h5 class="mb-0 flex-grow-1">
+                        <i class="fas fa-compass me-2"></i>Browse
+                    </h5>
+                    <button class="btn btn-link text-white p-0" @onclick="ToggleMobileFilters">
+                        <i class="fas fa-sliders-h fa-lg"></i>
+                    </button>
+                </div>
+                <!-- Mobile Search Bar -->
+                <div class="mt-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control form-control-sm"
+                               placeholder="Search everything..."
+                               @bind="searchTerm" @bind:event="oninput"
+                               @onkeypress="@(async (e) => { if (e.Key == "Enter") await SearchAll(); })" />
+                        <button class="btn btn-light btn-sm" @onclick="SearchAll">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="d-none d-md-block row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1>Browse Learning Materials</h1>
+                        <p class="text-muted mb-0">Explore Specializations, Courses, and Lectures</p>
+                    </div>
+                    <div class="search-box" style="width: 300px;">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Search everything..."
+                                   @bind="searchTerm" @bind:event="oninput"
+                                   @onkeypress="@(async (e) => { if (e.Key == "Enter") await SearchAll(); })" />
+                            <button class="btn btn-primary" @onclick="SearchAll">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Filters Drawer -->
+        @if (showMobileFilters)
+        {
+            <div class="mobile-filters-overlay d-block d-md-none" @onclick="ToggleMobileFilters"></div>
+            <div class="mobile-filters-drawer d-block d-md-none">
+                <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Filters</h5>
+                        <button class="btn btn-link text-danger" @onclick="ToggleMobileFilters">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <!-- Mobile Content Type -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Content Type</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="mobileContentType" id="mobile-all" autocomplete="off"
+                                   checked="@(contentType == ContentType.All)" @onchange="@(() => SetContentType(ContentType.All))" />
+                            <label class="btn btn-outline-primary btn-sm" for="mobile-all">All</label>
+
+                            <input type="radio" class="btn-check" name="mobileContentType" id="mobile-specs" autocomplete="off"
+                                   checked="@(contentType == ContentType.Specialization)" @onchange="@(() => SetContentType(ContentType.Specialization))" />
+                            <label class="btn btn-outline-primary btn-sm" for="mobile-specs">Specs</label>
+
+                            <input type="radio" class="btn-check" name="mobileContentType" id="mobile-courses" autocomplete="off"
+                                   checked="@(contentType == ContentType.Course)" @onchange="@(() => SetContentType(ContentType.Course))" />
+                            <label class="btn btn-outline-primary btn-sm" for="mobile-courses">Courses</label>
+
+                            <input type="radio" class="btn-check" name="mobileContentType" id="mobile-lectures" autocomplete="off"
+                                   checked="@(contentType == ContentType.Lecture)" @onchange="@(() => SetContentType(ContentType.Lecture))" />
+                            <label class="btn btn-outline-primary btn-sm" for="mobile-lectures">Lectures</label>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Sort By -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Sort By</label>
+                        <select class="form-select form-select-sm" @bind="sortBy" @bind:after="ApplyFilters">
+                            <option value="popular">Most Popular</option>
+                            <option value="rating">Highest Rated</option>
+                            <option value="newest">Newest</option>
+                            <option value="price-low">Price: Low to High</option>
+                            <option value="price-high">Price: High to Low</option>
+                        </select>
+                    </div>
+
+                    <!-- Mobile Price Range -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Price Range</label>
+                        <select class="form-select form-select-sm" @bind="priceRange" @bind:after="ApplyFilters">
+                            <option value="all">All Prices</option>
+                            <option value="free">Free Only</option>
+                            <option value="under-10">Under $10</option>
+                            <option value="10-50">$10 - $50</option>
+                            <option value="50-plus">$50+</option>
+                        </select>
+                    </div>
+
+                    <!-- Mobile Featured Toggle -->
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="mobileFeaturedOnly"
+                                   @bind="featuredOnly" @bind:after="ApplyFilters" />
+                            <label class="form-check-label" for="mobileFeaturedOnly">
+                                Show Featured Only
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Filter Actions -->
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary flex-fill" @onclick="ClearFilters">
+                            <i class="fas fa-times me-2"></i>Clear
+                        </button>
+                        <button class="btn btn-primary flex-fill" @onclick="ToggleMobileFilters">
+                            <i class="fas fa-check me-2"></i>Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Desktop Filters -->
+        <div class="d-none d-md-block row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="d-flex flex-column">
+                                    <label class="form-label mb-2">Content Type</label>
+                                    <div class="btn-group" role="group" style="width: 100%;">
+                                        <input type="radio" class="btn-check" name="contentType" id="all" autocomplete="off"
+                                               checked="@(contentType == ContentType.All)" @onchange="@(() => SetContentType(ContentType.All))" />
+                                        <label class="btn @(contentType == ContentType.All ? "btn-primary" : "btn-outline-primary")" for="all">All</label>
+
+                                        <input type="radio" class="btn-check" name="contentType" id="specializations" autocomplete="off"
+                                               checked="@(contentType == ContentType.Specialization)" @onchange="@(() => SetContentType(ContentType.Specialization))" />
+                                        <label class="btn @(contentType == ContentType.Specialization ? "btn-primary" : "btn-outline-primary")" for="specializations">Specializations</label>
+
+                                        <input type="radio" class="btn-check" name="contentType" id="courses" autocomplete="off"
+                                               checked="@(contentType == ContentType.Course)" @onchange="@(() => SetContentType(ContentType.Course))" />
+                                        <label class="btn @(contentType == ContentType.Course ? "btn-primary" : "btn-outline-primary")" for="courses">Courses</label>
+
+                                        <input type="radio" class="btn-check" name="contentType" id="lectures" autocomplete="off"
+                                               checked="@(contentType == ContentType.Lecture)" @onchange="@(() => SetContentType(ContentType.Lecture))" />
+                                        <label class="btn @(contentType == ContentType.Lecture ? "btn-primary" : "btn-outline-primary")" for="lectures">Lectures</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Sort By</label>
+                                <select class="form-select" @bind="sortBy" @bind:after="ApplyFilters">
+                                    <option value="popular">Most Popular</option>
+                                    <option value="rating">Highest Rated</option>
+                                    <option value="newest">Newest</option>
+                                    <option value="price-low">Price: Low to High</option>
+                                    <option value="price-high">Price: High to Low</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">Price Range</label>
+                                <select class="form-select" @bind="priceRange" @bind:after="ApplyFilters">
+                                    <option value="all">All Prices</option>
+                                    <option value="free">Free Only</option>
+                                    <option value="under-10">Under $10</option>
+                                    <option value="10-50">$10 - $50</option>
+                                    <option value="50-plus">$50+</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3 d-flex align-items-end">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="featuredOnly"
+                                           @bind="featuredOnly" @bind:after="ApplyFilters" />
+                                    <label class="form-check-label" for="featuredOnly">
+                                        Featured Only
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Active Filters -->
+        <div class="d-block d-md-none px-3 py-2">
+            <div class="d-flex flex-wrap gap-1">
+                @if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    <span class="badge bg-primary d-inline-flex align-items-center">
+                        Search: @searchTerm
+                        <i class="fas fa-times ms-2" @onclick="@(() => { searchTerm = ""; SearchAll(); })" style="cursor: pointer;"></i>
+                    </span>
+                }
+                @if (contentType != ContentType.All)
+                {
+                    <span class="badge bg-info d-inline-flex align-items-center">
+                        @contentType
+                        <i class="fas fa-times ms-2" @onclick="@(() => SetContentType(ContentType.All))" style="cursor: pointer;"></i>
+                    </span>
+                }
+                @if (featuredOnly)
+                {
+                    <span class="badge bg-warning d-inline-flex align-items-center">
+                        Featured Only
+                        <i class="fas fa-times ms-2" @onclick="@(() => { featuredOnly = false; ApplyFilters(); })" style="cursor: pointer;"></i>
+                    </span>
+                }
+                @if (priceRange != "all")
+                {
+                    <span class="badge bg-secondary d-inline-flex align-items-center">
+                        @priceRange
+                        <i class="fas fa-times ms-2" @onclick="@(() => { priceRange = "all"; ApplyFilters(); })" style="cursor: pointer;"></i>
+                    </span>
+                }
+            </div>
+        </div>
+
+        <!-- Featured Section (Desktop) -->
+        @if (featuredContent.Any() && !IsSearching && !featuredOnly && contentType == ContentType.All)
+        {
+            <div class="d-none d-md-block row mb-5">
+                <div class="col-12">
+                    <h2 class="mb-3">Featured Content</h2>
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                        @foreach (var item in featuredContent.Take(6))
+                        {
+                            <div class="col">
+                                @RenderContentCard(item, true, true)
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Mobile Featured Carousel -->
+        @if (featuredContent.Any() && !IsSearching && !featuredOnly && contentType == ContentType.All)
+        {
+            <div class="d-block d-md-none mb-4">
+                <div class="px-3">
+                    <h6 class="fw-bold mb-2">Featured Content</h6>
+                </div>
+                <div class="mobile-featured-scroll">
+                    <div class="d-flex px-3 gap-3" style="overflow-x: auto; scroll-snap-type: x mandatory;">
+                        @foreach (var item in featuredContent.Take(10))
+                        {
+                            <div style="min-width: 280px; max-width: 280px; scroll-snap-align: start;">
+                                @RenderContentCard(item, true, false)
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Content Results -->
+        <div class="row g-0 g-md-3">
+            <div class="col-12">
+                <!-- Mobile Results Header -->
+                <div class="d-block d-md-none px-3 py-2 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>@GetResultsTitle()</strong>
+                            @if (totalResults > 0)
+                            {
+                                <small class="text-muted ms-2">@totalResults results</small>
+                            }
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-secondary @(viewMode == ViewMode.Grid ? "active" : "")"
+                                    @onclick="@(() => SetViewMode(ViewMode.Grid))">
+                                <i class="fas fa-th"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary @(viewMode == ViewMode.List ? "active" : "")"
+                                    @onclick="@(() => SetViewMode(ViewMode.List))">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Results Header -->
+                <div class="d-none d-md-flex justify-content-between align-items-center mb-3">
+                    <h2>
+                        @GetResultsTitle()
+                        @if (totalResults > 0)
+                        {
+                            <small class="text-muted fs-6">(@totalResults results)</small>
+                        }
+                    </h2>
+
+                    @if (filteredContent.Any())
+                    {
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-secondary @(viewMode == ViewMode.Grid ? "active" : "")"
+                                    @onclick="@(() => SetViewMode(ViewMode.Grid))">
+                                <i class="fas fa-th"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary @(viewMode == ViewMode.List ? "active" : "")"
+                                    @onclick="@(() => SetViewMode(ViewMode.List))">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                @if (isLoading)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading content...</p>
+                    </div>
+                }
+                else if (!filteredContent.Any())
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h5>No content found</h5>
+                        <p class="text-muted">Try adjusting your search or filters</p>
+                        <button class="btn btn-outline-primary mt-2" @onclick="ClearFilters">
+                            <i class="fas fa-times me-2"></i> Clear Filters
+                        </button>
+                    </div>
+                }
+                else if (viewMode == ViewMode.Grid)
+                {
+                    <!-- Desktop Grid -->
+                    <div class="d-none d-md-block">
+                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                            @foreach (var item in paginatedContent)
+                            {
+                                <div class="col">
+                                    @RenderContentCard(item, false, true)
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Mobile Grid -->
+                    <div class="d-block d-md-none">
+                        <div class="row g-3 px-3">
+                            @foreach (var item in paginatedContent)
+                            {
+                                <div class="col-6">
+                                    @RenderContentCard(item, false, false)
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- List View (same for both) -->
+                    <div class="list-view px-3 px-md-0">
+                        @foreach (var item in paginatedContent)
+                        {
+                            @RenderContentListItem(item)
+                        }
+                    </div>
+                }
+
+                <!-- Pagination - Responsive -->
+                @if (totalPages > 1)
+                {
+                    <nav class="mt-4">
+                        <!-- Desktop Pagination -->
+                        <ul class="pagination justify-content-center d-none d-md-flex">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="@(async () => await ChangePage(currentPage - 1))">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                            </li>
+
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                <li class="page-item @(currentPage == i ? "active" : "")">
+                                    <button class="page-link" @onclick="@(async () => await ChangePage(i))">@i</button>
+                                </li>
+                            }
+
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="@(async () => await ChangePage(currentPage + 1))">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </li>
+                        </ul>
+
+                        <!-- Mobile Pagination -->
+                        <div class="d-flex d-md-none justify-content-between align-items-center px-3">
+                            <button class="btn btn-outline-primary btn-sm @(currentPage == 1 ? "disabled" : "")"
+                                    @onclick="@(async () => await ChangePage(currentPage - 1))">
+                                <i class="fas fa-chevron-left me-2"></i>Previous
+                            </button>
+                            <span class="text-muted small">Page @currentPage of @totalPages</span>
+                            <button class="btn btn-outline-primary btn-sm @(currentPage == totalPages ? "disabled" : "")"
+                                    @onclick="@(async () => await ChangePage(currentPage + 1))">
+                                Next<i class="fas fa-chevron-right ms-2"></i>
+                            </button>
+                        </div>
+                    </nav>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // ... (keep all your existing code in the @code block exactly as is)
+    private enum ContentType
+    {
+        All,
+        Specialization,
+        Course,
+        Lecture
+    }
+
+    private enum ViewMode
+    {
+        Grid,
+        List
+    }
+
+    private class BrowseItem
+    {
+        public ContentType Type { get; set; }
+        public object Data { get; set; }
+        public decimal Price => GetPrice();
+        public decimal Rating => GetRating();
+        public int EnrollmentCount => GetEnrollmentCount();
+        public string Title => GetTitle();
+        public string Description => GetDescription();
+        public string ThumbnailUrl => GetThumbnailUrl();
+        public DateTime CreatedAt => GetCreatedAt();
+        public bool IsFeatured => GetIsFeatured();
+        public int EstimatedHours => GetEstimatedHours();
+        public int Id => GetId();
+        public UserDto? Doctor => GetDoctor();
+        public bool IsActive => GetIsActive();
+
+        private decimal GetPrice()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).Price,
+                ContentType.Course => ((CourseDto)Data).Price,
+                ContentType.Lecture => ((LectureDto)Data).Price,
+                _ => 0
+            };
+        }
+
+        private decimal GetRating()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).AverageRating,
+                ContentType.Course => ((CourseDto)Data).AverageRating,
+                ContentType.Lecture => ((LectureDto)Data).AverageRating,
+                _ => 0
+            };
+        }
+
+        private int GetEnrollmentCount()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).TotalEnrollments,
+                ContentType.Course => ((CourseDto)Data).TotalEnrollments,
+                ContentType.Lecture => ((LectureDto)Data).TotalEnrollments,
+                _ => 0
+            };
+        }
+
+        private string GetTitle()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).Title,
+                ContentType.Course => ((CourseDto)Data).Title,
+                ContentType.Lecture => ((LectureDto)Data).Title,
+                _ => ""
+            };
+        }
+
+        private string GetDescription()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).Description,
+                ContentType.Course => ((CourseDto)Data).Description,
+                ContentType.Lecture => ((LectureDto)Data).Description,
+                _ => ""
+            };
+        }
+
+        private string GetThumbnailUrl()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).ThumbnailUrl,
+                ContentType.Course => ((CourseDto)Data).ThumbnailUrl,
+                ContentType.Lecture => "",
+                _ => ""
+            };
+        }
+
+        private DateTime GetCreatedAt()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).CreatedAt,
+                ContentType.Course => ((CourseDto)Data).CreatedAt,
+                ContentType.Lecture => ((LectureDto)Data).CreatedAt,
+                _ => DateTime.Now
+            };
+        }
+
+        private bool GetIsFeatured()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).IsFeatured,
+                _ => false
+            };
+        }
+
+        private int GetEstimatedHours()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).EstimatedDurationHours,
+                ContentType.Course => 0,
+                ContentType.Lecture => ((LectureDto)Data).EstimatedDurationMinutes / 60,
+                _ => 0
+            };
+        }
+
+        private int GetId()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).Id,
+                ContentType.Course => ((CourseDto)Data).Id,
+                ContentType.Lecture => ((LectureDto)Data).Id,
+                _ => 0
+            };
+        }
+
+        private UserDto? GetDoctor()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).Doctor,
+                ContentType.Course => ((CourseDto)Data).Doctor,
+                ContentType.Lecture => ((LectureDto)Data).Doctor,
+                _ => null
+            };
+        }
+
+        private bool GetIsActive()
+        {
+            return Type switch
+            {
+                ContentType.Specialization => ((SpecializationDto)Data).IsActive,
+                ContentType.Course => ((CourseDto)Data).IsActive,
+                ContentType.Lecture => ((LectureDto)Data).IsActive,
+                _ => true
+            };
+        }
+    }
+
+    private List<BrowseItem> allContent = new();
+    private List<BrowseItem> featuredContent = new();
+    private List<BrowseItem> filteredContent = new();
+    private List<BrowseItem> paginatedContent = new();
+
+    private string searchTerm = "";
+    private string sortBy = "popular";
+    private string priceRange = "all";
+    private ContentType contentType = ContentType.All;
+    private ViewMode viewMode = ViewMode.Grid;
+    private bool featuredOnly = false;
+
+    private int currentPage = 1;
+    private const int pageSize = 12;
+    private int totalPages = 1;
+    private int totalResults = 0;
+
+    private bool isLoading = true;
+    private bool isInitialLoad = true;
+    private bool showMobileFilters = false;
+
+    private bool IsSearching => !string.IsNullOrEmpty(searchTerm);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllContent();
+        isInitialLoad = false;
+    }
+
+    private void ToggleMobileFilters()
+    {
+        showMobileFilters = !showMobileFilters;
+    }
+
+    private async Task LoadAllContent()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            allContent = new List<BrowseItem>();
+
+            // Load based on selected content type
+            switch (contentType)
+            {
+                case ContentType.All:
+                    await LoadSpecializations();
+                    await LoadCourses();
+                    await LoadLectures();
+                    break;
+
+                case ContentType.Specialization:
+                    await LoadSpecializations();
+                    break;
+
+                case ContentType.Course:
+                    await LoadCourses();
+                    break;
+
+                case ContentType.Lecture:
+                    await LoadLectures();
+                    break;
+            }
+
+            // Get featured content if needed
+            if (!IsSearching && !featuredOnly && contentType == ContentType.All)
+            {
+                await LoadFeaturedContent();
+            }
+            else
+            {
+                featuredContent.Clear();
+            }
+
+            // Apply local sorting and filtering
+            ApplySortingAndFiltering();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Error loading content:", ex.Message);
+            await ShowToast("error", "Failed to load content. Please try again.");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadSpecializations()
+    {
+        try
+        {
+            var specializations = await SpecializationService.GetSpecializationsAsync(
+                search: !string.IsNullOrEmpty(searchTerm) ? searchTerm : null,
+                featured: featuredOnly ? true : null,
+                doctorId: null,
+                minPrice: GetMinPrice(),
+                maxPrice: GetMaxPrice(),
+                page: 1,
+                pageSize: 100
+            );
+
+            if (specializations != null && specializations.Any())
+            {
+                // Filter for active specializations only
+                var activeSpecializations = specializations.Where(s => s.IsActive).ToList();
+
+                allContent.AddRange(activeSpecializations.Select(s => new BrowseItem
+                {
+                    Type = ContentType.Specialization,
+                    Data = s
+                }));
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Error loading specializations:", ex.Message);
+        }
+    }
+
+    private async Task LoadCourses()
+    {
+        try
+        {
+            // Load all specializations first to get their courses
+            var allSpecs = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: null,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 50
+            );
+
+            if (allSpecs != null)
+            {
+                foreach (var spec in allSpecs)
+                {
+                    // Only get courses from active specializations
+                    if (!spec.IsActive) continue;
+
+                    var courses = await CourseService.GetCoursesBySpecializationAsync(spec.Id);
+                    if (courses != null && courses.Any())
+                    {
+                        // Apply filters
+                        var filteredCourses = courses;
+
+                        if (!string.IsNullOrEmpty(searchTerm))
+                        {
+                            filteredCourses = courses.Where(c =>
+                                c.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                c.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                            ).ToList();
+                        }
+
+                        // Apply price filter
+                        filteredCourses = filteredCourses.Where(c =>
+                            (GetMinPrice() == null || c.Price >= GetMinPrice()) &&
+                            (GetMaxPrice() == null || c.Price <= GetMaxPrice())
+                        ).ToList();
+
+                        // Filter for active courses only
+                        filteredCourses = filteredCourses.Where(c => c.IsActive).ToList();
+
+                        if (filteredCourses.Any())
+                        {
+                            allContent.AddRange(filteredCourses.Select(c => new BrowseItem
+                            {
+                                Type = ContentType.Course,
+                                Data = c
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Error loading courses:", ex.Message);
+        }
+    }
+
+    private async Task LoadLectures()
+    {
+        try
+        {
+            // Load all specializations first to get their courses and lectures
+            var allSpecs = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: null,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 20
+            );
+
+            if (allSpecs != null)
+            {
+                foreach (var spec in allSpecs)
+                {
+                    // Only get lectures from active specializations
+                    if (!spec.IsActive) continue;
+
+                    var courses = await CourseService.GetCoursesBySpecializationAsync(spec.Id);
+                    if (courses != null)
+                    {
+                        foreach (var course in courses)
+                        {
+                            // Only get lectures from active courses
+                            if (!course.IsActive) continue;
+
+                            var lectures = await LectureService.GetLecturesByCourseAsync(course.Id);
+                            if (lectures != null && lectures.Any())
+                            {
+                                // Apply search filter if needed
+                                var filteredLectures = lectures;
+
+                                if (!string.IsNullOrEmpty(searchTerm))
+                                {
+                                    filteredLectures = lectures.Where(l =>
+                                        l.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                        l.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                                    ).ToList();
+                                }
+
+                                // Apply price filter
+                                filteredLectures = filteredLectures.Where(l =>
+                                    (GetMinPrice() == null || l.Price >= GetMinPrice()) &&
+                                    (GetMaxPrice() == null || l.Price <= GetMaxPrice())
+                                ).ToList();
+
+                                // Filter for active lectures only
+                                filteredLectures = filteredLectures.Where(l => l.IsActive).ToList();
+
+                                if (filteredLectures.Any())
+                                {
+                                    allContent.AddRange(filteredLectures.Select(l => new BrowseItem
+                                    {
+                                        Type = ContentType.Lecture,
+                                        Data = l
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Error loading lectures:", ex.Message);
+        }
+    }
+
+    private async Task LoadFeaturedContent()
+    {
+        try
+        {
+            var featuredSpecs = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: true,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 6
+            );
+
+            if (featuredSpecs != null && featuredSpecs.Any())
+            {
+                // Filter for active featured specializations only
+                var activeFeaturedSpecs = featuredSpecs.Where(s => s.IsActive).ToList();
+
+                featuredContent = activeFeaturedSpecs.Select(s => new BrowseItem
+                {
+                    Type = ContentType.Specialization,
+                    Data = s
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Error loading featured content:", ex.Message);
+        }
+    }
+
+    private decimal? GetMinPrice()
+    {
+        return priceRange switch
+        {
+            "free" => 0,
+            "under-10" => 0.01m,
+            "10-50" => 10m,
+            "50-plus" => 50m,
+            _ => null
+        };
+    }
+
+    private decimal? GetMaxPrice()
+    {
+        return priceRange switch
+        {
+            "free" => 0,
+            "under-10" => 9.99m,
+            "10-50" => 50m,
+            _ => null
+        };
+    }
+
+    private void ApplySortingAndFiltering()
+    {
+        // Start with all loaded content
+        filteredContent = new List<BrowseItem>(allContent);
+
+        // Double-check: filter out any inactive content
+        filteredContent = filteredContent.Where(item => item.IsActive).ToList();
+
+        // Apply sorting
+        filteredContent = sortBy switch
+        {
+            "rating" => filteredContent.OrderByDescending(c => c.Rating).ToList(),
+            "newest" => filteredContent.OrderByDescending(c => c.CreatedAt).ToList(),
+            "price-low" => filteredContent.OrderBy(c => c.Price).ToList(),
+            "price-high" => filteredContent.OrderByDescending(c => c.Price).ToList(),
+            _ => filteredContent.OrderByDescending(c => c.EnrollmentCount).ToList()
+        };
+
+        totalResults = filteredContent.Count;
+        totalPages = (int)Math.Ceiling((double)totalResults / pageSize);
+
+        // Apply pagination
+        var startIndex = (currentPage - 1) * pageSize;
+        paginatedContent = filteredContent
+            .Skip(startIndex)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private async Task ApplyFilters()
+    {
+        if (!isInitialLoad)
+        {
+            currentPage = 1;
+            await LoadAllContent();
+        }
+    }
+
+    private async Task SetContentType(ContentType type)
+    {
+        contentType = type;
+        currentPage = 1;
+        await LoadAllContent();
+
+        // Close mobile filters if open
+        if (showMobileFilters)
+        {
+            showMobileFilters = false;
+        }
+    }
+
+    private async Task SearchAll()
+    {
+        currentPage = 1;
+        await LoadAllContent();
+
+        // Close mobile filters if open
+        if (showMobileFilters)
+        {
+            showMobileFilters = false;
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            ApplySortingAndFiltering();
+            await JS.InvokeVoidAsync("scrollTo", 0, 0);
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        searchTerm = "";
+        contentType = ContentType.All;
+        sortBy = "popular";
+        priceRange = "all";
+        featuredOnly = false;
+        currentPage = 1;
+        await LoadAllContent();
+
+        // Close mobile filters if open
+        if (showMobileFilters)
+        {
+            showMobileFilters = false;
+        }
+    }
+
+    private void SetViewMode(ViewMode mode)
+    {
+        viewMode = mode;
+    }
+
+    private string GetResultsTitle()
+    {
+        if (IsSearching)
+        {
+            return "Search Results";
+        }
+
+        return contentType switch
+        {
+            ContentType.Specialization => "Specializations",
+            ContentType.Course => "Courses",
+            ContentType.Lecture => "Lectures",
+            _ => "All Learning Materials"
+        };
+    }
+
+    private string GetImageUrl(string? relativeUrl)
+    {
+        return ImageUrlService.GetImageUrl(relativeUrl);
+    }
+
+    private RenderFragment RenderContentCard(BrowseItem item, bool isFeatured, bool isDesktop) => @<div class="card @(isFeatured ? "featured-card" : "") h-100 shadow-sm">
+            <div class="position-relative">
+                @if (!string.IsNullOrEmpty(item.ThumbnailUrl))
+                {
+                    <img src="@GetImageUrl(item.ThumbnailUrl)" class="card-img-top" alt="@item.Title" style="height: @(isDesktop ? "180px" : "120px"); object-fit: cover;"
+                         onerror="this.onerror=null; this.src='/placeholder-image.jpg';" />
+                }
+                else
+                {
+                    <div class="card-img-top bg-gradient-primary d-flex align-items-center justify-content-center" style="height: @(isDesktop ? "180px" : "120px");">
+                        <i class="fas @GetContentIcon(item.Type) @(isDesktop ? "fa-3x" : "fa-2x") text-white"></i>
+                    </div>
+                }
+
+                @if (isFeatured)
+                {
+                    <span class="position-absolute top-0 start-0 m-2 badge bg-warning small">
+                        <i class="fas fa-star me-1"></i> @(isDesktop ? "Featured" : "")
+                    </span>
+                }
+                else if (item.IsFeatured)
+                {
+                    <span class="position-absolute top-0 start-0 m-1 badge bg-warning p-1">
+                        <i class="fas fa-star fa-xs"></i>
+                    </span>
+                }
+
+                @if (item.Price == 0)
+                {
+                    <span class="position-absolute top-0 end-0 m-2 badge bg-success small">
+                        FREE
+                    </span>
+                }
+
+                <span class="position-absolute bottom-0 start-0 m-1 badge @GetContentTypeBadgeClass(item.Type) small">
+                    @if (isDesktop)
+                    {
+                        @item.Type.ToString()
+                    }
+                    else
+                    {
+                        @switch (item.Type)
+                        {
+                            case ContentType.Specialization:
+                                <text>Spec</text>
+                                ; break;
+                            case ContentType.Course:
+
+                                <text>Crs</text>
+                                ; break;
+                            case ContentType.Lecture:
+
+                                <text>Lec</text>
+                                ; break;
+                            default:
+
+                                @item.Type.ToString().Substring(0, 3)
+                                ; break;
+                        }
+                    }
+                </span>
+            </div>
+            <div class="card-body p-@(isDesktop ? "3" : "2") d-flex flex-column">
+                <h6 class="card-title @(isDesktop ? "h5" : "small fw-bold") mb-1">@TruncateTitle(item.Title, isDesktop ? 50 : 30)</h6>
+
+                @if (isDesktop)
+                {
+                    <p class="card-text text-muted small flex-grow-1">
+                        @(item.Description.Length > 100 ? item.Description.Substring(0, 100) + "..." : item.Description)
+                    </p>
+                }
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <span class="@(isDesktop ? "h5" : "h6") mb-0">$@item.Price.ToString("N2")</span>
+                        @if (item.Price == 0 && isDesktop)
+                        {
+                            <span class="badge bg-success ms-2">FREE</span>
+                        }
+                    </div>
+                    <div class="rating">
+                        @if (isDesktop)
+                        {
+                            for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="fas fa-star fa-xs @(i <= Math.Round(item.Rating) ? "text-warning" : "text-muted")"></i>
+                            }
+                            <small class="ms-1">@item.Rating.ToString("0.0")</small>
+                        }
+                        else
+                        {
+                            <small class="text-warning">
+                                <i class="fas fa-star"></i> @item.Rating.ToString("0.0")
+                            </small>
+                        }
+                    </div>
+                </div>
+
+                @if (isDesktop)
+                {
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        @if (item.EstimatedHours > 0)
+                        {
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                @item.EstimatedHours h
+                            </small>
+                        }
+                        <small class="text-muted">
+                            <i class="fas fa-users me-1"></i>
+                            @(item.EnrollmentCount > 999 ? $"{item.EnrollmentCount / 1000}K" : item.EnrollmentCount.ToString())
+                        </small>
+                    </div>
+                }
+
+                @if (item.Doctor != null && isDesktop)
+                {
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-sm me-2">
+                            @if (!string.IsNullOrEmpty(item.Doctor.ProfileImageUrl))
+                            {
+                                <img src="@GetImageUrl(item.Doctor.ProfileImageUrl)" class="rounded-circle" width="24" height="24" alt="Doctor" style="object-fit: cover;"
+                                     onerror="this.onerror=null; this.src='/placeholder-image.jpg';" />
+                            }
+                            else
+                            {
+                                <div class="avatar-placeholder bg-info text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 12px;">
+                                    @item.Doctor.FirstName?.Substring(0, 1)
+                                </div>
+                            }
+                        </div>
+                        <small class="text-muted">By @item.Doctor.FirstName</small>
+                    </div>
+                }
+
+                <div class="d-grid gap-2 mt-auto">
+                    <button class="btn btn-outline-primary @(isDesktop ? "btn-sm" : "btn-xs")"
+                            @onclick="@(() => ViewContent(item))">
+                        <i class="fas fa-eye me-1"></i> @(isDesktop ? "View Details" : "Details")
+                    </button>
+                    @if (item.Price == 0)
+                    {
+                        <button class="btn btn-success @(isDesktop ? "btn-sm" : "btn-xs")"
+                                @onclick="@(async () => await EnrollFreeContent(item))">
+                            <i class="fas fa-graduation-cap me-1"></i> @(isDesktop ? "Enroll Free" : "Free")
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary @(isDesktop ? "btn-sm" : "btn-xs")"
+                                @onclick="@(() => EnrollContent(item))">
+                            <i class="fas fa-shopping-cart me-1"></i> @(isDesktop ? "Enroll" : "Buy")
+                        </button>
+                    }
+                </div>
+            </div>
+    </div>;
+
+private string TruncateTitle(string title, int maxLength)
+{
+if (string.IsNullOrEmpty(title)) return "";
+return title.Length <= maxLength ? title : title.Substring(0, maxLength) + "...";
+}
+
+private RenderFragment RenderContentListItem(BrowseItem item) => @<div class="card mb-3">
+    <div class="row g-0">
+        <div class="col-4 col-md-4">
+            @if (!string.IsNullOrEmpty(item.ThumbnailUrl))
+            {
+                <img src="@GetImageUrl(item.ThumbnailUrl)" class="img-fluid rounded-start h-100" alt="@item.Title" style="object-fit: cover; max-height: 120px;"
+                     onerror="this.onerror=null; this.src='/placeholder-image.jpg';" />
+            }
+            else
+            {
+                <div class="h-100 d-flex align-items-center justify-content-center bg-light" style="min-height: 120px;">
+                    <i class="fas @GetContentIcon(item.Type) fa-2x text-muted"></i>
+                </div>
+            }
+        </div>
+        <div class="col-8 col-md-8">
+            <div class="card-body p-2 p-md-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="d-none d-md-block">
+                            <span class="badge @GetContentTypeBadgeClass(item.Type) mb-2">
+                                @item.Type.ToString()
+                            </span>
+                        </div>
+                        <h6 class="card-title mb-1">@TruncateTitle(item.Title, 40)</h6>
+                        <p class="card-text text-muted small d-none d-md-block">
+                            @TruncateTitle(item.Description, 100)
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <h6 class="text-primary mb-0">$@item.Price.ToString("N2")</h6>
+                        @if (item.Price == 0)
+                        {
+                            <span class="badge bg-success d-block d-md-none mt-1">FREE</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-12 col-md-6">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="rating">
+                                <i class="fas fa-star text-warning fa-xs"></i>
+                                <small>@item.Rating.ToString("0.0")</small>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-users me-1"></i> @item.EnrollmentCount
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 mt-2 mt-md-0">
+                        <div class="d-flex justify-content-end gap-2">
+                            <button class="btn btn-outline-primary btn-sm"
+                                    @onclick="@(() => ViewContent(item))">
+                                <i class="fas fa-eye"></i>
+                                <span class="d-none d-md-inline ms-1">Details</span>
+                            </button>
+                            @if (item.Price == 0)
+                            {
+                                <button class="btn btn-success btn-sm"
+                                        @onclick="@(async () => await EnrollFreeContent(item))">
+                                    <i class="fas fa-graduation-cap"></i>
+                                    <span class="d-none d-md-inline ms-1">Enroll</span>
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-primary btn-sm"
+                                        @onclick="@(() => EnrollContent(item))">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    <span class="d-none d-md-inline ms-1">Buy</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>;
+
+private string GetContentIcon(ContentType type)
+{
+return type switch
+{
+ContentType.Specialization => "fa-graduation-cap",
+ContentType.Course => "fa-book",
+ContentType.Lecture => "fa-play-circle",
+_ => "fa-book"
+};
+}
+
+private string GetContentTypeBadgeClass(ContentType type)
+{
+return type switch
+{
+ContentType.Specialization => "bg-primary",
+ContentType.Course => "bg-info",
+ContentType.Lecture => "bg-success",
+_ => "bg-secondary"
+};
+}
+
+private void ViewContent(BrowseItem item)
+{
+var url = item.Type switch
+{
+ContentType.Specialization => $"/specialization/{item.Id}",
+ContentType.Course => $"/course/{item.Id}",
+ContentType.Lecture => $"/lectureinfo/{item.Id}",
+_ => "#"
+};
+Navigation.NavigateTo(url);
+}
+
+private void EnrollContent(BrowseItem item)
+{
+var enrollmentType = item.Type switch
+{
+ContentType.Specialization => "Specialization",
+ContentType.Course => "Course",
+ContentType.Lecture => "Lecture",
+_ => ""
+};
+
+Navigation.NavigateTo($"/student/payments/make?type={enrollmentType}&id={item.Id}");
+}
+
+private async Task EnrollFreeContent(BrowseItem item)
+{
+try
+{
+await ShowToast("info", $"Enrolling in free {item.Type.ToString().ToLower()}...");
+
+var enrollmentDto = new CreateEnrollmentDto
+{
+EnrollmentType = item.Type switch
+{
+ContentType.Specialization => EnrollmentType.Specialization,
+ContentType.Course => EnrollmentType.Course,
+ContentType.Lecture => EnrollmentType.Lecture,
+_ => EnrollmentType.Specialization
+},
+SpecializationId = item.Type == ContentType.Specialization ? item.Id : null,
+CourseId = item.Type == ContentType.Course ? item.Id : null,
+LectureId = item.Type == ContentType.Lecture ? item.Id : null
+};
+
+var enrollment = await EnrollmentService.CreateEnrollmentAsync(enrollmentDto);
+
+if (enrollment != null)
+{
+await ShowToast("success", $"Successfully enrolled!");
+
+// Navigate to learning page
+var url = item.Type switch
+{
+ContentType.Specialization => $"/student/mylearning/specialization/{item.Id}",
+ContentType.Course => $"/student/mylearning/course/{item.Id}",
+ContentType.Lecture => $"/student/mylearning/lecture/{item.Id}",
+_ => "/student/mylearning"
+};
+Navigation.NavigateTo(url);
+}
+else
+{
+await ShowToast("error", "Failed to enroll. Please try again.");
+}
+}
+catch (Exception ex)
+{
+await JS.InvokeVoidAsync("console.error", "Enrollment error:", ex.Message);
+await ShowToast("error", "Failed to enroll. Please try again.");
+}
+}
+
+private async Task ShowToast(string type, string message)
+{
+await JS.InvokeVoidAsync("alert", message);
+}
+}
+
+<style>
+    /* Mobile-specific styles */
+    @@media (max-width: 767px) {
+        .mobile-filters-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1040;
+        }
+
+        .mobile-filters-drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            z-index: 1050;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+
+        @@keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        .mobile-featured-scroll {
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+            .mobile-featured-scroll::-webkit-scrollbar {
+                display: none;
+            }
+
+        .btn-xs {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 0.2rem;
+        }
+    }
+
+    /* Desktop styles */
+    @@media (min-width: 768px) {
+        .card {
+            transition: transform 0.2s;
+        }
+
+            .card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
+            }
+    }
+</style>

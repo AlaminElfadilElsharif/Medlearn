@@ -1,0 +1,1054 @@
+﻿@page "/doctor/students/{EnrollmentId:int}/progress"
+
+
+<PageTitle>Student Progress - @(student?.FirstName ?? "Student")</PageTitle>
+
+<div class="student-progress">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Mobile Header -->
+        <div class="d-block d-md-none">
+            <div class="bg-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                        <i class="fas fa-arrow-left fa-lg"></i>
+                    </button>
+                    <h5 class="mb-0 flex-grow-1">Student Progress</h5>
+                    <button class="btn btn-link text-white p-0" @onclick="ExportProgress" disabled="@(isLoading || !isAuthenticated || !studentEnrollments.Any())">
+                        <i class="fas fa-download fa-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="d-none d-md-block mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1>Student Progress</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="/doctor">Doctor</a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="/doctor/students">Students</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                @(student?.FirstName ?? "Student")'s Progress
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary me-2" @onclick="GoBack">
+                        <i class="fas fa-arrow-left me-2"></i> Back
+                    </button>
+                    <button class="btn btn-outline-primary" @onclick="ExportProgress" disabled="@(isLoading || !isAuthenticated || !studentEnrollments.Any())">
+                        <i class="fas fa-file-export me-2"></i> Export
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Authentication Check -->
+        @if (!isAuthenticated)
+        {
+            <div class="alert alert-warning m-3 m-md-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                You must be logged in to view student progress.
+                <a href="/account/login" class="alert-link">Click here to login</a>
+            </div>
+        }
+        else if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading student progress...</p>
+            </div>
+        }
+        else if (targetEnrollment == null)
+        {
+            <div class="alert alert-danger m-3 m-md-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Enrollment not found or you don't have permission to view it.
+            </div>
+        }
+        else if (student == null)
+        {
+            <div class="alert alert-danger m-3 m-md-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Student not found or you don't have permission to view this student's progress.
+            </div>
+        }
+        else if (!studentEnrollments.Any())
+        {
+            <div class="alert alert-info m-3 m-md-0">
+                <i class="fas fa-info-circle me-2"></i>
+                This student hasn't enrolled in any courses yet.
+            </div>
+        }
+        else
+        {
+            <!-- Student Info - Mobile -->
+            <div class="d-block d-md-none">
+                <div class="card border-0 border-bottom rounded-0">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center">
+                            <!-- Avatar -->
+                            <div class="me-3">
+                                @if (!string.IsNullOrEmpty(student.ProfileImageUrl))
+                                {
+                                    <img src="@student.ProfileImageUrl" class="rounded-circle" width="60" height="60" alt="Student" />
+                                }
+                                else
+                                {
+                                    <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                         style="width: 60px; height: 60px; font-size: 24px;">
+                                        @(!string.IsNullOrEmpty(student.FirstName) ? student.FirstName.Substring(0, 1) : "S")
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Student Basic Info -->
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">@student.FirstName @student.LastName</h6>
+                                <p class="small text-muted mb-1">@student.Email</p>
+                                @if (student.DateOfBirth.HasValue)
+                                {
+                                    <p class="small text-muted mb-0">
+                                        <i class="fas fa-birthday-cake me-1"></i>
+                                        @student.DateOfBirth.Value.ToString("MMM dd, yyyy")
+                                    </p>
+                                }
+                            </div>
+
+                            <!-- Quick Stats -->
+                            <div class="text-center">
+                                <div class="h5 mb-0">@overallProgress.ToString("0")%</div>
+                                <small class="text-muted">Overall</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Student Info -->
+            <div class="d-none d-md-block row mb-4">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="text-center">
+                                <div class="mb-3">
+                                    @if (!string.IsNullOrEmpty(student.ProfileImageUrl))
+                                    {
+                                        <img src="@student.ProfileImageUrl" class="rounded-circle" width="100" height="100" alt="Student" />
+                                    }
+                                    else
+                                    {
+                                        <div class="avatar-placeholder-lg bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto"
+                                             style="width: 100px; height: 100px; font-size: 36px;">
+                                            @(!string.IsNullOrEmpty(student.FirstName) ? student.FirstName.Substring(0, 1) : "S")
+                                        </div>
+                                    }
+                                </div>
+                                <h4>@student.FirstName @student.LastName</h4>
+                                <p class="text-muted">@student.Email</p>
+
+                                @if (student.DateOfBirth.HasValue)
+                                {
+                                    <p class="mb-2">
+                                        <i class="fas fa-birthday-cake me-2 text-muted"></i>
+                                        @student.DateOfBirth.Value.ToString("MMMM dd, yyyy")
+                                    </p>
+                                }
+
+                                @if (!string.IsNullOrEmpty(student.PhoneNumber))
+                                {
+                                    <p class="mb-0">
+                                        <i class="fas fa-phone me-2 text-muted"></i>
+                                        @student.PhoneNumber
+                                    </p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Progress Stats -->
+                <div class="col-md-8">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Overall Progress</h5>
+                                    <div class="text-center py-3">
+                                        <div class="progress-circle" style="width: 150px; height: 150px; margin: 0 auto;">
+                                            <svg width="150" height="150" viewBox="0 0 36 36" class="circular-chart">
+                                                <path class="circle-bg"
+                                                      d="M18 2.0845
+                                                                 a 15.9155 15.9155 0 0 1 0 31.831
+                                                                 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                      fill="none"
+                                                      stroke="#eee"
+                                                      stroke-width="2" />
+                                                <path class="circle"
+                                                      stroke="@GetProgressColor(overallProgress)"
+                                                      stroke-dasharray="@overallProgress.ToString("0"), 100"
+                                                      d="M18 2.0845
+                                                                 a 15.9155 15.9155 0 0 1 0 31.831
+                                                                 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                      fill="none"
+                                                      stroke-width="2"
+                                                      stroke-linecap="round" />
+                                                <text x="18" y="20.35" class="percentage">@overallProgress.ToString("0")%</text>
+                                            </svg>
+                                        </div>
+                                        <p class="mt-2 mb-0">Overall completion rate</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Learning Stats</h5>
+                                    <div class="py-3">
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Total Enrollments</span>
+                                                <span class="fw-bold">@studentEnrollments.Count</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Completed Courses</span>
+                                                <span class="fw-bold">@completedEnrollments</span>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar bg-success"
+                                                     style="width: @(studentEnrollments.Count > 0 ? (completedEnrollments * 100 / studentEnrollments.Count).ToString("0") : "0")%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Active Courses</span>
+                                                <span class="fw-bold">@activeEnrollments</span>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar bg-info"
+                                                     style="width: @(studentEnrollments.Count > 0 ? (activeEnrollments * 100 / studentEnrollments.Count).ToString("0") : "0")%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Total Time Spent</span>
+                                                <span class="fw-bold">@FormatHours(totalTimeSpent)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Stats Cards -->
+            <div class="d-block d-md-none">
+                <div class="row g-2 p-3">
+                    <div class="col-6">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body p-3">
+                                <h6 class="text-white-50 mb-1">Overall Progress</h6>
+                                <h3 class="mb-0">@overallProgress.ToString("0")%</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-success text-white">
+                            <div class="card-body p-3">
+                                <h6 class="text-white-50 mb-1">Completed</h6>
+                                <h3 class="mb-0">@completedEnrollments</h3>
+                                <small class="text-white-50">of @studentEnrollments.Count</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-info text-white">
+                            <div class="card-body p-3">
+                                <h6 class="text-white-50 mb-1">Active</h6>
+                                <h3 class="mb-0">@activeEnrollments</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body p-3">
+                                <h6 class="text-white-50 mb-1">Time Spent</h6>
+                                <h3 class="mb-0">@FormatHours(totalTimeSpent)</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enrollments Progress -->
+            <div class="card border-0 border-md m-3 m-md-0 mb-4">
+                <div class="card-header bg-transparent border-0 border-bottom">
+                    <h5 class="mb-0">
+                        <i class="fas fa-book-open me-2 text-primary"></i>
+                        Enrollments Progress
+                    </h5>
+                </div>
+                <div class="card-body p-2 p-md-3">
+                    @if (studentEnrollments.Any())
+                    {
+                        <!-- Desktop Table View -->
+                        <div class="d-none d-md-block">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Course/Specialization</th>
+                                            <th>Enrollment Date</th>
+                                            <th>Progress</th>
+                                            <th>Time Spent</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var enrollment in studentEnrollments)
+                                        {
+                                            var timeSpent = GetTimeSpent(enrollment);
+                                            var enrollmentTitle = GetEnrollmentTitle(enrollment);
+
+                                            <tr class="@(enrollment.Id == EnrollmentId ? "table-primary" : "")">
+                                                <td>
+                                                    <div>
+                                                        <strong>@enrollmentTitle</strong>
+                                                        @if (enrollment.Id == EnrollmentId)
+                                                        {
+                                                            <span class="badge bg-primary ms-2">Current</span>
+                                                        }
+                                                        <div>
+                                                            <small class="text-muted">
+                                                                @enrollment.EnrollmentType.ToString()
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>@enrollment.EnrollmentDate.ToString("MMM dd, yyyy")</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                            <div class="progress-bar @GetProgressBarClass(enrollment.ProgressPercentage)"
+                                                                 style="width: @(enrollment.ProgressPercentage)%"></div>
+                                                        </div>
+                                                        <span class="small">@enrollment.ProgressPercentage.ToString("0")%</span>
+                                                    </div>
+                                                </td>
+                                                <td class="small">@timeSpent</td>
+                                                <td>
+                                                    @if (enrollment.IsCompleted)
+                                                    {
+                                                        <span class="badge bg-success">
+                                                            <i class="fas fa-check me-1"></i> Completed
+                                                        </span>
+                                                        <div>
+                                                            <small class="text-muted">
+                                                                @(enrollment.CompletedDate?.ToString("MMM dd") ?? "")
+                                                            </small>
+                                                        </div>
+                                                    }
+                                                    else if (enrollment.ProgressPercentage > 0)
+                                                    {
+                                                        <span class="badge bg-info">
+                                                            <i class="fas fa-spinner me-1"></i> In Progress
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-warning">
+                                                            <i class="fas fa-clock me-1"></i> Not Started
+                                                        </span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-info"
+                                                            @onclick="() => ViewDetailedProgress(enrollment.Id)">
+                                                        <i class="fas fa-chart-bar"></i>
+                                                        <span class="d-none d-xl-inline ms-1">Details</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Mobile Card View -->
+                        <div class="d-block d-md-none">
+                            @foreach (var enrollment in studentEnrollments)
+                            {
+                                var timeSpent = GetTimeSpent(enrollment);
+
+                                <div class="card mb-3 border-0 border-bottom rounded-0 @(enrollment.Id == EnrollmentId ? "border-start border-primary border-4" : "")">
+                                    <div class="card-body p-3">
+                                        <!-- Header -->
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <h6 class="mb-1">@GetEnrollmentTitle(enrollment)</h6>
+                                                <small class="text-muted">@enrollment.EnrollmentType.ToString()</small>
+                                            </div>
+                                            <span class="badge @GetStatusBadgeClass(enrollment)">
+                                                @GetStatusText(enrollment)
+                                            </span>
+                                        </div>
+
+                                        <!-- Progress Bar -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between small mb-1">
+                                                <span>Progress</span>
+                                                <span class="fw-bold">@enrollment.ProgressPercentage.ToString("0")%</span>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar @GetProgressBarClass(enrollment.ProgressPercentage)"
+                                                     style="width: @(enrollment.ProgressPercentage)%"></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Details Grid -->
+                                        <div class="row g-2 mt-2 small">
+                                            <div class="col-6">
+                                                <i class="fas fa-calendar me-1 text-muted"></i>
+                                                @enrollment.EnrollmentDate.ToString("MMM dd, yyyy")
+                                            </div>
+                                            <div class="col-6">
+                                                <i class="fas fa-clock me-1 text-muted"></i>
+                                                @timeSpent
+                                            </div>
+                                        </div>
+
+                                        <!-- Action -->
+                                        <div class="mt-2">
+                                            <button class="btn btn-sm btn-outline-info w-100"
+                                                    @onclick="() => ViewDetailedProgress(enrollment.Id)">
+                                                <i class="fas fa-chart-bar me-2"></i> View Details
+                                            </button>
+                                        </div>
+
+                                        @if (enrollment.IsCompleted && enrollment.CompletedDate.HasValue)
+                                        {
+                                            <div class="mt-2 small text-success">
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                Completed on @enrollment.CompletedDate.Value.ToString("MMM dd, yyyy")
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card border-0 border-md m-3 m-md-0">
+                <div class="card-header bg-transparent border-0 border-bottom">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2 text-primary"></i>
+                        Recent Activity
+                    </h5>
+                </div>
+                <div class="card-body p-0 p-md-3">
+                    @if (recentActivities.Any())
+                    {
+                        <!-- Desktop Timeline -->
+                        <div class="d-none d-md-block timeline p-3">
+                            @foreach (var activity in recentActivities.OrderByDescending(a => a.Date).Take(5))
+                            {
+                                <div class="timeline-item mb-3">
+                                    <div class="d-flex">
+                                        <div class="timeline-marker @GetTimelineMarkerColor(activity.Type) me-3"></div>
+                                        <div class="timeline-content flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1">@activity.Title</h6>
+                                                <small class="text-muted">@activity.Date.ToString("MMM dd, HH:mm")</small>
+                                            </div>
+                                            <p class="mb-1 text-muted small">@activity.Description</p>
+                                            @if (!string.IsNullOrEmpty(activity.CourseTitle))
+                                            {
+                                                <small class="text-muted">
+                                                    <i class="fas fa-book me-1"></i>@activity.CourseTitle
+                                                </small>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Mobile Activity List -->
+                        <div class="d-block d-md-none">
+                            @foreach (var activity in recentActivities.OrderByDescending(a => a.Date).Take(5))
+                            {
+                                <div class="border-bottom p-3">
+                                    <div class="d-flex">
+                                        <div class="me-3">
+                                            <div class="activity-icon @GetTimelineMarkerColor(activity.Type) rounded-circle text-white d-flex align-items-center justify-content-center"
+                                                 style="width: 36px; height: 36px;">
+                                                <i class="fas @GetActivityIcon(activity.Type)"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6 class="mb-1">@activity.Title</h6>
+                                                    <p class="small text-muted mb-1">@activity.Description</p>
+                                                    @if (!string.IsNullOrEmpty(activity.CourseTitle))
+                                                    {
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-book me-1"></i>@activity.CourseTitle
+                                                        </small>
+                                                    }
+                                                </div>
+                                                <small class="text-muted ms-2">@activity.Date.ToString("MMM dd")</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No recent activity</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* Desktop Timeline Styles */
+    .timeline-marker {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 5px;
+    }
+
+    .timeline-item {
+        border-left: 2px solid #e9ecef;
+        padding-left: 15px;
+        position: relative;
+    }
+
+    /* Mobile Activity Icons */
+    .activity-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+
+    /* Progress Circle Styles */
+    .progress-circle {
+        position: relative;
+    }
+
+    .circular-chart {
+        display: block;
+    }
+
+    .circle-bg {
+        fill: none;
+    }
+
+    .circle {
+        fill: none;
+        transition: stroke-dasharray 0.3s ease;
+    }
+
+    .percentage {
+        fill: #666;
+        font-size: 0.5em;
+        text-anchor: middle;
+        font-weight: bold;
+    }
+
+    /* Mobile Stats Cards */
+    .card.bg-primary, .card.bg-success, .card.bg-info, .card.bg-warning {
+        border: none;
+    }
+
+    /* Responsive Adjustments */
+    @@media (max-width: 767px) {
+        .student-progress {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        .card {
+            border-radius: 0 !important;
+            margin-bottom: 8px;
+        }
+
+            .card:last-child {
+                margin-bottom: 0;
+            }
+    }
+</style>
+
+@code {
+    private class ActivityItem
+    {
+        public DateTime Date { get; set; }
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Type { get; set; } = ""; // enrollment, progress, completion
+        public string CourseTitle { get; set; } = "";
+    }
+
+    [Parameter] public int EnrollmentId { get; set; }
+
+    private UserDto? student;
+    private EnrollmentDto? targetEnrollment;
+    private List<EnrollmentDto> studentEnrollments = new();
+    private List<ActivityItem> recentActivities = new();
+    private double overallProgress = 0;
+    private int completedEnrollments = 0;
+    private int activeEnrollments = 0;
+    private int totalTimeSpent = 0;
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private UserDto? currentDoctor;
+    private Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+
+        if (isAuthenticated)
+        {
+            await LoadStudentProgress();
+
+            // Start auto-refresh every 30 seconds if authenticated
+            refreshTimer = new Timer(async _ => await RefreshData(), null, 30000, 30000);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (isAuthenticated)
+        {
+            await LoadStudentProgress();
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+
+            if (isAuthenticated)
+            {
+                currentDoctor = await AuthService.GetCurrentUserAsync();
+
+                if (currentDoctor == null || currentDoctor.UserType != UserType.Doctor)
+                {
+                    Console.WriteLine($"Current user is not a doctor: Type={currentDoctor?.UserType}");
+                    await ShowToast("error", "You must be a doctor to view student progress.");
+                    Navigation.NavigateTo("/", true);
+                    return;
+                }
+            }
+            else
+            {
+                Navigation.NavigateTo($"/account/login?returnUrl=/doctor/students/{EnrollmentId}/progress", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+        }
+    }
+
+    private async Task LoadStudentProgress()
+    {
+        if (!isAuthenticated) return;
+
+        isLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Get doctor user
+            currentDoctor = await AuthService.GetCurrentUserAsync();
+
+            if (currentDoctor == null)
+            {
+                await ShowToast("error", "Unable to load user information.");
+                return;
+            }
+
+            // First, get the target enrollment to find the student ID
+            var allDoctorEnrollments = await EnrollmentService.GetDoctorContentEnrollmentsAsync();
+
+            if (allDoctorEnrollments == null || !allDoctorEnrollments.Any())
+            {
+                await ShowToast("error", "No enrollments found");
+                isLoading = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            // Find the specific enrollment by ID
+            targetEnrollment = allDoctorEnrollments.FirstOrDefault(e => e.Id == EnrollmentId);
+
+            if (targetEnrollment == null)
+            {
+                await ShowToast("error", "Enrollment not found or you don't have permission to view it");
+                isLoading = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            // Get the student ID from the enrollment
+            var studentId = targetEnrollment.UserId;
+
+            // Get all enrollments for this student using the new doctor-specific endpoint
+            studentEnrollments = await EnrollmentService.GetStudentEnrollmentsForDoctorAsync(studentId) ?? new List<EnrollmentDto>();
+
+            if (studentEnrollments.Any())
+            {
+                // Get student info from the first enrollment
+                var firstEnrollment = studentEnrollments.First();
+                student = firstEnrollment.User;
+            }
+
+            // For each enrollment, load progress tracking details using the doctor-specific endpoint
+            foreach (var enrollment in studentEnrollments)
+            {
+                try
+                {
+                    var progress = await EnrollmentService.GetStudentProgressForDoctorAsync(enrollment.Id);
+                    if (progress != null)
+                    {
+                        enrollment.ProgressTrackings = progress;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading progress for enrollment {enrollment.Id}: {ex.Message}");
+                }
+            }
+
+            // Calculate stats
+            CalculateStats();
+
+            // Build recent activities
+            recentActivities = BuildRecentActivities();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading student progress: {ex.Message}");
+            await ShowToast("error", $"Error loading student progress: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void CalculateStats()
+    {
+        if (!studentEnrollments.Any())
+        {
+            overallProgress = 0;
+            completedEnrollments = 0;
+            activeEnrollments = 0;
+            totalTimeSpent = 0;
+            return;
+        }
+
+        overallProgress = studentEnrollments.Average(e => e.ProgressPercentage);
+        completedEnrollments = studentEnrollments.Count(e => e.IsCompleted);
+        activeEnrollments = studentEnrollments.Count(e => !e.IsCompleted && e.ProgressPercentage > 0);
+
+        totalTimeSpent = studentEnrollments
+            .Where(e => e.ProgressTrackings != null)
+            .SelectMany(e => e.ProgressTrackings ?? new List<ProgressTrackingDto>())
+            .Sum(p => p.TimeSpentSeconds);
+    }
+
+    private List<ActivityItem> BuildRecentActivities()
+    {
+        var activities = new List<ActivityItem>();
+
+        foreach (var enrollment in studentEnrollments)
+        {
+            var enrollmentTitle = GetEnrollmentTitle(enrollment);
+
+            // Add enrollment activity
+            activities.Add(new ActivityItem
+            {
+                Date = enrollment.EnrollmentDate,
+                Title = "Course Enrollment",
+                Description = $"Enrolled in {enrollmentTitle}",
+                Type = "enrollment",
+                CourseTitle = enrollmentTitle
+            });
+
+            // Add completion activity if completed
+            if (enrollment.IsCompleted && enrollment.CompletedDate.HasValue)
+            {
+                activities.Add(new ActivityItem
+                {
+                    Date = enrollment.CompletedDate.Value,
+                    Title = "Course Completed",
+                    Description = $"Completed {enrollmentTitle}",
+                    Type = "completion",
+                    CourseTitle = enrollmentTitle
+                });
+            }
+
+            // Add recent progress activities
+            if (enrollment.ProgressTrackings != null)
+            {
+                var recentProgress = enrollment.ProgressTrackings
+                    .Where(p => p.CompletedDate.HasValue)
+                    .OrderByDescending(p => p.CompletedDate)
+                    .Take(2);
+
+                foreach (var progress in recentProgress)
+                {
+                    activities.Add(new ActivityItem
+                    {
+                        Date = progress.CompletedDate!.Value,
+                        Title = "Progress Update",
+                        Description = $"Completed learning material",
+                        Type = "progress",
+                        CourseTitle = enrollmentTitle
+                    });
+                }
+            }
+        }
+
+        return activities.OrderByDescending(a => a.Date).ToList();
+    }
+
+    private string GetEnrollmentTitle(EnrollmentDto enrollment)
+    {
+        if (enrollment == null) return "Unknown";
+
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization => enrollment.Specialization?.Title ?? "Specialization",
+            EnrollmentType.Course => enrollment.Course?.Title ?? "Course",
+            EnrollmentType.Lecture => enrollment.Lecture?.Title ?? "Lecture",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetTimeSpent(EnrollmentDto enrollment)
+    {
+        if (enrollment?.ProgressTrackings == null || !enrollment.ProgressTrackings.Any())
+            return "0h 0m";
+
+        var totalSeconds = enrollment.ProgressTrackings.Sum(p => p.TimeSpentSeconds);
+        var hours = totalSeconds / 3600;
+        var minutes = (totalSeconds % 3600) / 60;
+
+        return $"{hours}h {minutes}m";
+    }
+
+    private string FormatHours(int totalSeconds)
+    {
+        var hours = totalSeconds / 3600;
+        return $"{hours}h";
+    }
+
+    private string GetProgressColor(double progress)
+    {
+        return progress switch
+        {
+            >= 100 => "#28a745", // success green
+            >= 75 => "#17a2b8",  // info blue
+            >= 50 => "#007bff",  // primary blue
+            >= 25 => "#ffc107",  // warning yellow
+            _ => "#dc3545"       // danger red
+        };
+    }
+
+    private string GetProgressBarClass(double progress)
+    {
+        return progress switch
+        {
+            >= 100 => "bg-success",
+            >= 75 => "bg-info",
+            >= 50 => "bg-primary",
+            >= 25 => "bg-warning",
+            _ => "bg-danger"
+        };
+    }
+
+    private string GetTimelineMarkerColor(string type)
+    {
+        return type switch
+        {
+            "enrollment" => "bg-primary",
+            "progress" => "bg-info",
+            "completion" => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetActivityIcon(string type)
+    {
+        return type switch
+        {
+            "enrollment" => "fa-user-plus",
+            "progress" => "fa-chart-line",
+            "completion" => "fa-check-circle",
+            _ => "fa-clock"
+        };
+    }
+
+    private string GetStatusBadgeClass(EnrollmentDto enrollment)
+    {
+        if (enrollment.IsCompleted) return "bg-success";
+        if (enrollment.ProgressPercentage > 0) return "bg-info";
+        return "bg-warning";
+    }
+
+    private string GetStatusText(EnrollmentDto enrollment)
+    {
+        if (enrollment.IsCompleted) return "Completed";
+        if (enrollment.ProgressPercentage > 0) return "In Progress";
+        return "Not Started";
+    }
+
+    private async Task RefreshData()
+    {
+        if (!isAuthenticated) return;
+
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadStudentProgress();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error refreshing data: {ex.Message}");
+            }
+        });
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/doctor/students");
+    }
+
+    private async Task ExportProgress()
+    {
+        if (!isAuthenticated || isLoading || !studentEnrollments.Any()) return;
+
+        try
+        {
+            // Create CSV content
+            var csvContent = new StringBuilder();
+
+            // Add headers
+            csvContent.AppendLine("Course,Enrollment Date,Progress %,Time Spent,Status,Last Activity");
+
+            // Add data
+            foreach (var enrollment in studentEnrollments)
+            {
+                var timeSpent = GetTimeSpent(enrollment);
+                var status = enrollment.IsCompleted ? "Completed" :
+                            enrollment.ProgressPercentage > 0 ? "In Progress" : "Not Started";
+
+                var lastActivity = enrollment.ProgressTrackings?
+                    .Where(p => p.CompletedDate.HasValue)
+                    .OrderByDescending(p => p.CompletedDate)
+                    .FirstOrDefault()?.CompletedDate?.ToString("yyyy-MM-dd") ?? "No activity";
+
+                csvContent.AppendLine($"\"{GetEnrollmentTitle(enrollment)}\",{enrollment.EnrollmentDate:yyyy-MM-dd},{enrollment.ProgressPercentage:F1},{timeSpent},{status},{lastActivity}");
+            }
+
+            // Add summary
+            csvContent.AppendLine();
+            csvContent.AppendLine("SUMMARY");
+            csvContent.AppendLine($"Total Enrollments,{studentEnrollments.Count}");
+            csvContent.AppendLine($"Completed Enrollments,{completedEnrollments}");
+            csvContent.AppendLine($"Active Enrollments,{activeEnrollments}");
+            csvContent.AppendLine($"Overall Progress,{overallProgress:F1}%");
+            csvContent.AppendLine($"Total Time Spent,{FormatHours(totalTimeSpent)}");
+
+            // Convert to base64
+            var csvData = csvContent.ToString();
+            var bytes = Encoding.UTF8.GetBytes(csvData);
+            var base64 = Convert.ToBase64String(bytes);
+
+            // Trigger download using JavaScript
+            var fileName = $"student_{student?.Id ?? 0}_progress_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            var js = $"var link = document.createElement('a');" +
+                    $"link.href = 'data:text/csv;base64,{base64}';" +
+                    $"link.download = '{fileName}';" +
+                    $"document.body.appendChild(link);" +
+                    $"link.click();" +
+                    $"document.body.removeChild(link);";
+
+            await JS.InvokeVoidAsync("eval", js);
+
+            await ShowToast("success", "Progress exported successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting data: {ex.Message}");
+            await ShowToast("error", $"Error exporting data: {ex.Message}");
+        }
+    }
+
+    private void ViewDetailedProgress(int enrollmentId)
+    {
+        Navigation.NavigateTo($"/doctor/students/{enrollmentId}/progress");
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", type, message);
+        }
+        catch
+        {
+            Console.WriteLine($"{type.ToUpper()}: {message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

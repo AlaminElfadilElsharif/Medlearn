@@ -1,0 +1,1638 @@
+﻿@page "/lecture/{lectureId:int}/materials"
+
+
+<PageTitle>Lecture Materials</PageTitle>
+
+<div class="lecture-materials">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Mobile Header -->
+        <div class="d-block d-md-none">
+            <div class="bg-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0 me-3" @onclick="NavigateToLectures">
+                        <i class="fas fa-arrow-left fa-lg"></i>
+                    </button>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-0">Lecture Materials</h5>
+                        <small class="opacity-75">@(lecture?.Title ?? "Loading...")</small>
+                    </div>
+                    <button class="btn btn-link text-white p-0" @onclick="OpenAddMaterialModal">
+                        <i class="fas fa-plus fa-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Search Bar -->
+            <div class="p-3 bg-light">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+                    <input type="text"
+                           class="form-control border-start-0 ps-0"
+                           placeholder="Search materials..."
+                           @bind="searchTerm"
+                           @oninput="OnSearchInput" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="d-none d-md-block">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="/doctor/content">Content</a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="/content/lectures">Lectures</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                Materials for @(lecture?.Title ?? "Lecture")
+                            </li>
+                        </ol>
+                    </nav>
+                    <h1>Lecture Materials</h1>
+                    <p class="text-muted mb-0">Manage materials for "@(lecture?.Title ?? "Lecture")"</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary me-2" @onclick="NavigateToLectures">
+                        <i class="fas fa-arrow-left me-2"></i> Back
+                    </button>
+                    <button class="btn btn-primary" @onclick="OpenAddMaterialModal">
+                        <i class="fas fa-plus me-2"></i> Add Material
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error/Success Messages -->
+        @if (errorMessage != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show mx-3 mx-md-0" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+            </div>
+        }
+
+        @if (successMessage != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show mx-3 mx-md-0" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                @successMessage
+                <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+            </div>
+        }
+
+        <!-- Loading State -->
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading materials...</p>
+            </div>
+        }
+        else if (lecture == null)
+        {
+            <!-- Lecture Not Found -->
+            <div class="text-center py-5 mx-3">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h5>Lecture Not Found</h5>
+                <p class="text-muted mb-4">The requested lecture could not be found or you don't have permission to access it.</p>
+                <button class="btn btn-primary" @onclick="NavigateToLectures">
+                    <i class="fas fa-arrow-left me-2"></i> Back to Lectures
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Lecture Info Card (Mobile) -->
+            <div class="d-block d-md-none mx-3 mt-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">@lecture.Title</h6>
+                        @if (!string.IsNullOrEmpty(lecture.Description))
+                        {
+                            <p class="card-text small text-muted">@lecture.Description</p>
+                        }
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge @(lecture.IsFreePreview ? "bg-success" : "bg-warning")">
+                                @(lecture.IsFreePreview ? "Free" : $"${lecture.Price:N2}")
+                            </span>
+                            <span class="badge bg-info">@lecture.EstimatedDurationMinutes min</span>
+                            <span class="badge bg-primary">Order: @lecture.Order</span>
+                            <span class="badge @(lecture.IsActive ? "bg-success" : "bg-secondary")">
+                                @(lecture.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Lecture Info Card -->
+            <div class="d-none d-md-block card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-10">
+                            <h5 class="card-title">@lecture.Title</h5>
+                            <p class="card-text text-muted mb-2">
+                                @if (!string.IsNullOrEmpty(lecture.Description))
+                                {
+                                    <span>@lecture.Description</span>
+                                }
+                            </p>
+                            <div class="d-flex flex-wrap gap-3">
+                                <span class="badge @(lecture.IsFreePreview ? "bg-success" : "bg-warning text-dark")">
+                                    <i class="fas @(lecture.IsFreePreview ? "fa-unlock" : "fa-dollar-sign") me-1"></i>
+                                    @(lecture.IsFreePreview ? "Free Preview" : $"${lecture.Price:N2}")
+                                </span>
+                                <span class="badge bg-info">
+                                    <i class="fas fa-clock me-1"></i>
+                                    @lecture.EstimatedDurationMinutes min
+                                </span>
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-sort-numeric-up me-1"></i>
+                                    Order: @lecture.Order
+                                </span>
+                                <span class="badge @(lecture.IsActive ? "bg-success" : "bg-secondary")">
+                                    <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>
+                                    @(lecture.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => EditLecture(lecture.CourseId, lecture.Id)">
+                                <i class="fas fa-edit me-1"></i> Edit Lecture
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Stats Cards (Horizontal Scroll) -->
+            <div class="d-block d-md-none">
+                <div class="px-3 mt-3">
+                    <div class="d-flex gap-2 overflow-auto pb-2 stats-scroll">
+                        <div class="stat-card flex-shrink-0">
+                            <div class="card">
+                                <div class="card-body py-2 px-3">
+                                    <small class="text-muted d-block">Total</small>
+                                    <div class="d-flex align-items-center">
+                                        <h5 class="mb-0 me-2">@(lecture.Materials?.Count ?? 0)</h5>
+                                        <i class="fas fa-file-alt text-primary small"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card flex-shrink-0">
+                            <div class="card">
+                                <div class="card-body py-2 px-3">
+                                    <small class="text-muted d-block">Duration</small>
+                                    <div class="d-flex align-items-center">
+                                        <h6 class="mb-0 me-2">@totalDurationFormatted</h6>
+                                        <i class="fas fa-clock text-success small"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card flex-shrink-0">
+                            <div class="card">
+                                <div class="card-body py-2 px-3">
+                                    <small class="text-muted d-block">Size</small>
+                                    <div class="d-flex align-items-center">
+                                        <h6 class="mb-0 me-2">@totalSizeFormatted</h6>
+                                        <i class="fas fa-hdd text-warning small"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card flex-shrink-0">
+                            <div class="card">
+                                <div class="card-body py-2 px-3">
+                                    <small class="text-muted d-block">Downloadable</small>
+                                    <div class="d-flex align-items-center">
+                                        <h5 class="mb-0 me-2">@downloadableCount</h5>
+                                        <i class="fas fa-download text-info small"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Stats Cards -->
+            <div class="d-none d-md-block row mb-4">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted">Total Materials</h6>
+                                    <h3>@(lecture.Materials?.Count ?? 0)</h3>
+                                </div>
+                                <i class="fas fa-file-alt fa-2x text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted">Total Duration</h6>
+                                    <h3>@totalDurationFormatted</h3>
+                                </div>
+                                <i class="fas fa-clock fa-2x text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted">Total Size</h6>
+                                    <h3>@totalSizeFormatted</h3>
+                                </div>
+                                <i class="fas fa-hdd fa-2x text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted">Downloadable</h6>
+                                    <h3>@downloadableCount</h3>
+                                </div>
+                                <i class="fas fa-download fa-2x text-info"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Filter Bar -->
+            <div class="d-block d-md-none px-3 mt-3">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary flex-grow-1 btn-sm"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#mobileFilters">
+                        <i class="fas fa-filter me-1"></i> Filter
+                        @if (typeFilter.HasValue)
+                        {
+                            <span class="badge bg-primary ms-1">1</span>
+                        }
+                    </button>
+                    @if (isFiltered)
+                    {
+                        <button class="btn btn-outline-danger btn-sm" @onclick="ResetFilters">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    }
+                </div>
+
+                <!-- Mobile Filter Options -->
+                <div class="collapse mt-2" id="mobileFilters">
+                    <div class="card card-body p-2">
+                        <h6 class="small fw-bold mb-2">Filter by Type</h6>
+                        @foreach (var type in Enum.GetValues<MaterialType>())
+                        {
+                            <div class="form-check mb-1">
+                                <input class="form-check-input"
+                                       type="radio"
+                                       name="mobileTypeFilter"
+                                       id="mobile-type-@type"
+                                       checked="@(typeFilter == type)"
+                                       @onchange="() => ApplyTypeFilter(type)" />
+                                <label class="form-check-label small" for="mobile-type-@type">
+                                    <i class="fas @GetMaterialTypeIcon(type) me-2"></i>
+                                    @type.ToString()
+                                </label>
+                            </div>
+                        }
+                        <div class="form-check mb-1">
+                            <input class="form-check-input"
+                                   type="radio"
+                                   name="mobileTypeFilter"
+                                   id="mobile-type-all"
+                                   checked="@(typeFilter == null)"
+                                   @onchange="() => ApplyTypeFilter(null)" />
+                            <label class="form-check-label small" for="mobile-type-all">
+                                All Types
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Filters -->
+            <div class="d-none d-md-block mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Materials (@(lecture.Materials?.Count ?? 0))</h5>
+                            <div class="d-flex gap-2">
+                                <div class="input-group" style="width: 300px;">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" placeholder="Search materials..."
+                                           @bind="searchTerm"
+                                           @oninput="OnSearchInput" />
+                                </div>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                                            data-bs-toggle="dropdown">
+                                        <i class="fas fa-filter me-1"></i> Filter
+                                        @if (typeFilter.HasValue)
+                                        {
+                                            <span class="badge bg-primary ms-1">1</span>
+                                        }
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <button class="dropdown-item" @onclick="() => ApplyTypeFilter(null)">
+                                                All Types
+                                            </button>
+                                        </li>
+                                        @foreach (var type in Enum.GetValues<MaterialType>())
+                                        {
+                                            <li>
+                                                <button class="dropdown-item" @onclick="() => ApplyTypeFilter(type)">
+                                                    <i class="fas @GetMaterialTypeIcon(type) me-2"></i>
+                                                    @type.ToString()
+                                                </button>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Materials Grid/Table -->
+            <div class="px-3 px-md-0">
+                @if (!filteredMaterials.Any())
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                        <h5>No materials found</h5>
+                        <p class="text-muted">@(isFiltered ? "No materials match your filters" : "Add your first material to this lecture")</p>
+                        @if (!isFiltered)
+                        {
+                            <button class="btn btn-primary mt-3" @onclick="OpenAddMaterialModal">
+                                <i class="fas fa-plus me-2"></i> Add First Material
+                            </button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- Mobile List View -->
+                    <div class="d-block d-md-none">
+                        <div class="list-group list-group-flush">
+                            @foreach (var material in paginatedMaterials)
+                            {
+                                <div class="list-group-item px-0 py-3">
+                                    <div class="d-flex align-items-start">
+                                        <!-- Thumbnail -->
+                                        <div class="mobile-thumbnail me-3">
+                                            @if (!string.IsNullOrEmpty(material.ThumbnailUrl))
+                                            {
+                                                <img src="@ImageUrlService.GetImageUrl(material.ThumbnailUrl)"
+                                                     alt="@material.Title"
+                                                     class="rounded"
+                                                     style="width: 60px; height: 60px; object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                                     style="width: 60px; height: 60px;">
+                                                    <i class="fas @GetMaterialTypeIcon(material.Type) text-muted"></i>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Content -->
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6 class="mb-1">@material.Title</h6>
+                                                    <div class="d-flex gap-2 mb-2">
+                                                        <span class="badge bg-dark">@material.Type</span>
+                                                        @if (material.IsDownloadable)
+                                                        {
+                                                            <span class="badge bg-info">Downloadable</span>
+                                                        }
+                                                    </div>
+                                                    <div class="d-flex gap-3 small text-muted">
+                                                        <span>
+                                                            <i class="fas fa-clock me-1"></i>
+                                                            @FormatDuration(material.DurationSeconds)
+                                                        </span>
+                                                        <span>
+                                                            <i class="fas fa-hdd me-1"></i>
+                                                            @FormatFileSize(material.FileSize)
+                                                        </span>
+                                                        <span>
+                                                            Order: @material.Order
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input"
+                                                           type="checkbox"
+                                                           id="mobile-material-@material.Id"
+                                                           checked="@material.IsActive"
+                                                           @onchange="async (e) => await ToggleMaterialStatus(material.Id, (bool)e.Value)" />
+                                                </div>
+                                            </div>
+
+                                            <!-- Mobile Action Buttons -->
+                                            <div class="btn-group w-100 mt-2" role="group">
+                                                <button class="btn btn-outline-primary btn-sm"
+                                                        @onclick="() => PreviewMaterial(material)">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-secondary btn-sm"
+                                                        @onclick="() => EditMaterial(material)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info btn-sm"
+                                                        @onclick="() => CopyMaterialLink(material)">
+                                                    <i class="fas fa-link"></i>
+                                                </button>
+                                                @if (material.IsDownloadable)
+                                                {
+                                                    <button class="btn btn-outline-success btn-sm"
+                                                            @onclick="() => DownloadMaterial(material)">
+                                                        <i class="fas fa-download"></i>
+                                                    </button>
+                                                }
+                                                <button class="btn btn-outline-danger btn-sm"
+                                                        @onclick="async () => await ConfirmDeleteMaterial(material.Id, material.Title)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Desktop Grid View -->
+                    <div class="d-none d-md-block">
+                        <div class="row g-4">
+                            @foreach (var material in paginatedMaterials)
+                            {
+                                <div class="col-xl-3 col-lg-4 col-md-6">
+                                    <div class="card material-card h-100">
+                                        <div class="material-thumbnail">
+                                            @if (!string.IsNullOrEmpty(material.ThumbnailUrl))
+                                            {
+                                                <img src="@ImageUrlService.GetImageUrl(material.ThumbnailUrl)"
+                                                     alt="@material.Title"
+                                                     class="material-thumbnail-img"
+                                                     loading="lazy" />
+                                            }
+                                            else
+                                            {
+                                                <div class="material-thumbnail-placeholder">
+                                                    <i class="fas @GetMaterialTypeIcon(material.Type) fa-2x"></i>
+                                                </div>
+                                            }
+                                            <div class="material-type-badge">
+                                                <span class="badge bg-dark">@material.Type.ToString()</span>
+                                            </div>
+                                            @if (material.IsDownloadable)
+                                            {
+                                                <div class="material-download-badge">
+                                                    <i class="fas fa-download text-primary"></i>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="card-body">
+                                            <h6 class="card-title text-truncate" title="@material.Title">
+                                                @material.Title
+                                            </h6>
+                                            <p class="card-text text-muted small mb-2">
+                                                @if (!string.IsNullOrEmpty(material.Description))
+                                                {
+                                                    @(material.Description.Length > 100 ? material.Description.Substring(0, 100) + "..." : material.Description)
+                                                }
+                                            </p>
+                                            <div class="material-meta d-flex justify-content-between align-items-center mb-3">
+                                                <div>
+                                                    @if (material.Type == MaterialType.Video || material.Type == MaterialType.Audio)
+                                                    {
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-clock me-1"></i>
+                                                            @FormatDuration(material.DurationSeconds)
+                                                        </small>
+                                                    }
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-hdd me-1"></i>
+                                                    @FormatFileSize(material.FileSize)
+                                                </small>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input material-status-toggle"
+                                                           type="checkbox"
+                                                           id="material-@material.Id"
+                                                           checked="@material.IsActive"
+                                                           @onchange="async (e) => await ToggleMaterialStatus(material.Id, (bool)e.Value)" />
+                                                    <label class="form-check-label small" for="material-@material.Id">
+                                                        <span class="badge @(material.IsActive ? "bg-success" : "bg-secondary")">
+                                                            @(material.IsActive ? "Active" : "Inactive")
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                                <small class="text-muted">
+                                                    Order: @material.Order
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="card-footer bg-transparent">
+                                            <div class="btn-group w-100" role="group">
+                                                <button class="btn btn-outline-primary btn-sm"
+                                                        @onclick="() => PreviewMaterial(material)"
+                                                        title="Preview">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-secondary btn-sm"
+                                                        @onclick="() => EditMaterial(material)"
+                                                        title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info btn-sm"
+                                                        @onclick="() => CopyMaterialLink(material)"
+                                                        title="Copy Link">
+                                                    <i class="fas fa-link"></i>
+                                                </button>
+                                                @if (material.IsDownloadable)
+                                                {
+                                                    <button class="btn btn-outline-success btn-sm"
+                                                            @onclick="() => DownloadMaterial(material)"
+                                                            title="Download">
+                                                        <i class="fas fa-download"></i>
+                                                    </button>
+                                                }
+                                                <button class="btn btn-outline-danger btn-sm"
+                                                        @onclick="async () => await ConfirmDeleteMaterial(material.Id, material.Title)"
+                                                        title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Pagination (Mobile) -->
+                    @if (totalPages > 1)
+                    {
+                        <div class="d-block d-md-none mt-4">
+                            <div class="d-flex justify-content-center gap-2">
+                                <button class="btn btn-outline-primary btn-sm @(currentPage == 1 ? "disabled" : "")"
+                                        @onclick="() => ChangePage(1)">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm @(currentPage == 1 ? "disabled" : "")"
+                                        @onclick="() => ChangePage(currentPage - 1)">
+                                    <i class="fas fa-angle-left"></i>
+                                </button>
+                                <span class="btn btn-primary btn-sm disabled">
+                                    @currentPage / @totalPages
+                                </span>
+                                <button class="btn btn-outline-primary btn-sm @(currentPage == totalPages ? "disabled" : "")"
+                                        @onclick="() => ChangePage(currentPage + 1)">
+                                    <i class="fas fa-angle-right"></i>
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm @(currentPage == totalPages ? "disabled" : "")"
+                                        @onclick="() => ChangePage(totalPages)">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Desktop Pagination -->
+                        <div class="d-none d-md-block">
+                            <nav aria-label="Materials pagination" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(1)" aria-label="First">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </button>
+                                    </li>
+                                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(currentPage - 1)" aria-label="Previous">
+                                            <i class="fas fa-angle-left"></i>
+                                        </button>
+                                    </li>
+
+                                    @for (int i = startPage; i <= endPage; i++)
+                                    {
+                                        <li class="page-item @(i == currentPage ? "active" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                                        </li>
+                                    }
+
+                                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(currentPage + 1)" aria-label="Next">
+                                            <i class="fas fa-angle-right"></i>
+                                        </button>
+                                    </li>
+                                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(totalPages)" aria-label="Last">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+
+                        <div class="text-center mt-2">
+                            <small class="text-muted">
+                                Showing @((currentPage - 1) * pageSize + 1)-@Math.Min(currentPage * pageSize, filteredMaterials.Count)
+                                of @filteredMaterials.Count materials
+                            </small>
+                        </div>
+                    }
+                }
+            </div>
+
+            <!-- Mobile Quick Actions -->
+            <div class="d-block d-md-none fixed-bottom p-3 bg-white border-top">
+                <div class="row g-2">
+                    <div class="col-4">
+                        <button class="btn btn-outline-primary w-100 btn-sm" @onclick="OpenAddMaterialModal">
+                            <i class="fas fa-plus"></i>
+                            <small class="d-block">Add</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-success w-100 btn-sm" @onclick="NavigateToLectures">
+                            <i class="fas fa-arrow-left"></i>
+                            <small class="d-block">Back</small>
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-warning w-100 btn-sm" @onclick="ExportMaterials">
+                            <i class="fas fa-file-export"></i>
+                            <small class="d-block">Export</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Quick Actions -->
+            <div class="d-none d-md-block row mt-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        <button class="btn btn-primary w-100" @onclick="OpenAddMaterialModal">
+                                            <i class="fas fa-plus-circle me-2"></i>
+                                            Add New Material
+                                        </button>
+                                        <small class="text-muted mt-2 d-block">
+                                            Upload a new file to this lecture
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        <button class="btn btn-success w-100" @onclick="NavigateToLectures">
+                                            <i class="fas fa-arrow-left me-2"></i>
+                                            Back to Lectures
+                                        </button>
+                                        <small class="text-muted mt-2 d-block">
+                                            Return to lecture management
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-center">
+                                        <button class="btn btn-warning w-100" @onclick="ExportMaterials">
+                                            <i class="fas fa-file-export me-2"></i>
+                                            Export List
+                                        </button>
+                                        <small class="text-muted mt-2 d-block">
+                                            Export materials to CSV
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Add Material Modal (Responsive) -->
+<div class="modal @(showMaterialModal ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-dialog-scrollable @(isMobile ? "modal-fullscreen" : "modal-lg")">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Material</h5>
+                <button type="button" class="btn-close" @onclick="CloseMaterialModal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="materialForm" @onsubmit="HandleMaterialSubmit">
+                    <div class="row g-3">
+                        <!-- Title -->
+                        <div class="col-md-12">
+                            <label class="form-label required">Title</label>
+                            <input type="text" class="form-control"
+                                   @bind="newMaterial.Title"
+                                   placeholder="Enter material title"
+                                   required />
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-md-12">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" rows="@(isMobile ? "2" : "3")"
+                                      @bind="newMaterial.Description"
+                                      placeholder="Enter material description (optional)"></textarea>
+                        </div>
+
+                        <!-- Type and Order -->
+                        <div class="col-md-6">
+                            <label class="form-label required">Type</label>
+                            <select class="form-select" @bind="newMaterial.Type" required>
+                                @foreach (var type in Enum.GetValues<MaterialType>())
+                                {
+                                    <option value="@type">@type.ToString()</option>
+                                }
+                            </select>
+                            <div class="form-text small">
+                                <i class="fas @GetMaterialTypeIcon(newMaterial.Type) me-1"></i>
+                                @GetMaterialTypeDescription(newMaterial.Type)
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label required">Order</label>
+                            <input type="number" class="form-control"
+                                   @bind="newMaterial.Order"
+                                   min="1"
+                                   max="100"
+                                   required />
+                        </div>
+
+                        <!-- File Upload -->
+                        <div class="col-md-12">
+                            <label class="form-label required">File</label>
+                            <InputFile class="form-control"
+                                       OnChange="HandleFileSelected"
+                                       accept=".pdf,.mp4,.mp3,.jpg,.jpeg,.png,.gif,.doc,.docx,.ppt,.pptx,.xls,.xlsx" />
+
+                            @if (selectedFile != null)
+                            {
+                                <div class="alert alert-info mt-3 p-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="small">
+                                            <i class="fas fa-file me-2"></i>
+                                            <strong>@TruncateFileName(selectedFile.Name, 20)</strong>
+                                            <small class="d-block text-muted">
+                                                @FormatFileSize(selectedFile.Size)
+                                            </small>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                @onclick="ClearSelectedFile">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    Max file size: 500MB
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Settings -->
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox"
+                                       @bind="newMaterial.IsDownloadable"
+                                       id="isDownloadable" />
+                                <label class="form-check-label" for="isDownloadable">
+                                    Allow students to download this material
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseMaterialModal">
+                    Cancel
+                </button>
+                <button type="submit" form="materialForm" class="btn btn-primary" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Processing...</span>
+                    }
+                    else
+                    {
+                        <i class="fas fa-plus me-2"></i>
+                        <span>Add Material</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Material Preview Modal (Responsive) -->
+<div class="modal @(showPreviewModal ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.9);">
+    <div class="modal-dialog modal-fullscreen modal-md-fullscreen">
+        <div class="modal-content bg-transparent">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-white small">@TruncateFileName(previewMaterial?.Title ?? "", 30)</h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="ClosePreviewModal"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                @if (previewMaterial != null)
+                {
+                    <div class="w-100">
+                        @if (previewMaterial.Type == MaterialType.Video)
+                        {
+                            <video controls class="w-100" style="max-height: @(isMobile ? "50vh" : "70vh");">
+                                <source src="@ImageUrlService.GetImageUrl(previewMaterial.ContentUrl)"
+                                        type="video/mp4" />
+                                Your browser does not support the video tag.
+                            </video>
+                        }
+                        else if (previewMaterial.Type == MaterialType.Audio)
+                        {
+                            <audio controls class="w-100">
+                                <source src="@ImageUrlService.GetImageUrl(previewMaterial.ContentUrl)"
+                                        type="audio/mpeg" />
+                                Your browser does not support the audio element.
+                            </audio>
+                        }
+                        else if (previewMaterial.Type == MaterialType.Image)
+                        {
+                            <img src="@ImageUrlService.GetImageUrl(previewMaterial.ContentUrl)"
+                                 alt="@previewMaterial.Title"
+                                 class="img-fluid mx-auto d-block"
+                                 style="max-height: @(isMobile ? "50vh" : "70vh");" />
+                        }
+                        else if (previewMaterial.Type == MaterialType.PDF)
+                        {
+                            <iframe src="@ImageUrlService.GetImageUrl(previewMaterial.ContentUrl)"
+                                    class="w-100"
+                                    style="height: @(isMobile ? "50vh" : "70vh");"></iframe>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info text-center">
+                                <i class="fas fa-file fa-2x mb-2"></i>
+                                <p>This file type cannot be previewed directly.</p>
+                                <p class="small">You can download the file to view it.</p>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-light" @onclick="ClosePreviewModal">
+                    <i class="fas fa-times me-2"></i> Close
+                </button>
+                @if (previewMaterial?.IsDownloadable == true)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="() => DownloadMaterial(previewMaterial)">
+                        <i class="fas fa-download me-2"></i> Download
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int lectureId { get; set; }
+
+    // Services
+    private LectureDto? lecture;
+    private List<LearningMaterialDto> allMaterials = new();
+    private List<LearningMaterialDto> filteredMaterials = new();
+    private List<LearningMaterialDto> paginatedMaterials = new();
+    private bool isLoading = true;
+    private string? errorMessage = null;
+    private string? successMessage = null;
+
+    // Material form
+    private bool showMaterialModal = false;
+    private MaterialUploadDtos newMaterial = new();
+    private IBrowserFile? selectedFile = null;
+    private bool isSubmitting = false;
+
+    // Preview
+    private bool showPreviewModal = false;
+    private LearningMaterialDto? previewMaterial = null;
+
+    // Filtering
+    private string searchTerm = "";
+    private MaterialType? typeFilter = null;
+    private bool isFiltered = false;
+
+    // Pagination
+    private int currentPage = 1;
+    private int pageSize = 8;
+    private int totalPages = 1;
+    private int startPage = 1;
+    private int endPage = 1;
+
+    // Stats
+    private string totalDurationFormatted = "0:00";
+    private string totalSizeFormatted = "0 B";
+    private int downloadableCount = 0;
+
+    // Responsive detection
+    private bool isMobile => BrowserWidth < 768;
+    private int BrowserWidth { get; set; } = 1024;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        await GetBrowserWidth();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (lectureId > 0)
+        {
+            await LoadData();
+        }
+    }
+
+    [Inject] private HttpClient _httpClient { get; set; } = default!;
+
+    private async Task GetBrowserWidth()
+    {
+        try
+        {
+            BrowserWidth = await JS.InvokeAsync<int>("eval", "window.innerWidth");
+        }
+        catch
+        {
+            // Default to desktop if can't detect
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // Load lecture
+            lecture = await LectureService.GetLectureAsync(lectureId);
+
+            if (lecture != null && lecture.Materials != null)
+            {
+                allMaterials = lecture.Materials;
+
+                // Fix URLs
+                foreach (var material in allMaterials)
+                {
+                    if (!string.IsNullOrEmpty(material.ThumbnailUrl))
+                    {
+                        material.ThumbnailUrl = ImageUrlService.GetImageUrl(material.ThumbnailUrl);
+                    }
+                    if (!string.IsNullOrEmpty(material.ContentUrl))
+                    {
+                        material.ContentUrl = ImageUrlService.GetImageUrl(material.ContentUrl);
+                    }
+                }
+
+                // Calculate stats
+                CalculateStats();
+
+                // Apply initial filters
+                await SearchMaterials();
+            }
+            else if (lecture == null)
+            {
+                errorMessage = "Lecture not found or you don't have permission to access it.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading lecture materials: {ex.Message}";
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CalculateStats()
+    {
+        try
+        {
+            var totalSeconds = allMaterials
+                .Where(m => m.Type == MaterialType.Video || m.Type == MaterialType.Audio)
+                .Sum(m => m.DurationSeconds);
+            totalDurationFormatted = FormatDuration(totalSeconds);
+
+            var totalBytes = allMaterials.Sum(m => m.FileSize);
+            totalSizeFormatted = FormatFileSize(totalBytes);
+
+            downloadableCount = allMaterials.Count(m => m.IsDownloadable);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error calculating stats: {ex.Message}");
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double len = bytes;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string FormatDuration(int seconds)
+    {
+        var timeSpan = TimeSpan.FromSeconds(seconds);
+        if (timeSpan.TotalHours >= 1)
+        {
+            return timeSpan.ToString(@"hh\:mm\:ss");
+        }
+        return timeSpan.ToString(@"mm\:ss");
+    }
+
+    private string TruncateFileName(string fileName, int maxLength)
+    {
+        if (string.IsNullOrEmpty(fileName) || fileName.Length <= maxLength)
+            return fileName;
+
+        var extension = Path.GetExtension(fileName);
+        var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+
+        if (nameWithoutExt.Length <= maxLength - extension.Length - 3)
+            return fileName;
+
+        return $"{nameWithoutExt.Substring(0, maxLength - extension.Length - 3)}...{extension}";
+    }
+
+    private async Task SearchMaterials()
+    {
+        try
+        {
+            filteredMaterials = allMaterials.ToList();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                filteredMaterials = filteredMaterials
+                    .Where(m => m.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                               (m.Description?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .ToList();
+            }
+
+            if (typeFilter.HasValue)
+            {
+                filteredMaterials = filteredMaterials
+                    .Where(m => m.Type == typeFilter.Value)
+                    .ToList();
+            }
+
+            isFiltered = !string.IsNullOrEmpty(searchTerm) || typeFilter.HasValue;
+
+            filteredMaterials = filteredMaterials
+                .OrderBy(m => m.Order)
+                .ToList();
+
+            UpdatePagination();
+
+            paginatedMaterials = filteredMaterials
+                .Skip((currentPage - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error searching materials: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    private void UpdatePagination()
+    {
+        totalPages = (int)Math.Ceiling((double)filteredMaterials.Count / pageSize);
+        if (totalPages < 1) totalPages = 1;
+
+        if (currentPage > totalPages)
+            currentPage = 1;
+
+        int visiblePages = isMobile ? 3 : 5;
+        startPage = Math.Max(1, currentPage - visiblePages / 2);
+        endPage = Math.Min(totalPages, startPage + visiblePages - 1);
+
+        if (endPage - startPage + 1 < visiblePages)
+        {
+            startPage = Math.Max(1, endPage - visiblePages + 1);
+        }
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page < 1 || page > totalPages || page == currentPage)
+            return;
+
+        currentPage = page;
+        _ = SearchMaterials();
+    }
+
+    private void OnSearchInput()
+    {
+        currentPage = 1;
+        _ = SearchMaterials();
+    }
+
+    private void ApplyTypeFilter(MaterialType? type)
+    {
+        typeFilter = type;
+        currentPage = 1;
+        _ = SearchMaterials();
+    }
+
+    private void ResetFilters()
+    {
+        searchTerm = "";
+        typeFilter = null;
+        currentPage = 1;
+        _ = SearchMaterials();
+    }
+
+    private void OpenAddMaterialModal()
+    {
+        newMaterial = new MaterialUploadDtos
+        {
+            Title = "",
+            Description = "",
+            Type = MaterialType.Document,
+            Order = allMaterials.Count > 0 ? allMaterials.Max(m => m.Order) + 1 : 1,
+            IsDownloadable = true
+        };
+        selectedFile = null;
+        showMaterialModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseMaterialModal()
+    {
+        showMaterialModal = false;
+        newMaterial = new MaterialUploadDtos();
+        selectedFile = null;
+        isSubmitting = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleMaterialSubmit()
+    {
+        try
+        {
+            isSubmitting = true;
+            StateHasChanged();
+
+            if (string.IsNullOrEmpty(newMaterial.Title))
+            {
+                errorMessage = "Title is required.";
+                isSubmitting = false;
+                return;
+            }
+
+            if (selectedFile == null)
+            {
+                errorMessage = "Please select a file to upload.";
+                isSubmitting = false;
+                return;
+            }
+
+            const long maxFileSize = 500 * 1024 * 1024;
+            if (selectedFile.Size > maxFileSize)
+            {
+                errorMessage = $"File size exceeds maximum allowed size of {maxFileSize / (1024 * 1024)}MB.";
+                isSubmitting = false;
+                return;
+            }
+
+            using var fileStream = selectedFile.OpenReadStream(maxAllowedSize: maxFileSize);
+            var success = await LectureService.AddMaterialAsync(lectureId, newMaterial, fileStream, selectedFile.Name);
+
+            if (success)
+            {
+                successMessage = "Material added successfully!";
+                CloseMaterialModal();
+                await LoadData();
+            }
+            else
+            {
+                errorMessage = "Failed to add material. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            selectedFile = e.File;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error selecting file: {ex.Message}";
+        }
+    }
+
+    private void ClearSelectedFile()
+    {
+        selectedFile = null;
+        StateHasChanged();
+    }
+
+    private void PreviewMaterial(LearningMaterialDto material)
+    {
+        previewMaterial = material;
+        showPreviewModal = true;
+        StateHasChanged();
+    }
+
+    private void ClosePreviewModal()
+    {
+        previewMaterial = null;
+        showPreviewModal = false;
+        StateHasChanged();
+    }
+
+    private async Task DownloadMaterial(LearningMaterialDto material)
+    {
+        try
+        {
+            if (material.IsDownloadable && !string.IsNullOrEmpty(material.ContentUrl))
+            {
+                await JS.InvokeVoidAsync("open", material.ContentUrl, "_blank");
+            }
+            else
+            {
+                errorMessage = "This material is not available for download.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error downloading material: {ex.Message}";
+        }
+    }
+
+    private async Task CopyMaterialLink(LearningMaterialDto material)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(material.ContentUrl))
+            {
+                await JS.InvokeVoidAsync("navigator.clipboard.writeText", material.ContentUrl);
+                successMessage = "Link copied to clipboard!";
+                StateHasChanged();
+
+                await Task.Delay(3000);
+                successMessage = null;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to copy link: {ex.Message}";
+        }
+    }
+
+    private async Task ConfirmDeleteMaterial(int materialId, string materialTitle)
+    {
+        try
+        {
+            bool confirmed = await JS.InvokeAsync<bool>("confirm",
+                $"Are you sure you want to delete material '{materialTitle}'? This action cannot be undone.");
+
+            if (confirmed)
+            {
+                var result = await LectureService.DeleteMaterialAsync(materialId);
+
+                if (result)
+                {
+                    successMessage = $"Material '{materialTitle}' deleted successfully.";
+                    await LoadData();
+                }
+                else
+                {
+                    errorMessage = $"Failed to delete material '{materialTitle}'.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error deleting material: {ex.Message}";
+        }
+    }
+
+    private async Task ToggleMaterialStatus(int materialId, bool isActive)
+    {
+        try
+        {
+            successMessage = $"Material status update feature coming soon!";
+            await Task.Delay(3000);
+            successMessage = null;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private void EditMaterial(LearningMaterialDto material)
+    {
+        errorMessage = "Material editing feature coming soon!";
+    }
+
+    private async Task ExportMaterials()
+    {
+        try
+        {
+            var csv = new System.Text.StringBuilder();
+            csv.AppendLine("Lecture Materials Report");
+            csv.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            csv.AppendLine($"Lecture: {lecture?.Title}");
+            csv.AppendLine($"Course ID: {lecture?.CourseId}");
+            csv.AppendLine();
+
+            csv.AppendLine("MATERIAL DETAILS");
+            csv.AppendLine("ID,Title,Type,Duration,Size,Order,Downloadable,Status,Created");
+
+            foreach (var material in filteredMaterials)
+            {
+                csv.AppendLine($"\"{material.Id}\",\"{material.Title}\",\"{material.Type}\",\"{FormatDuration(material.DurationSeconds)}\",\"{FormatFileSize(material.FileSize)}\",\"{material.Order}\",\"{(material.IsDownloadable ? "Yes" : "No")}\",\"{(material.IsActive ? "Active" : "Inactive")}\",\"{material.CreatedAt:yyyy-MM-dd}\"");
+            }
+
+            var fileName = $"Materials_Report_{lectureId}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+
+            var csvContent = csv.ToString();
+            var data = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(csvContent));
+            await JS.InvokeVoidAsync("eval", $@"
+                var link = document.createElement('a');
+                link.href = 'data:text/csv;base64,{data}';
+                link.download = '{fileName}';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            ");
+
+            successMessage = "Report exported successfully!";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to export report: {ex.Message}";
+        }
+    }
+
+    private string GetMaterialTypeIcon(MaterialType type)
+    {
+        return type switch
+        {
+            MaterialType.PDF => "fa-file-pdf",
+            MaterialType.Video => "fa-file-video",
+            MaterialType.Audio => "fa-file-audio",
+            MaterialType.Image => "fa-file-image",
+            MaterialType.Presentation => "fa-file-powerpoint",
+            MaterialType.Document => "fa-file-word",
+            _ => "fa-file"
+        };
+    }
+
+    private string GetMaterialTypeDescription(MaterialType type)
+    {
+        return type switch
+        {
+            MaterialType.PDF => "Portable Document Format",
+            MaterialType.Video => "Video file",
+            MaterialType.Audio => "Audio file",
+            MaterialType.Image => "Image file",
+            MaterialType.Presentation => "Presentation file",
+            MaterialType.Document => "Document file",
+            _ => "Unknown file type"
+        };
+    }
+
+    private void NavigateToLectures()
+    {
+        Navigation.NavigateTo("/content/lectures");
+    }
+
+    private void EditLecture(int courseId, int lectureId)
+    {
+        Navigation.NavigateTo($"/createlecture/{courseId}/{lectureId}");
+    }
+}
+
+<style>
+    /* Mobile-specific styles */
+    .stats-scroll::-webkit-scrollbar {
+        height: 3px;
+    }
+
+    .stats-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 3px;
+    }
+
+    .stat-card {
+        min-width: 100px;
+    }
+
+        .stat-card .card-body {
+            padding: 0.5rem 0.75rem !important;
+        }
+
+    /* Mobile list view */
+    .list-group-item {
+        border-left: none !important;
+        border-right: none !important;
+    }
+
+        .list-group-item:first-child {
+            border-top: none !important;
+        }
+
+        .list-group-item:last-child {
+            border-bottom: none !important;
+        }
+
+    /* Fixed bottom bar for mobile */
+    .fixed-bottom {
+        z-index: 1030;
+    }
+
+    /* Modal responsive */
+    .modal-fullscreen {
+        margin: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+    }
+
+        .modal-fullscreen .modal-content {
+            border-radius: 0 !important;
+            height: 100vh !important;
+        }
+
+    /* Desktop styles */
+    .lecture-materials .card {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .lecture-materials .material-card {
+        border: 1px solid #e9ecef;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .lecture-materials .material-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+    .lecture-materials .material-thumbnail {
+        position: relative;
+        height: 180px;
+        overflow: hidden;
+        background-color: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lecture-materials .material-thumbnail-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .lecture-materials .material-card:hover .material-thumbnail-img {
+        transform: scale(1.05);
+    }
+
+    .lecture-materials .material-thumbnail-placeholder {
+        color: #6c757d;
+        font-size: 3rem;
+    }
+
+    .lecture-materials .material-type-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+    }
+
+    .lecture-materials .material-download-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255,255,255,0.9);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lecture-materials .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        border-radius: 0.25rem;
+    }
+
+    .lecture-materials .required::after {
+        content: " *";
+        color: #dc3545;
+    }
+
+    /* Animation */
+    @@keyframes toggleAnimation {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.1);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    .lecture-materials .material-status-toggle:checked {
+        animation: toggleAnimation 0.3s ease;
+    }
+</style>

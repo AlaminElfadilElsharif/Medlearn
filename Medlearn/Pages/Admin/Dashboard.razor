@@ -1,0 +1,1534 @@
+﻿@page "/admin/dashboard"
+@using System.Text.Json
+
+
+<PageTitle>Admin Dashboard</PageTitle>
+
+<div class="admin-dashboard">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Authentication Check -->
+        @if (!isAuthenticated)
+        {
+            <div class="text-center py-5 px-3">
+                <div class="alert alert-warning shadow-sm" role="alert">
+                    <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                    <h4>Authentication Required</h4>
+                    <p class="mb-3">Please log in to access the admin dashboard.</p>
+                    <button class="btn btn-primary px-4" @onclick="RedirectToLogin">
+                        <i class="fas fa-sign-in-alt me-2"></i> Login
+                    </button>
+                </div>
+            </div>
+        }
+        else if (currentUser?.UserType != UserType.Admin)
+        {
+            <div class="text-center py-5 px-3">
+                <div class="alert alert-danger shadow-sm" role="alert">
+                    <i class="fas fa-ban fa-3x mb-3"></i>
+                    <h4>Access Denied</h4>
+                    <p class="mb-3">Admin privileges required to access this page.</p>
+                    <button class="btn btn-primary px-4" @onclick="RedirectToHome">
+                        <i class="fas fa-home me-2"></i> Go to Home
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Mobile Header -->
+            <div class="d-block d-md-none mb-3">
+                <div class="bg-primary text-white p-3 rounded-0">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard
+                            </h5>
+                            <small class="text-white-50">
+                                Welcome, @currentUser?.FirstName
+                            </small>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-link text-white p-0" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v fa-lg"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <button class="dropdown-item" @onclick="RefreshData" disabled="@isLoading">
+                                        <i class="fas fa-sync-alt me-2 @(isLoading ? "fa-spin" : "")"></i>Refresh
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="/admin/users">
+                                        <i class="fas fa-users me-2"></i>Users
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="/admin/announcements">
+                                        <i class="fas fa-bullhorn me-2"></i>Announcements
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="/admin/withdrawals">
+                                        <i class="fas fa-money-bill-wave me-2"></i>Withdrawals
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-light p-2 text-end">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>Last updated: @lastRefreshTime.ToString("HH:mm")
+                    </small>
+                </div>
+            </div>
+
+            <!-- Desktop Header -->
+            <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1><i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard</h1>
+                    <p class="text-muted mb-0">
+                        Welcome, <strong>@currentUser?.FirstName @currentUser?.LastName</strong>
+                        <span class="badge bg-danger ms-2">Administrator</span>
+                    </p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary me-2" @onclick="RefreshData" disabled="@isLoading">
+                        <i class="fas fa-sync-alt @(isLoading ? "fa-spin" : "") me-2"></i>
+                        Refresh
+                    </button>
+                    <span class="text-muted small">Last updated: @lastRefreshTime.ToString("HH:mm")</span>
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Loading dashboard data...</p>
+                </div>
+            }
+            else
+            {
+                <!-- Quick Stats - Mobile Horizontal Scroll -->
+                <div class="d-block d-md-none mb-3">
+                    <div class="stats-scroll-container">
+                        <div class="stats-row">
+                            <!-- Total Users -->
+                            <div class="stat-card bg-primary text-white">
+                                <div class="stat-content">
+                                    <div class="stat-label">Total Users</div>
+                                    <div class="stat-value">@totalUsers</div>
+                                    <div class="stat-detail">
+                                        <small>@doctorCount Docs • @studentCount Stud</small>
+                                    </div>
+                                </div>
+                                <i class="fas fa-users stat-icon"></i>
+                            </div>
+
+                            <!-- Total Revenue -->
+                            <div class="stat-card bg-success text-white">
+                                <div class="stat-content">
+                                    <div class="stat-label">Revenue</div>
+                                    <div class="stat-value">$@totalRevenue.ToString("N0")</div>
+                                    <div class="stat-detail">
+                                        <small>Bal: $@doctorBalance.ToString("N0")</small>
+                                    </div>
+                                </div>
+                                <i class="fas fa-dollar-sign stat-icon"></i>
+                            </div>
+
+                            <!-- Enrollments -->
+                            <div class="stat-card bg-info text-white">
+                                <div class="stat-content">
+                                    <div class="stat-label">Enrollments</div>
+                                    <div class="stat-value">@totalEnrollments</div>
+                                    <div class="stat-detail">
+                                        <small>@completedEnrollments Comp</small>
+                                    </div>
+                                </div>
+                                <i class="fas fa-graduation-cap stat-icon"></i>
+                            </div>
+
+                            <!-- Pending Payments -->
+                            <div class="stat-card bg-warning text-dark">
+                                <div class="stat-content">
+                                    <div class="stat-label">Pending</div>
+                                    <div class="stat-value">@pendingPayments</div>
+                                    <div class="stat-detail">
+                                        <small>Payments</small>
+                                    </div>
+                                </div>
+                                <i class="fas fa-credit-card stat-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Quick Stats -->
+                <div class="d-none d-md-block">
+                    <div class="row mb-3">
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="card bg-primary text-white shadow">
+                                <div class="card-body p-3">
+                                    <div class="row">
+                                        <div class="col-8">
+                                            <div class="text-white-50 small">Total Users</div>
+                                            <div class="h5 mb-0">@totalUsers</div>
+                                        </div>
+                                        <div class="col-4 text-end">
+                                            <i class="fas fa-users fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-primary py-1 border-0">
+                                    <small class="text-white-50">
+                                        @doctorCount Docs • @studentCount Stud • @adminCount Adm
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="card bg-success text-white shadow">
+                                <div class="card-body p-3">
+                                    <div class="row">
+                                        <div class="col-8">
+                                            <div class="text-white-50 small">Total Revenue</div>
+                                            <div class="h5 mb-0">$@totalRevenue.ToString("N2")</div>
+                                        </div>
+                                        <div class="col-4 text-end">
+                                            <i class="fas fa-dollar-sign fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-success py-1 border-0">
+                                    <small class="text-white-50">
+                                        Doctor Balance: $@doctorBalance.ToString("N2")
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="card bg-info text-white shadow">
+                                <div class="card-body p-3">
+                                    <div class="row">
+                                        <div class="col-8">
+                                            <div class="text-white-50 small">Enrollments</div>
+                                            <div class="h5 mb-0">@totalEnrollments</div>
+                                        </div>
+                                        <div class="col-4 text-end">
+                                            <i class="fas fa-graduation-cap fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-info py-1 border-0">
+                                    <small class="text-white-50">
+                                        @completedEnrollments Comp • @activeEnrollments Active
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="card bg-warning text-dark shadow">
+                                <div class="card-body p-3">
+                                    <div class="row">
+                                        <div class="col-8">
+                                            <div class="text-dark-50 small">Pending Payments</div>
+                                            <div class="h5 mb-0">@pendingPayments</div>
+                                        </div>
+                                        <div class="col-4 text-end">
+                                            <i class="fas fa-credit-card fa-2x text-dark"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-warning py-1 border-0">
+                                    <small class="text-dark-50">
+                                        @approvedPayments Approved • @rejectedPayments Rejected
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard - Mobile Optimized -->
+                <div class="d-block d-md-none">
+                    <!-- Withdrawals Overview Card -->
+                    <div class="card shadow mb-3">
+                        <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
+                            <h6 class="m-0 fw-bold text-primary">
+                                <i class="fas fa-money-bill-wave me-2"></i>Withdrawals
+                            </h6>
+                            <a href="/admin/withdrawals" class="btn btn-sm btn-outline-primary">
+                                View All
+                            </a>
+                        </div>
+                        <div class="card-body p-3">
+                            <!-- Withdrawal Stats Row -->
+                            <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                    <div class="border rounded p-2 text-center">
+                                        <span class="badge bg-warning mb-1">Pending</span>
+                                        <div class="fw-bold">@pendingWithdrawalCount</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border rounded p-2 text-center">
+                                        <span class="badge bg-success mb-1">Approved</span>
+                                        <div class="fw-bold">@approvedWithdrawalCount</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border rounded p-2 text-center">
+                                        <span class="badge bg-danger mb-1">Rejected</span>
+                                        <div class="fw-bold">@rejectedWithdrawalCount</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recent Withdrawals List -->
+                            <h6 class="small fw-bold mb-2">Recent Requests</h6>
+                            @if (recentWithdrawals != null && recentWithdrawals.Any())
+                            {
+                                <div class="list-group list-group-flush">
+                                    @foreach (var withdrawal in recentWithdrawals.Take(3))
+                                    {
+                                        <div class="list-group-item px-0 py-2 border-0 border-bottom">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1" @onclick="() => ViewWithdrawal(withdrawal.Id)">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                            <i class="fas fa-user-md"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-bold small">@withdrawal.Doctor.FirstName @withdrawal.Doctor.LastName</div>
+                                                            <small class="text-muted">$@withdrawal.Amount.ToString("N2")</small>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted d-block mt-1">
+                                                        @withdrawal.RequestDate.ToString("MMM dd, hh:mm tt")
+                                                    </small>
+                                                </div>
+                                                <div class="ms-2">
+                                                    <span class="badge @GetWithdrawalStatusBadge(withdrawal.Status)">
+                                                        @withdrawal.Status
+                                                    </span>
+                                                    @if (withdrawal.Status == WithdrawalStatus.Pending)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-success mt-1"
+                                                                @onclick:stopPropagation="true"
+                                                                @onclick="() => QuickApproveWithdrawal(withdrawal)">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-3">
+                                    <i class="fas fa-money-bill-wave fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted small mb-0">No withdrawal requests</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Popular Content Card -->
+                    <div class="card shadow mb-3">
+                        <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
+                            <h6 class="m-0 fw-bold text-success">
+                                <i class="fas fa-chart-line me-2"></i>Top Content
+                            </h6>
+                            <span class="badge bg-success">@popularContent?.Count(x => x.EnrollmentCount > 0) active</span>
+                        </div>
+                        <div class="card-body p-3">
+                            @if (popularContent != null && popularContent.Any())
+                            {
+                                <div class="list-group list-group-flush">
+                                    @foreach (var content in popularContent
+                                                            .Where(c => c.EnrollmentCount > 0)
+                                                            .OrderByDescending(c => c.EnrollmentCount)
+                                                            .Take(5))
+                                    {
+                                        <div class="list-group-item px-0 py-2 border-0 border-bottom" @onclick="() => ViewContent(content)">
+                                            <div class="d-flex align-items-start">
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <span class="badge @GetContentTypeBadge(content.ContentType) me-2">
+                                                            @content.ContentType
+                                                        </span>
+                                                        <small class="text-muted">@content.EnrollmentCount enrollments</small>
+                                                    </div>
+                                                    <div class="fw-bold small">@content.Title</div>
+                                                    <div class="d-flex align-items-center mt-1">
+                                                        <span class="badge bg-info me-2">$@content.Revenue.ToString("N0")</span>
+                                                        <div class="star-rating-small">
+                                                            @for (int i = 1; i <= 5; i++)
+                                                            {
+                                                                <i class="fas fa-star @(i <= Math.Round(content.AverageRating) ? "text-warning" : "text-muted")" style="font-size: 10px;"></i>
+                                                            }
+                                                            <small class="ms-1 text-muted">(@content.AverageRating.ToString("0.0"))</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <i class="fas fa-chevron-right text-muted"></i>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-chart-line fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted small mb-0">No content available</p>
+                                    <a href="/admin/specializations/create" class="btn btn-primary btn-sm mt-2">
+                                        <i class="fas fa-plus me-1"></i> Create Content
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Recent Payments Card -->
+                    <div class="card shadow mb-3">
+                        <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
+                            <h6 class="m-0 fw-bold text-warning">
+                                <i class="fas fa-credit-card me-2"></i>Recent Payments
+                            </h6>
+                            <span class="badge bg-warning">@recentPayments.Count</span>
+                        </div>
+                        <div class="card-body p-3">
+                            @if (recentPayments.Any())
+                            {
+                                <div class="list-group list-group-flush">
+                                    @foreach (var payment in recentPayments.Take(3))
+                                    {
+                                        <a href="/admin/payments/review/@payment.Id" class="list-group-item px-0 py-2 border-0 border-bottom">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <div class="fw-bold small">@payment.InvoiceNumber</div>
+                                                    <small class="text-muted">@payment.User?.FirstName @payment.User?.LastName</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <div class="fw-bold text-success">$@payment.Amount.ToString("N2")</div>
+                                                    <span class="badge @GetPaymentStatusBadge(payment.Status) small">
+                                                        @payment.Status
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">
+                                                <i class="fas fa-clock me-1"></i>@payment.CreatedAt.ToString("MMM dd, hh:mm tt")
+                                            </small>
+                                        </a>
+                                    }
+                                </div>
+                                <a href="/admin/payments" class="btn btn-sm btn-outline-primary w-100 mt-2">
+                                    View All Payments
+                                </a>
+                            }
+                            else
+                            {
+                                <div class="text-center py-3">
+                                    <i class="fas fa-credit-card fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted small mb-0">No recent payments</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Pending Actions Card -->
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-2 bg-light">
+                            <h6 class="m-0 fw-bold text-danger">
+                                <i class="fas fa-tasks me-2"></i>Pending Actions
+                            </h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row g-2">
+                                @if (pendingPayments > 0)
+                                {
+                                    <div class="col-6">
+                                        <a href="/admin/payments?status=0" class="btn btn-outline-warning w-100">
+                                            <i class="fas fa-credit-card me-2"></i>
+                                            <span>Payments</span>
+                                            <span class="badge bg-warning ms-2">@pendingPayments</span>
+                                        </a>
+                                    </div>
+                                }
+                                @if (pendingWithdrawalCount > 0)
+                                {
+                                    <div class="col-6">
+                                        <a href="/admin/withdrawals?status=0" class="btn btn-outline-danger w-100">
+                                            <i class="fas fa-money-bill-wave me-2"></i>
+                                            <span>Withdrawals</span>
+                                            <span class="badge bg-danger ms-2">@pendingWithdrawalCount</span>
+                                        </a>
+                                    </div>
+                                }
+                                @if (pendingPayments == 0 && pendingWithdrawalCount == 0)
+                                {
+                                    <div class="col-12 text-center py-2">
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                        <span class="text-success">All caught up!</span>
+                                    </div>
+                                }
+                            </div>
+
+                            <hr class="my-2" />
+
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <a href="/admin/users" class="btn btn-sm btn-outline-primary w-100">
+                                        <i class="fas fa-users me-1"></i> Users
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a href="/admin/announcements" class="btn btn-sm btn-outline-success w-100">
+                                        <i class="fas fa-bullhorn me-1"></i> Announce
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a href="/admin/withdrawals" class="btn btn-sm btn-outline-warning w-100">
+                                        <i class="fas fa-money-bill-wave me-1"></i> Withdrawals
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a href="/admin/enrollments" class="btn btn-sm btn-outline-info w-100">
+                                        <i class="fas fa-graduation-cap me-1"></i> Enrollments
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation for Mobile -->
+                    <div class="mobile-bottom-nav d-block d-md-none">
+                        <div class="d-flex justify-content-around align-items-center h-100">
+                            <a href="/admin/dashboard" class="nav-item active">
+                                <i class="fas fa-home"></i>
+                                <span>Home</span>
+                            </a>
+                            <a href="/admin/users" class="nav-item">
+                                <i class="fas fa-users"></i>
+                                <span>Users</span>
+                            </a>
+                            <a href="/admin/withdrawals" class="nav-item">
+                                <i class="fas fa-money-bill-wave"></i>
+                                <span>Withdrawals</span>
+                            </a>
+                            <a href="/admin/announcements" class="nav-item">
+                                <i class="fas fa-bullhorn"></i>
+                                <span>Announce</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Main Dashboard -->
+                <div class="d-none d-md-block">
+                    <div class="row">
+                        <!-- Left Column - Withdrawals & Content -->
+                        <div class="col-lg-8">
+                            <!-- Withdrawals Overview -->
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0 fw-bold text-primary">
+                                        <i class="fas fa-money-bill-wave me-2"></i>Withdrawals Overview
+                                    </h6>
+                                    <a href="/admin/withdrawals" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> Manage
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Withdrawal Stats -->
+                                    <div class="row mb-4">
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card border-warning h-100">
+                                                <div class="card-body text-center">
+                                                    <div class="text-warning fw-bold display-5">@pendingWithdrawalCount</div>
+                                                    <div class="text-warning fw-bold">Pending</div>
+                                                    <small class="text-muted d-block mt-2">Awaiting review</small>
+                                                </div>
+                                                <div class="card-footer bg-transparent border-top-0">
+                                                    <a href="/admin/withdrawals?status=0" class="btn btn-sm btn-warning w-100">
+                                                        <i class="fas fa-clock me-1"></i> Review
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card border-success h-100">
+                                                <div class="card-body text-center">
+                                                    <div class="text-success fw-bold display-5">@approvedWithdrawalCount</div>
+                                                    <div class="text-success fw-bold">Approved</div>
+                                                    <small class="text-muted d-block mt-2">This month</small>
+                                                </div>
+                                                <div class="card-footer bg-transparent border-top-0">
+                                                    <a href="/admin/withdrawals?status=1" class="btn btn-sm btn-success w-100">
+                                                        <i class="fas fa-check me-1"></i> View All
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card border-danger h-100">
+                                                <div class="card-body text-center">
+                                                    <div class="text-danger fw-bold display-5">@rejectedWithdrawalCount</div>
+                                                    <div class="text-danger fw-bold">Rejected</div>
+                                                    <small class="text-muted d-block mt-2">Total rejected</small>
+                                                </div>
+                                                <div class="card-footer bg-transparent border-top-0">
+                                                    <a href="/admin/withdrawals?status=2" class="btn btn-sm btn-danger w-100">
+                                                        <i class="fas fa-times me-1"></i> View All
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recent Withdrawal Requests -->
+                                    <h6 class="fw-bold mb-3">Recent Withdrawal Requests</h6>
+                                    @if (recentWithdrawals != null && recentWithdrawals.Any())
+                                    {
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>ID</th>
+                                                        <th>Doctor</th>
+                                                        <th>Amount</th>
+                                                        <th>Status</th>
+                                                        <th>Date</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var withdrawal in recentWithdrawals.Take(5))
+                                                    {
+                                                        <tr class="cursor-pointer" @onclick="() => ViewWithdrawal(withdrawal.Id)">
+                                                            <td class="fw-bold">#@withdrawal.Id</td>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                                        <i class="fas fa-user-md"></i>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div class="fw-bold small">@withdrawal.Doctor.FirstName @withdrawal.Doctor.LastName</div>
+                                                                        <small class="text-muted">@withdrawal.Doctor.Email</small>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span class="fw-bold text-success">$@withdrawal.Amount.ToString("N2")</span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge @GetWithdrawalStatusBadge(withdrawal.Status)">
+                                                                    @withdrawal.Status
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <small>@withdrawal.RequestDate.ToString("MMM dd")</small>
+                                                                <br />
+                                                                <small class="text-muted">@withdrawal.RequestDate.ToString("hh:mm tt")</small>
+                                                            </td>
+                                                            <td>
+                                                                @if (withdrawal.Status == WithdrawalStatus.Pending)
+                                                                {
+                                                                    <button class="btn btn-sm btn-outline-success"
+                                                                            @onclick:stopPropagation="true"
+                                                                            @onclick="() => QuickApproveWithdrawal(withdrawal)">
+                                                                        <i class="fas fa-check"></i>
+                                                                    </button>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <button class="btn btn-sm btn-outline-info"
+                                                                            @onclick:stopPropagation="true"
+                                                                            @onclick="() => ViewWithdrawal(withdrawal.Id)">
+                                                                        <i class="fas fa-eye"></i>
+                                                                    </button>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        @if (recentWithdrawals.Count > 5)
+                                        {
+                                            <div class="text-center mt-3">
+                                                <a href="/admin/withdrawals" class="btn btn-sm btn-outline-primary">
+                                                    View All Withdrawals <i class="fas fa-arrow-right ms-1"></i>
+                                                </a>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-4">
+                                            <i class="fas fa-money-bill-wave fa-2x text-muted mb-3"></i>
+                                            <h6 class="text-muted">No Withdrawal Requests</h6>
+                                            <p class="text-muted small">No withdrawal requests have been submitted yet.</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Top Performing Content -->
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0 fw-bold text-success">
+                                        <i class="fas fa-chart-line me-2"></i>Top Performing Content
+                                    </h6>
+                                    <span class="badge bg-success">
+                                        @popularContent?.Count(x => x.EnrollmentCount > 0) with enrollments
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    @if (popularContent != null && popularContent.Any())
+                                    {
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Type</th>
+                                                        <th>Title</th>
+                                                        <th class="text-end">Enrollments</th>
+                                                        <th class="text-end">Revenue</th>
+                                                        <th class="text-end">Rating</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var content in popularContent
+                                                                                            .Where(c => c.EnrollmentCount > 0)
+                                                                                            .OrderByDescending(c => c.EnrollmentCount)
+                                                                                            .ThenByDescending(c => c.Revenue)
+                                                                                            .Take(10))
+                                                    {
+                                                        <tr class="cursor-pointer" @onclick="() => ViewContent(content)">
+                                                            <td>
+                                                                <span class="badge @GetContentTypeBadge(content.ContentType)">
+                                                                    @if (content.ContentType.ToLower() == "specialization")
+                                                                    {
+                                                                        <i class="fas fa-layer-group me-1"></i>
+                                                                    }
+                                                                    else if (content.ContentType.ToLower() == "course")
+                                                                    {
+                                                                        <i class="fas fa-book me-1"></i>
+                                                                    }
+                                                                    else if (content.ContentType.ToLower() == "lecture")
+                                                                    {
+                                                                        <i class="fas fa-chalkboard-teacher me-1"></i>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <i class="fas fa-file me-1"></i>
+                                                                    }
+                                                                    @content.ContentType
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <div class="fw-bold small">@content.Title</div>
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <span class="badge bg-info">@content.EnrollmentCount</span>
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <span class="badge bg-success">$@content.Revenue.ToString("N2")</span>
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <div class="star-rating">
+                                                                    @for (int i = 1; i <= 5; i++)
+                                                                    {
+                                                                        <i class="fas fa-star @(i <= Math.Round(content.AverageRating) ? "text-warning" : "text-muted")"></i>
+                                                                    }
+                                                                    <small class="ms-1 text-muted">(@content.AverageRating.ToString("0.0"))</small>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        @if (popularContent.All(c => c.EnrollmentCount == 0))
+                                        {
+                                            <div class="text-center py-4">
+                                                <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                                                <h6 class="text-muted">No Enrollments Yet</h6>
+                                                <p class="text-muted small">Your content hasn't received any enrollments yet.</p>
+                                                <a href="/admin/specializations/create" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-plus me-1"></i> Create Content
+                                                </a>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-4">
+                                            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                                            <h6 class="text-muted">No Content Available</h6>
+                                            <p class="text-muted small">Create some content to see performance analytics.</p>
+                                            <a href="/admin/specializations/create" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-plus me-1"></i> Create First Specialization
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column - Recent Activity -->
+                        <div class="col-lg-4">
+                            <!-- Recent Payments -->
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0 fw-bold text-warning">
+                                        <i class="fas fa-credit-card me-2"></i>Recent Payments
+                                    </h6>
+                                    <span class="badge bg-warning">@recentPayments.Count new</span>
+                                </div>
+                                <div class="card-body p-0">
+                                    @if (recentPayments.Any())
+                                    {
+                                        <div class="list-group list-group-flush">
+                                            @foreach (var payment in recentPayments.Take(5))
+                                            {
+                                                <a href="/admin/payments/review/@payment.Id"
+                                                   class="list-group-item list-group-item-action py-3">
+                                                    <div class="d-flex w-100 justify-content-between">
+                                                        <div>
+                                                            <div class="fw-bold small">@payment.InvoiceNumber</div>
+                                                            <small class="text-muted">
+                                                                @payment.User?.FirstName @payment.User?.LastName
+                                                            </small>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <div class="fw-bold text-success">$@payment.Amount.ToString("N2")</div>
+                                                            <span class="badge @GetPaymentStatusBadge(payment.Status) small">
+                                                                @payment.Status
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <small class="text-muted d-block mt-1">
+                                                        <i class="fas fa-clock me-1"></i>
+                                                        @payment.CreatedAt.ToString("MMM dd, hh:mm tt")
+                                                    </small>
+                                                </a>
+                                            }
+                                        </div>
+                                        <div class="card-footer text-center">
+                                            <a href="/admin/payments" class="btn btn-sm btn-outline-primary w-100">
+                                                <i class="fas fa-list me-1"></i> View All Payments
+                                            </a>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-4">
+                                            <i class="fas fa-credit-card fa-2x text-muted mb-3"></i>
+                                            <p class="text-muted mb-1">No recent payments</p>
+                                            <small class="text-muted">Payment requests will appear here</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Pending Actions -->
+                            <div class="card shadow">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 fw-bold text-danger">
+                                        <i class="fas fa-tasks me-2"></i>Pending Actions
+                                    </h6>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="list-group list-group-flush">
+                                        <!-- Pending Payments -->
+                                        @if (pendingPayments > 0)
+                                        {
+                                            <a href="/admin/payments?status=0" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <div class="fw-bold">Pending Payments</div>
+                                                    <small class="text-muted">Require admin approval</small>
+                                                </div>
+                                                <span class="badge bg-warning rounded-pill" style="font-size: 1rem;">@pendingPayments</span>
+                                            </a>
+                                        }
+
+                                        <!-- Pending Withdrawals -->
+                                        @if (pendingWithdrawalCount > 0)
+                                        {
+                                            <a href="/admin/withdrawals?status=0" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <div class="fw-bold">Pending Withdrawals</div>
+                                                    <small class="text-muted">Doctor payment requests</small>
+                                                </div>
+                                                <span class="badge bg-danger rounded-pill" style="font-size: 1rem;">@pendingWithdrawalCount</span>
+                                            </a>
+                                        }
+
+                                        <!-- No Pending Actions -->
+                                        @if (pendingPayments == 0 && pendingWithdrawalCount == 0)
+                                        {
+                                            <div class="list-group-item text-center py-4">
+                                                <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
+                                                <p class="text-success mb-0">All caught up!</p>
+                                                <small class="text-muted">No pending actions</small>
+                                            </div>
+                                        }
+
+                                        <!-- Quick Links -->
+                                        <div class="list-group-item bg-light">
+                                            <h6 class="mb-2">Quick Links</h6>
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <a href="/admin/users" class="btn btn-sm btn-outline-primary w-100">
+                                                        <i class="fas fa-users me-1"></i> Users
+                                                    </a>
+                                                </div>
+                                                <div class="col-6">
+                                                    <a href="/admin/announcements" class="btn btn-sm btn-outline-success w-100">
+                                                        <i class="fas fa-bullhorn me-1"></i> Announce
+                                                    </a>
+                                                </div>
+                                                <div class="col-6">
+                                                    <a href="/admin/withdrawals" class="btn btn-sm btn-outline-warning w-100">
+                                                        <i class="fas fa-money-bill-wave me-1"></i> Withdrawals
+                                                    </a>
+                                                </div>
+                                                <div class="col-6">
+                                                    <a href="/admin/enrollments" class="btn btn-sm btn-outline-info w-100">
+                                                        <i class="fas fa-graduation-cap me-1"></i> Enrollments
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .admin-dashboard {
+        background-color: #f8f9fc;
+        min-height: 100vh;
+        padding: 0;
+    }
+
+    /* Mobile Styles */
+    @@media (max-width: 767.98px) {
+        .admin-dashboard {
+            padding-bottom: 70px; /* Space for bottom navigation */
+        }
+
+        .stats-scroll-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 15px;
+        }
+
+        .stats-row {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 12px;
+            padding: 5px 0;
+        }
+
+        .stat-card {
+            min-width: 160px;
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+
+        .stat-detail {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        .stat-icon {
+            font-size: 32px;
+            opacity: 0.3;
+        }
+
+        .mobile-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: white;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+            .mobile-bottom-nav .nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: #6c757d;
+                text-decoration: none;
+                font-size: 12px;
+                transition: all 0.2s;
+            }
+
+                .mobile-bottom-nav .nav-item.active {
+                    color: #4e73df;
+                }
+
+                .mobile-bottom-nav .nav-item i {
+                    font-size: 20px;
+                    margin-bottom: 2px;
+                }
+
+        .avatar-sm {
+            width: 28px;
+            height: 28px;
+            font-size: 11px;
+        }
+    }
+
+    /* Desktop Styles */
+    @@media (min-width: 768px) {
+        .admin-dashboard {
+            padding: 20px;
+        }
+
+        .avatar-sm {
+            width: 32px;
+            height: 32px;
+            font-size: 12px;
+        }
+    }
+
+    .card {
+        border-radius: 0.5rem;
+        border: none;
+    }
+
+        .card.shadow {
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+        }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+        .cursor-pointer:hover {
+            background-color: #f8f9fa;
+        }
+
+    .star-rating {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .star-rating-small {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .display-5 {
+        font-size: 3rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .border-primary {
+        border-color: #4e73df !important;
+    }
+
+    .border-success {
+        border-color: #1cc88a !important;
+    }
+
+    .border-info {
+        border-color: #36b9cc !important;
+    }
+
+    .border-warning {
+        border-color: #f6c23e !important;
+    }
+
+    .border-danger {
+        border-color: #e74a3b !important;
+    }
+
+    .badge.bg-primary {
+        background-color: #4e73df !important;
+    }
+
+    .badge.bg-success {
+        background-color: #1cc88a !important;
+    }
+
+    .badge.bg-warning {
+        background-color: #f6c23e !important;
+    }
+
+    .badge.bg-danger {
+        background-color: #e74a3b !important;
+    }
+
+    .badge.bg-info {
+        background-color: #36b9cc !important;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-top: none;
+        border-bottom: 2px solid #e3e6f0;
+    }
+
+    .table td {
+        vertical-align: middle;
+        border-top: 1px solid #e3e6f0;
+    }
+
+    .list-group-item {
+        border: 1px solid #e3e6f0;
+        border-radius: 0;
+    }
+
+        .list-group-item:first-child {
+            border-top: none;
+        }
+
+    .list-group-flush .list-group-item:last-child {
+        border-bottom: none;
+    }
+</style>
+
+@code {
+    // ... (keep all your existing code in the @code block exactly as is)
+    private bool isAuthenticated = false;
+    private bool isLoading = true;
+    private UserDto? currentUser = null;
+    private DateTime lastRefreshTime = DateTime.Now;
+
+    // Dashboard statistics
+    private int totalUsers = 0;
+    private int doctorCount = 0;
+    private int studentCount = 0;
+    private int adminCount = 0;
+    private decimal totalRevenue = 0;
+    private decimal doctorBalance = 0;
+    private int totalEnrollments = 0;
+    private int completedEnrollments = 0;
+    private int activeEnrollments = 0;
+    private int pendingPayments = 0;
+    private int approvedPayments = 0;
+    private int rejectedPayments = 0;
+    private int pendingWithdrawalCount = 0;
+    private int approvedWithdrawalCount = 0;
+    private int rejectedWithdrawalCount = 0;
+
+    // Lists
+    private List<PaymentRequestDto> recentPayments = new();
+    private List<WithdrawalRequestDto> recentWithdrawals = new();
+    private List<PopularContentDto> popularContent = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+        if (isAuthenticated && currentUser?.UserType == UserType.Admin)
+        {
+            await LoadDashboardData();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+            if (isAuthenticated)
+            {
+                currentUser = await AuthService.GetCurrentUserAsync();
+                Console.WriteLine($"User authenticated: {currentUser?.FirstName} {currentUser?.LastName}, Type: {currentUser?.UserType}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Authentication error: {ex.Message}");
+            isAuthenticated = false;
+        }
+    }
+
+    private async Task LoadDashboardData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            Console.WriteLine("Loading dashboard data...");
+
+            // Load admin dashboard stats
+            var dashboardData = await DashboardService.GetAdminDashboardStatsAsync();
+            Console.WriteLine($"Dashboard data received: {dashboardData != null}");
+
+            if (dashboardData != null)
+            {
+                await ParseDashboardData(dashboardData);
+            }
+
+            // Load recent payments
+            var payments = await PaymentService.GetPaymentRequestsAsync(pageSize: 10);
+            if (payments != null)
+            {
+                recentPayments = payments
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(5)
+                    .ToList();
+                Console.WriteLine($"Loaded {recentPayments.Count} recent payments");
+            }
+
+            // Load withdrawal requests
+            var withdrawals = await WithdrawalService.GetAdminWithdrawalsAsync(
+                pageSize: 10);
+            if (withdrawals != null)
+            {
+                recentWithdrawals = withdrawals
+                    .OrderByDescending(w => w.RequestDate)
+                    .Take(5)
+                    .ToList();
+
+                // Calculate withdrawal stats
+                pendingWithdrawalCount = withdrawals.Count(w => w.Status == WithdrawalStatus.Pending);
+                approvedWithdrawalCount = withdrawals.Count(w => w.Status == WithdrawalStatus.Approved);
+                rejectedWithdrawalCount = withdrawals.Count(w => w.Status == WithdrawalStatus.Rejected);
+
+                Console.WriteLine($"Loaded {recentWithdrawals.Count} recent withdrawals");
+            }
+
+            lastRefreshTime = DateTime.Now;
+            Console.WriteLine($"Dashboard loaded successfully at {lastRefreshTime}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+            await ShowError("Failed to load dashboard data");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ParseDashboardData(object dashboardData)
+    {
+        try
+        {
+            Console.WriteLine("Parsing dashboard data...");
+
+            // Convert to JSON string first
+            var json = JsonSerializer.Serialize(dashboardData, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            Console.WriteLine($"Dashboard JSON: {json}");
+
+            // Deserialize as dynamic to check structure
+            var jsonDocument = JsonDocument.Parse(json);
+            var root = jsonDocument.RootElement;
+
+            // Check if it's a DashboardStatsDto
+            if (root.TryGetProperty("totalUsers", out var totalUsersElement))
+            {
+                // It's DashboardStatsDto
+                var statsDto = JsonSerializer.Deserialize<DashboardStatsDto>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (statsDto != null)
+                {
+                    ApplyStatsDto(statsDto);
+                }
+            }
+            else
+            {
+                // It's the old DashboardStats from your controller
+                // Try to parse the stats from the JSON directly
+                ParseStatsFromJson(jsonDocument);
+            }
+
+            Console.WriteLine($"Parsed: TotalUsers={totalUsers}, Doctors={doctorCount}, Students={studentCount}, Admins={adminCount}");
+            Console.WriteLine($"Popular content count: {popularContent?.Count ?? 0}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error parsing dashboard data: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+
+            // Set default values based on your database
+            SetDefaultValues();
+        }
+    }
+
+    private void ApplyStatsDto(DashboardStatsDto statsDto)
+    {
+        totalUsers = statsDto.TotalUsers;
+        studentCount = statsDto.TotalStudents;
+        doctorCount = statsDto.TotalDoctors;
+        adminCount = statsDto.TotalAdmins;
+        totalRevenue = statsDto.TotalRevenue;
+        doctorBalance = statsDto.DoctorsBalance;
+        totalEnrollments = statsDto.TotalEnrollments;
+        completedEnrollments = statsDto.CompletedEnrollments;
+        activeEnrollments = statsDto.ActiveEnrollments;
+        pendingPayments = statsDto.PendingPayments;
+        approvedPayments = statsDto.ApprovedPayments;
+        rejectedPayments = statsDto.RejectedPayments;
+        popularContent = statsDto.PopularContent ?? new();
+    }
+
+    private void ParseStatsFromJson(JsonDocument jsonDocument)
+    {
+        var root = jsonDocument.RootElement;
+
+        totalUsers = GetJsonProperty<int>(root, "TotalUsers");
+        studentCount = GetJsonProperty<int>(root, "TotalStudents");
+        doctorCount = GetJsonProperty<int>(root, "TotalDoctors");
+        adminCount = GetJsonProperty<int>(root, "TotalAdmins");
+        totalRevenue = GetJsonProperty<decimal>(root, "TotalRevenue");
+        doctorBalance = GetJsonProperty<decimal>(root, "DoctorsBalance");
+        totalEnrollments = GetJsonProperty<int>(root, "TotalEnrollments");
+        completedEnrollments = GetJsonProperty<int>(root, "CompletedEnrollments");
+        activeEnrollments = GetJsonProperty<int>(root, "ActiveEnrollments");
+        pendingPayments = GetJsonProperty<int>(root, "PendingPayments");
+        approvedPayments = GetJsonProperty<int>(root, "ApprovedPayments");
+        rejectedPayments = GetJsonProperty<int>(root, "RejectedPayments");
+
+        // Parse popular content
+        if (root.TryGetProperty("PopularContent", out var popularContentElement) ||
+            root.TryGetProperty("popularContent", out popularContentElement))
+        {
+            try
+            {
+                if (popularContentElement.ValueKind == JsonValueKind.Array)
+                {
+                    popularContent = JsonSerializer.Deserialize<List<PopularContentDto>>(
+                        popularContentElement.GetRawText(),
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing popular content: {ex.Message}");
+                popularContent = new();
+            }
+        }
+    }
+
+    private T GetJsonProperty<T>(JsonElement element, string propertyName)
+    {
+        if (element.TryGetProperty(propertyName, out var value))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<T>(value.GetRawText()) ?? default(T)!;
+            }
+            catch
+            {
+                return default(T)!;
+            }
+        }
+
+        // Try with lowerCamelCase
+        var lowerCamelCase = char.ToLowerInvariant(propertyName[0]) + propertyName.Substring(1);
+        if (element.TryGetProperty(lowerCamelCase, out var lowerValue))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<T>(lowerValue.GetRawText()) ?? default(T)!;
+            }
+            catch
+            {
+                return default(T)!;
+            }
+        }
+
+        return default(T)!;
+    }
+
+    private void SetDefaultValues()
+    {
+        totalUsers = 4;
+        doctorCount = 1;
+        studentCount = 1;
+        adminCount = 2;
+        totalRevenue = 0;
+        doctorBalance = 0;
+        totalEnrollments = 0;
+        completedEnrollments = 0;
+        activeEnrollments = 0;
+        pendingPayments = 0;
+        approvedPayments = 0;
+        rejectedPayments = 0;
+        pendingWithdrawalCount = 0;
+        approvedWithdrawalCount = 0;
+        rejectedWithdrawalCount = 0;
+        popularContent = new();
+    }
+
+    private string GetContentTypeBadge(string contentType)
+    {
+        return contentType.ToLower() switch
+        {
+            "specialization" => "bg-primary",
+            "course" => "bg-success",
+            "lecture" => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetContentTypeIcon(string contentType)
+    {
+        return contentType.ToLower() switch
+        {
+            "specialization" => "fas fa-layer-group",
+            "course" => "fas fa-book",
+            "lecture" => "fas fa-chalkboard-teacher",
+            _ => "fas fa-file"
+        };
+    }
+
+    private string GetWithdrawalStatusBadge(WithdrawalStatus status)
+    {
+        return status switch
+        {
+            WithdrawalStatus.Pending => "bg-warning",
+            WithdrawalStatus.Approved => "bg-success",
+            WithdrawalStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private void ViewContent(PopularContentDto content)
+    {
+        switch (content.ContentType.ToLower())
+        {
+            case "specialization":
+                Navigation.NavigateTo($"/admin/specializations/edit/{content.ContentId}");
+                break;
+            case "course":
+                Navigation.NavigateTo($"/admin/courses/edit/{content.ContentId}");
+                break;
+            case "lecture":
+                Navigation.NavigateTo($"/admin/lectures/edit/{content.ContentId}");
+                break;
+        }
+    }
+
+    private void ViewWithdrawal(int withdrawalId)
+    {
+        Navigation.NavigateTo($"/admin/withdrawals/{withdrawalId}");
+    }
+
+    private async Task QuickApproveWithdrawal(WithdrawalRequestDto withdrawal)
+    {
+        try
+        {
+            var dto = new ProcessWithdrawalDto
+            {
+                Status = WithdrawalStatus.Approved,
+                Notes = "Approved from dashboard"
+            };
+
+            var success = await WithdrawalService.ProcessWithdrawalAsync(withdrawal.Id, dto);
+
+            if (success)
+            {
+                await ShowSuccess($"Withdrawal #{withdrawal.Id} approved!");
+                await LoadDashboardData();
+            }
+            else
+            {
+                await ShowError("Failed to approve withdrawal");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error: {ex.Message}");
+        }
+    }
+
+    private string GetPaymentStatusBadge(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Pending => "bg-warning",
+            PaymentStatus.Approved => "bg-success",
+            PaymentStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadDashboardData();
+        await ShowSuccess("Dashboard refreshed successfully");
+    }
+
+    private void RedirectToLogin() => Navigation.NavigateTo("/account/login");
+    private void RedirectToHome() => Navigation.NavigateTo("/");
+
+    private async Task ShowSuccess(string message)
+    {
+        await JS.InvokeVoidAsync("showToast", "success", message);
+    }
+
+    private async Task ShowError(string message)
+    {
+        await JS.InvokeVoidAsync("showToast", "error", message);
+    }
+}

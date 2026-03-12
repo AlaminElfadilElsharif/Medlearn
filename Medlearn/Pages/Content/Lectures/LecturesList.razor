@@ -1,0 +1,846 @@
+﻿@page "/lectures"
+
+
+<PageTitle>Browse Lectures</PageTitle>
+
+<div class="browse-lectures">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Mobile Header -->
+        <div class="d-block d-md-none">
+            <div class="bg-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                        <i class="fas fa-arrow-left fa-lg"></i>
+                    </button>
+                    <h5 class="mb-0 flex-grow-1">Browse Lectures</h5>
+                    <button class="btn btn-link text-white p-0" @onclick="ToggleMobileFilters">
+                        <i class="fas fa-sliders-h fa-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Search Bar -->
+            <div class="p-3 border-bottom">
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="Search lectures..."
+                           @bind="searchTerm" @bind:event="oninput"
+                           @onkeypress="@(async (e) => { if (e.Key == "Enter") await SearchLectures(); })" />
+                    <button class="btn btn-primary btn-sm" @onclick="SearchLectures">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Filters Drawer -->
+            @if (showMobileFilters)
+            {
+                <div class="mobile-filters-overlay" @onclick="ToggleMobileFilters"></div>
+                <div class="mobile-filters-drawer">
+                    <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold">Filters</h6>
+                        <button class="btn btn-link text-muted p-0" @onclick="ToggleMobileFilters">
+                            <i class="fas fa-times fa-lg"></i>
+                        </button>
+                    </div>
+                    <div class="p-3">
+                        <!-- Mobile Filters -->
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold">Course</label>
+                            <select class="form-select form-select-sm" @bind="selectedCourseId" @bind:after="ApplyFilters">
+                                <option value="0">All Courses</option>
+                                @if (courses != null)
+                                {
+                                    @foreach (var course in courses)
+                                    {
+                                        <option value="@course.Id">@course.Title</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold">Duration</label>
+                            <select class="form-select form-select-sm" @bind="durationFilter" @bind:after="ApplyFilters">
+                                <option value="all">Any Duration</option>
+                                <option value="short">Short (&lt;15 min)</option>
+                                <option value="medium">Medium (15-30 min)</option>
+                                <option value="long">Long (&gt;30 min)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold">Price</label>
+                            <select class="form-select form-select-sm" @bind="priceFilter" @bind:after="ApplyFilters">
+                                <option value="all">All Prices</option>
+                                <option value="free">Free Only</option>
+                                <option value="paid">Paid Only</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="mobilePreviewOnly"
+                                       @bind="previewOnly" @bind:after="ApplyFilters" />
+                                <label class="form-check-label small" for="mobilePreviewOnly">
+                                    Free Preview Only
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-sm" @onclick="ToggleMobileFilters">
+                                Apply Filters
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">
+                                Clear All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Mobile Active Filters -->
+            @if (selectedCourseId > 0 || durationFilter != "all" || priceFilter != "all" || previewOnly || !string.IsNullOrEmpty(searchTerm))
+            {
+                <div class="px-3 py-2 bg-light border-bottom overflow-auto">
+                    <div class="d-flex gap-2">
+                        @if (!string.IsNullOrEmpty(searchTerm))
+                        {
+                            <span class="badge bg-primary d-flex align-items-center">
+                                Search: "@searchTerm"
+                                <button class="btn-close btn-close-white ms-2" style="font-size: 0.5rem;" @onclick="ClearFilters"></button>
+                            </span>
+                        }
+                        @if (selectedCourseId > 0)
+                        {
+                            var course = courses.FirstOrDefault(c => c.Id == selectedCourseId);
+                            <span class="badge bg-primary d-flex align-items-center">
+                                @course?.Title
+                                <button class="btn-close btn-close-white ms-2" style="font-size: 0.5rem;" @onclick="() => { selectedCourseId = 0; ApplyFilters(); }"></button>
+                            </span>
+                        }
+                        @if (durationFilter != "all")
+                        {
+                            <span class="badge bg-primary d-flex align-items-center">
+                                @durationFilter
+                                <button class="btn-close btn-close-white ms-2" style="font-size: 0.5rem;" @onclick='() => { durationFilter = "all"; ApplyFilters(); }'></button>
+                            </span>
+                        }
+                        @if (priceFilter != "all")
+                        {
+                            <span class="badge bg-primary d-flex align-items-center">
+                                @priceFilter
+                                <button class="btn-close btn-close-white ms-2" style="font-size: 0.5rem;" @onclick='() => { priceFilter = "all"; ApplyFilters(); }'></button>
+                            </span>
+                        }
+                        @if (previewOnly)
+                        {
+                            <span class="badge bg-primary d-flex align-items-center">
+                                Free Preview
+                                <button class="btn-close btn-close-white ms-2" style="font-size: 0.5rem;" @onclick="() => { previewOnly = false; ApplyFilters(); }"></button>
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="d-none d-md-block">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1>Browse Lectures</h1>
+                            <p class="text-muted mb-0">Discover individual lectures and learning materials</p>
+                        </div>
+                        <div class="search-box" style="width: 300px;">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Search lectures..."
+                                       @bind="searchTerm" @bind:event="oninput"
+                                       @onkeypress="@(async (e) => { if (e.Key == "Enter") await SearchLectures(); })" />
+                                <button class="btn btn-primary" @onclick="SearchLectures">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Filters -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Course</label>
+                                    <select class="form-select" @bind="selectedCourseId" @bind:after="ApplyFilters">
+                                        <option value="0">All Courses</option>
+                                        @if (courses != null)
+                                        {
+                                            @foreach (var course in courses)
+                                            {
+                                                <option value="@course.Id">@course.Title</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Duration</label>
+                                    <select class="form-select" @bind="durationFilter" @bind:after="ApplyFilters">
+                                        <option value="all">Any Duration</option>
+                                        <option value="short">Short (&lt;15 min)</option>
+                                        <option value="medium">Medium (15-30 min)</option>
+                                        <option value="long">Long (&gt;30 min)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Price</label>
+                                    <select class="form-select" @bind="priceFilter" @bind:after="ApplyFilters">
+                                        <option value="all">All Prices</option>
+                                        <option value="free">Free Only</option>
+                                        <option value="paid">Paid Only</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="previewOnly"
+                                               @bind="previewOnly" @bind:after="ApplyFilters" />
+                                        <label class="form-check-label" for="previewOnly">
+                                            Free Preview Only
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="row">
+            <div class="col-12">
+                <!-- Section Title (Mobile) -->
+                <div class="d-block d-md-none px-3 py-2">
+                    <h6 class="mb-0 fw-bold">@(IsSearching ? "Search Results" : (previewOnly ? "Free Preview Lectures" : "All Lectures"))</h6>
+                    <small class="text-muted">@filteredLectures.Count lectures found</small>
+                </div>
+
+                <!-- Section Title (Desktop) -->
+                <div class="d-none d-md-block">
+                    <h2 class="mb-3">@(IsSearching ? "Search Results" : (previewOnly ? "Free Preview Lectures" : "All Lectures"))</h2>
+                </div>
+
+                @if (isLoading)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading lectures...</p>
+                    </div>
+                }
+                else if (!lectures.Any())
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                        <h5>No lectures found</h5>
+                        <p class="text-muted">Try adjusting your search or filters</p>
+                        <button class="btn btn-outline-primary mt-2" @onclick="ClearFilters">
+                            <i class="fas fa-times me-2"></i> Clear Filters
+                        </button>
+                    </div>
+                }
+                else if (!filteredLectures.Any())
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-filter fa-3x text-muted mb-3"></i>
+                        <h5>No matches</h5>
+                        <p class="text-muted">No lectures match your current filters</p>
+                        <button class="btn btn-outline-primary mt-2" @onclick="ClearFilters">
+                            <i class="fas fa-times me-2"></i> Clear Filters
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <!-- Mobile Card Grid (2 columns) -->
+                    <div class="d-block d-md-none">
+                        <div class="row g-2 px-2">
+                            @foreach (var lecture in paginatedLectures)
+                            {
+                                <div class="col-6">
+                                    <div class="card h-100 border-0 shadow-sm">
+                                        <div class="position-relative">
+                                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 100px;">
+                                                <i class="fas fa-video fa-2x text-primary"></i>
+                                            </div>
+                                            @if (lecture.IsFreePreview)
+                                            {
+                                                <span class="position-absolute top-0 end-0 m-1 badge bg-info" style="font-size: 0.6rem;">
+                                                    Preview
+                                                </span>
+                                            }
+                                            @if (lecture.Price == 0)
+                                            {
+                                                <span class="position-absolute top-0 start-0 m-1 badge bg-success" style="font-size: 0.6rem;">
+                                                    FREE
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="card-body p-2">
+                                            <h6 class="card-title small fw-bold mb-1" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                                @lecture.Title
+                                            </h6>
+
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <small class="fw-bold text-primary">$@lecture.Price.ToString("N2")</small>
+                                                <small class="text-muted">
+                                                    <i class="far fa-clock"></i> @lecture.EstimatedDurationMinutes
+                                                </small>
+                                            </div>
+
+                                            <div class="d-grid gap-1 mt-2">
+                                                @if (lecture.IsFreePreview)
+                                                {
+                                                    <button class="btn btn-info btn-xs py-1"
+                                                            @onclick="@(() => PreviewLecture(lecture.Id))">
+                                                        <i class="fas fa-play me-1"></i>Preview
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-outline-primary btn-xs py-1"
+                                                            @onclick="@(() => ViewLectureDetails(lecture.Id))">
+                                                        Details
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Desktop Card Grid (3 columns) -->
+                    <div class="d-none d-md-block">
+                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                            @foreach (var lecture in paginatedLectures)
+                            {
+                                <div class="col">
+                                    <div class="card h-100 shadow-sm">
+                                        <div class="position-relative">
+                                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                                                <i class="fas fa-video fa-3x text-primary"></i>
+                                            </div>
+                                            @if (lecture.IsFreePreview)
+                                            {
+                                                <span class="position-absolute top-0 end-0 m-2 badge bg-info">
+                                                    Free Preview
+                                                </span>
+                                            }
+                                            @if (lecture.Price == 0)
+                                            {
+                                                <span class="position-absolute top-0 start-0 m-2 badge bg-success">
+                                                    FREE
+                                                </span>
+                                            }
+                                            @if (lecture.IsActive)
+                                            {
+                                                <span class="position-absolute bottom-0 end-0 m-2 badge bg-success">
+                                                    Active
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="card-title">@lecture.Title</h5>
+
+                                            <p class="card-text text-muted small flex-grow-1">
+                                                @(lecture.Description.Length > 100 ? lecture.Description.Substring(0, 100) + "..." : lecture.Description)
+                                            </p>
+
+                                            <!-- Lecture Details -->
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <div>
+                                                    <span class="h5 mb-0">$@lecture.Price.ToString("N2")</span>
+                                                </div>
+                                                <div class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    @lecture.EstimatedDurationMinutes min
+                                                </div>
+                                            </div>
+
+                                            <!-- Materials Count -->
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <small class="text-muted">
+                                                    @if (lecture.Materials != null && lecture.Materials.Any())
+                                                    {
+                                                        <i class="fas fa-file me-1"></i>
+                                                        <span>@lecture.Materials.Count materials</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fas fa-file me-1"></i>
+                                                        <span>No materials</span>
+                                                    }
+                                                </small>
+                                                <small class="text-muted">
+                                                    Order: @lecture.Order
+                                                </small>
+                                            </div>
+
+                                            <!-- Course Info -->
+                                            @if (lecture.CourseId > 0)
+                                            {
+                                                <div class="mb-3">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-book text-muted me-2"></i>
+                                                        <small class="text-muted">Part of Course</small>
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            <div class="d-grid gap-2 mt-auto">
+                                                @if (lecture.IsFreePreview)
+                                                {
+                                                    <button class="btn btn-info btn-sm"
+                                                            @onclick="@(() => PreviewLecture(lecture.Id))">
+                                                        <i class="fas fa-play me-2"></i> Free Preview
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-outline-primary btn-sm"
+                                                            @onclick="@(() => ViewLectureDetails(lecture.Id))">
+                                                        <i class="fas fa-eye me-2"></i> View Details
+                                                    </button>
+                                                }
+
+                                                @if (lecture.CourseId > 0)
+                                                {
+                                                    <button class="btn btn-outline-secondary btn-sm"
+                                                            @onclick="@(() => ViewCourse(lecture.CourseId))">
+                                                        <i class="fas fa-external-link-alt me-2"></i> View Course
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    @if (totalPages > 1)
+                    {
+                        <!-- Mobile Pagination -->
+                        <nav class="d-block d-md-none mt-3">
+                            <ul class="pagination pagination-sm justify-content-center">
+                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="@(async () => await ChangePage(currentPage - 1))">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                </li>
+
+                                @if (totalPages <= 5)
+                                {
+                                    @for (int i = 1; i <= totalPages; i++)
+                                    {
+                                        <li class="page-item @(currentPage == i ? "active" : "")">
+                                            <button class="page-link" @onclick="@(async () => await ChangePage(i))">@i</button>
+                                        </li>
+                                    }
+                                }
+                                else
+                                {
+                                    @if (currentPage > 2)
+                                    {
+                                        <li class="page-item">
+                                            <button class="page-link" @onclick="@(async () => await ChangePage(1))">1</button>
+                                        </li>
+                                        @if (currentPage > 3)
+                                        {
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        }
+                                    }
+
+                                    @for (int i = Math.Max(1, currentPage - 1); i <= Math.Min(totalPages, currentPage + 1); i++)
+                                    {
+                                        <li class="page-item @(currentPage == i ? "active" : "")">
+                                            <button class="page-link" @onclick="@(async () => await ChangePage(i))">@i</button>
+                                        </li>
+                                    }
+
+                                    @if (currentPage < totalPages - 1)
+                                    {
+                                        @if (currentPage < totalPages - 2)
+                                        {
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        }
+                                        <li class="page-item">
+                                            <button class="page-link" @onclick="@(async () => await ChangePage(totalPages))">@totalPages</button>
+                                        </li>
+                                    }
+                                }
+
+                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="@(async () => await ChangePage(currentPage + 1))">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+
+                        <!-- Desktop Pagination -->
+                        <nav class="d-none d-md-block mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="@(async () => await ChangePage(currentPage - 1))">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                </li>
+
+                                @for (int i = 1; i <= totalPages; i++)
+                                {
+                                    <li class="page-item @(currentPage == i ? "active" : "")">
+                                        <button class="page-link" @onclick="@(async () => await ChangePage(i))">@i</button>
+                                    </li>
+                                }
+
+                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="@(async () => await ChangePage(currentPage + 1))">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile Filters CSS -->
+<style>
+    .mobile-filters-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 1040;
+    }
+
+    .mobile-filters-drawer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: white;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        z-index: 1050;
+        max-height: 80vh;
+        overflow-y: auto;
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @@keyframes slideUp {
+        from {
+            transform: translateY(100%);
+        }
+
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    .btn-xs {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 0.2rem;
+    }
+</style>
+
+@code {
+    private List<LectureDto> lectures = new();
+    private List<CourseDto> courses = new();
+    private List<LectureDto> filteredLectures = new();
+    private List<LectureDto> paginatedLectures = new();
+    private string searchTerm = "";
+    private int selectedCourseId = 0;
+    private string durationFilter = "all";
+    private string priceFilter = "all";
+    private bool previewOnly = false;
+    private bool IsSearching => !string.IsNullOrEmpty(searchTerm);
+    private int currentPage = 1;
+    private const int pageSize = 12;
+    private int totalPages = 1;
+    private bool isLoading = true;
+    private bool showMobileFilters = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // First load courses to populate filter
+            await LoadCoursesForFilter();
+
+            // Then load all lectures
+            await LoadAllLectures();
+
+            // Apply initial filters
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Error loading data:", ex.Message);
+            await ShowToast("error", "Failed to load lectures. Please try again.");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadCoursesForFilter()
+    {
+        try
+        {
+            // First get active specializations
+            var specializations = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: null,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 50
+            );
+
+            if (specializations != null)
+            {
+                var allCourses = new List<CourseDto>();
+
+                // Get courses from each active specialization
+                foreach (var spec in specializations)
+                {
+                    // Only get courses from active specializations
+                    if (!spec.IsActive) continue;
+
+                    try
+                    {
+                        var specCourses = await CourseService.GetCoursesBySpecializationAsync(spec.Id);
+                        if (specCourses != null)
+                        {
+                            // Filter for active courses only
+                            var activeCourses = specCourses.Where(c => c.IsActive).ToList();
+                            allCourses.AddRange(activeCourses);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error loading courses for specialization {spec.Id}: {ex.Message}");
+                    }
+                }
+
+                courses = allCourses;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading courses for filter: {ex.Message}");
+        }
+    }
+
+    private async Task LoadAllLectures()
+    {
+        var allLectures = new List<LectureDto>();
+
+        if (courses != null && courses.Any())
+        {
+            foreach (var course in courses)
+            {
+                // Only get lectures from active courses
+                if (!course.IsActive) continue;
+
+                try
+                {
+                    var lecturesInCourse = await LectureService.GetLecturesByCourseAsync(course.Id);
+                    if (lecturesInCourse != null)
+                    {
+                        // Filter for active lectures only
+                        var activeLectures = lecturesInCourse.Where(l => l.IsActive).ToList();
+                        allLectures.AddRange(activeLectures);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading lectures for course {course.Id}: {ex.Message}");
+                }
+            }
+        }
+
+        lectures = allLectures;
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = lectures.AsEnumerable();
+
+        // Apply course filter (0 means "All Courses")
+        if (selectedCourseId > 0)
+        {
+            filtered = filtered.Where(l => l.CourseId == selectedCourseId);
+        }
+
+        // Apply search filter
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            var searchLower = searchTerm.ToLower();
+            filtered = filtered.Where(l =>
+                l.Title.ToLower().Contains(searchLower) ||
+                l.Description.ToLower().Contains(searchLower));
+        }
+
+        // Apply duration filter
+        if (durationFilter != "all")
+        {
+            filtered = durationFilter switch
+            {
+                "short" => filtered.Where(l => l.EstimatedDurationMinutes < 15),
+                "medium" => filtered.Where(l => l.EstimatedDurationMinutes >= 15 && l.EstimatedDurationMinutes <= 30),
+                "long" => filtered.Where(l => l.EstimatedDurationMinutes > 30),
+                _ => filtered
+            };
+        }
+
+        // Apply price filter
+        if (priceFilter != "all")
+        {
+            filtered = priceFilter switch
+            {
+                "free" => filtered.Where(l => l.Price == 0),
+                "paid" => filtered.Where(l => l.Price > 0),
+                _ => filtered
+            };
+        }
+
+        // Apply preview filter
+        if (previewOnly)
+        {
+            filtered = filtered.Where(l => l.IsFreePreview);
+        }
+
+        // Sort by course ID and order
+        filteredLectures = filtered
+            .OrderBy(l => l.CourseId)
+            .ThenBy(l => l.Order)
+            .ToList();
+
+        // Calculate pagination
+        totalPages = (int)Math.Ceiling((double)filteredLectures.Count / pageSize);
+        currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+
+        // Apply pagination
+        var startIndex = (currentPage - 1) * pageSize;
+        paginatedLectures = filteredLectures
+            .Skip(startIndex)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private async Task SearchLectures()
+    {
+        currentPage = 1;
+        ApplyFilters();
+        await InvokeAsync(StateHasChanged);
+
+        // Close mobile filters if open
+        showMobileFilters = false;
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            ApplyFilters();
+            await JS.InvokeVoidAsync("scrollTo", 0, 0);
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        searchTerm = "";
+        selectedCourseId = 0;
+        durationFilter = "all";
+        priceFilter = "all";
+        previewOnly = false;
+        currentPage = 1;
+        ApplyFilters();
+        await InvokeAsync(StateHasChanged);
+
+        // Close mobile filters if open
+        showMobileFilters = false;
+    }
+
+    private void ToggleMobileFilters()
+    {
+        showMobileFilters = !showMobileFilters;
+    }
+
+    private void PreviewLecture(int lectureId)
+    {
+        Navigation.NavigateTo($"/lectures/{lectureId}");
+    }
+
+    private void ViewLectureDetails(int lectureId)
+    {
+        Navigation.NavigateTo($"/lectures/{lectureId}");
+    }
+
+    private void ViewCourse(int courseId)
+    {
+        Navigation.NavigateTo($"/course/{courseId}");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/browse");
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", type, message);
+        }
+        catch
+        {
+            await JS.InvokeVoidAsync("alert", message);
+        }
+    }
+}

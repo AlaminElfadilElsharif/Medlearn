@@ -1,0 +1,1042 @@
+﻿@page "/admin/announcements/create"
+
+
+<PageTitle>Create Announcement</PageTitle>
+
+<div class="create-announcement">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Header - Responsive -->
+        <div class="row g-0 mb-3 mb-md-4">
+            <div class="col-12">
+                <!-- Mobile Header -->
+                <div class="d-block d-md-none">
+                    <div class="bg-primary text-white p-3">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                                <i class="fas fa-arrow-left fa-lg"></i>
+                            </button>
+                            <h5 class="mb-0 flex-grow-1">Create Announcement</h5>
+                            <button class="btn btn-link text-white p-0" @onclick="SaveDraft" disabled="@isSubmitting">
+                                <i class="fas fa-save fa-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Header -->
+                <div class="d-none d-md-block">
+                    <div class="d-flex align-items-center mb-3">
+                        <button class="btn btn-outline-secondary me-3" @onclick="GoBack">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div>
+                            <h1 class="mb-0">Create Announcement</h1>
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb">
+                                    <li class="breadcrumb-item">
+                                        <a href="/admin">Admin</a>
+                                    </li>
+                                    <li class="breadcrumb-item">
+                                        <a href="/admin/announcements">Announcements</a>
+                                    </li>
+                                    <li class="breadcrumb-item active" aria-current="page">Create</li>
+                                </ol>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Show unauthorized message if not admin (same for both) -->
+        @if (!isAuthenticated)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+                <h4>Authentication Required</h4>
+                <p class="text-muted mb-4">Please log in to access this page</p>
+                <button class="btn btn-primary" @onclick="NavigateToLogin">
+                    <i class="fas fa-sign-in-alt me-2"></i> Go to Login
+                </button>
+            </div>
+        }
+        else if (!isAdmin)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-ban fa-3x text-danger mb-3"></i>
+                <h4>Access Denied</h4>
+                <p class="text-muted mb-4">You don't have admin privileges to access this page</p>
+                <button class="btn btn-primary" @onclick="NavigateToHome">
+                    <i class="fas fa-home me-2"></i> Go to Home
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Form Content - Responsive Layouts -->
+            <div class="row g-0 g-md-3 justify-content-center">
+                <div class="col-12 col-lg-10">
+                    <div class="card border-0 border-md">
+                        <div class="card-body p-3 p-md-4">
+                            @if (isSubmitting)
+                            {
+                                <div class="overlay-spinner">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Creating announcement...</span>
+                                    </div>
+                                </div>
+                            }
+
+                            <form @onsubmit="HandleSubmit">
+                                <!-- Mobile View (Stacked Layout) -->
+                                <div class="d-block d-md-none">
+                                    <!-- Basic Info Section -->
+                                    <div class="mb-4">
+                                        <h6 class="fw-bold mb-3">
+                                            <i class="fas fa-info-circle me-2 text-primary"></i>Basic Information
+                                        </h6>
+
+                                        <!-- Title (Mobile) -->
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold" for="mobile-title">
+                                                Title <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="text"
+                                                   class="form-control form-control-sm @(validationErrors.ContainsKey("Title") ? "is-invalid" : "")"
+                                                   id="mobile-title"
+                                                   @bind="newAnnouncement.Title"
+                                                   @oninput="OnTitleInput"
+                                                   maxlength="200"
+                                                   placeholder="Enter announcement title"
+                                                   required />
+                                            @if (validationErrors.ContainsKey("Title"))
+                                            {
+                                                <div class="invalid-feedback small">
+                                                    @validationErrors["Title"]
+                                                </div>
+                                            }
+                                            <small class="form-text text-muted small">@(newAnnouncement.Title?.Length ?? 0)/200</small>
+                                        </div>
+
+                                        <!-- Content (Mobile) -->
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold" for="mobile-content">
+                                                Content <span class="text-danger">*</span>
+                                            </label>
+                                            <textarea class="form-control form-control-sm @(validationErrors.ContainsKey("Content") ? "is-invalid" : "")"
+                                                      id="mobile-content"
+                                                      @bind="newAnnouncement.Content"
+                                                      @oninput="OnContentInput"
+                                                      rows="4"
+                                                      maxlength="4000"
+                                                      placeholder="Write your announcement content here..."
+                                                      required></textarea>
+                                            @if (validationErrors.ContainsKey("Content"))
+                                            {
+                                                <div class="invalid-feedback small">
+                                                    @validationErrors["Content"]
+                                                </div>
+                                            }
+                                            <small class="form-text text-muted small">@(newAnnouncement.Content?.Length ?? 0)/4000</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Image Section (Mobile) -->
+                                    <div class="mb-4">
+                                        <h6 class="fw-bold mb-3">
+                                            <i class="fas fa-image me-2 text-primary"></i>Thumbnail Image
+                                        </h6>
+
+                                        <!-- Mobile Image Upload -->
+                                        <div class="mb-3">
+                                            @if (!string.IsNullOrEmpty(previewImageUrl))
+                                            {
+                                                <div class="position-relative mb-2">
+                                                    <img src="@previewImageUrl" class="img-fluid rounded w-100"
+                                                         alt="Thumbnail preview" style="max-height: 150px; object-fit: cover;" />
+                                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                                                            @onclick="RemoveThumbnail">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="upload-area mb-2 p-3 text-center border rounded bg-light"
+                                                     @onclick="TriggerFileUpload">
+                                                    <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
+                                                    <p class="small mb-1">Tap to upload image</p>
+                                                    <p class="text-muted small mb-0">JPG, PNG, GIF (Max 5MB)</p>
+                                                </div>
+                                            }
+
+                                            <InputFile id="mobile-thumbnail" class="d-none"
+                                                       OnChange="HandleThumbnailUpload"
+                                                       accept="image/png, image/jpeg, image/jpg, image/gif, image/webp" />
+
+                                            @if (!string.IsNullOrEmpty(imageUploadError))
+                                            {
+                                                <div class="alert alert-danger p-2 small mt-2">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    @imageUploadError
+                                                </div>
+                                            }
+
+                                            <!-- Image Alt Text (Mobile) -->
+                                            <div class="mt-2">
+                                                <label class="form-label small" for="mobile-alt-text">Image Description</label>
+                                                <input type="text"
+                                                       class="form-control form-control-sm"
+                                                       id="mobile-alt-text"
+                                                       placeholder="Describe the image"
+                                                       @bind="newAnnouncement.ImageAltText" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Settings Section (Mobile) -->
+                                    <div class="mb-4">
+                                        <h6 class="fw-bold mb-3">
+                                            <i class="fas fa-cog me-2 text-primary"></i>Settings
+                                        </h6>
+
+                                        <!-- Importance Toggle (Mobile) -->
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input"
+                                                       type="checkbox"
+                                                       id="mobile-important"
+                                                       @bind="newAnnouncement.IsImportant" />
+                                                <label class="form-check-label small" for="mobile-important">
+                                                    Mark as Important
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Expiry Date (Mobile) -->
+                                        <div class="mb-3">
+                                            <label class="form-label small" for="mobile-expiry">Expiry Date (Optional)</label>
+                                            <input type="date"
+                                                   class="form-control form-control-sm"
+                                                   id="mobile-expiry"
+                                                   value="@(expiryDateString)"
+                                                   @onchange="@((ChangeEventArgs e) => expiryDateString = e.Value?.ToString())"
+                                                   min="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Audience Selection (Mobile) -->
+                                    <div class="mb-4">
+                                        <h6 class="fw-bold mb-3">
+                                            <i class="fas fa-users me-2 text-primary"></i>Target Audience
+                                            <span class="text-danger">*</span>
+                                        </h6>
+
+                                        <div class="btn-group-vertical w-100 gap-2" role="group">
+                                            <button type="button"
+                                                    class="btn @(newAnnouncement.ForAllUsers ? "btn-primary" : "btn-outline-primary") text-start d-flex align-items-center"
+                                                    @onclick='() => ToggleAudience("all")'>
+                                                <i class="fas fa-users me-2"></i>
+                                                <span class="flex-grow-1">All Users</span>
+                                                @if (newAnnouncement.ForAllUsers)
+                                                {
+                                                    <i class="fas fa-check"></i>
+                                                }
+                                            </button>
+                                            <button type="button"
+                                                    class="btn @(newAnnouncement.ForDoctorsOnly ? "btn-info" : "btn-outline-info") text-start d-flex align-items-center"
+                                                    @onclick='() => ToggleAudience("doctors")'>
+                                                <i class="fas fa-user-md me-2"></i>
+                                                <span class="flex-grow-1">Doctors Only</span>
+                                                @if (newAnnouncement.ForDoctorsOnly)
+                                                {
+                                                    <i class="fas fa-check"></i>
+                                                }
+                                            </button>
+                                            <button type="button"
+                                                    class="btn @(newAnnouncement.ForRegularUsersOnly ? "btn-success" : "btn-outline-success") text-start d-flex align-items-center"
+                                                    @onclick='() => ToggleAudience("regular")'>
+                                                <i class="fas fa-user-graduate me-2"></i>
+                                                <span class="flex-grow-1">Students Only</span>
+                                                @if (newAnnouncement.ForRegularUsersOnly)
+                                                {
+                                                    <i class="fas fa-check"></i>
+                                                }
+                                            </button>
+                                        </div>
+
+                                        @if (validationErrors.ContainsKey("Audience"))
+                                        {
+                                            <div class="alert alert-danger small mt-2 p-2">
+                                                @validationErrors["Audience"]
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <!-- Action Buttons (Mobile) -->
+                                    <div class="fixed-bottom d-block d-md-none p-3 bg-white border-top">
+                                        <div class="d-flex gap-2">
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary flex-fill"
+                                                    @onclick="GoBack">
+                                                Cancel
+                                            </button>
+                                            <button type="submit"
+                                                    class="btn btn-primary flex-fill"
+                                                    disabled="@isSubmitting">
+                                                @if (isSubmitting)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fas fa-paper-plane me-1"></i>
+                                                }
+                                                Publish
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Spacer for mobile fixed button -->
+                                    <div class="mb-5 pb-3 d-block d-md-none"></div>
+                                </div>
+
+                                <!-- Desktop View (Original Layout) -->
+                                <div class="d-none d-md-block">
+                                    <div class="row">
+                                        <!-- Title -->
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label" for="title">
+                                                Title <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="text"
+                                                   class="form-control @(validationErrors.ContainsKey("Title") ? "is-invalid" : "")"
+                                                   id="title"
+                                                   @bind="newAnnouncement.Title"
+                                                   @oninput="OnTitleInput"
+                                                   maxlength="200"
+                                                   required />
+                                            @if (validationErrors.ContainsKey("Title"))
+                                            {
+                                                <div class="invalid-feedback">
+                                                    @validationErrors["Title"]
+                                                </div>
+                                            }
+                                            <small class="form-text text-muted">
+                                                Maximum 200 characters
+                                            </small>
+                                        </div>
+
+                                        <!-- Content -->
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label" for="content">
+                                                Content <span class="text-danger">*</span>
+                                            </label>
+                                            <textarea class="form-control @(validationErrors.ContainsKey("Content") ? "is-invalid" : "")"
+                                                      id="content"
+                                                      @bind="newAnnouncement.Content"
+                                                      @oninput="OnContentInput"
+                                                      rows="6"
+                                                      maxlength="4000"
+                                                      required></textarea>
+                                            @if (validationErrors.ContainsKey("Content"))
+                                            {
+                                                <div class="invalid-feedback">
+                                                    @validationErrors["Content"]
+                                                </div>
+                                            }
+                                            <small class="form-text text-muted">
+                                                Maximum 4000 characters
+                                            </small>
+                                        </div>
+
+                                        <!-- Thumbnail Upload -->
+                                        <div class="col-md-12 mb-4">
+                                            <hr />
+                                            <h5>Thumbnail Image</h5>
+                                            <div class="row align-items-center">
+                                                <div class="col-md-4">
+                                                    @if (!string.IsNullOrEmpty(previewImageUrl))
+                                                    {
+                                                        <div class="thumbnail-preview mb-3">
+                                                            <img src="@previewImageUrl" class="img-fluid rounded"
+                                                                 alt="Thumbnail preview" style="max-height: 200px;" />
+                                                            <button type="button" class="btn btn-sm btn-danger mt-2"
+                                                                    @onclick="RemoveThumbnail">
+                                                                <i class="fas fa-trash me-1"></i> Remove
+                                                            </button>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="thumbnail-preview mb-3">
+                                                            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                                                 style="height: 150px; border: 2px dashed #dee2e6;">
+                                                                <div class="text-center">
+                                                                    <i class="fas fa-image fa-2x text-muted mb-2"></i>
+                                                                    <p class="text-muted small mb-0">Thumbnail Preview</p>
+                                                                    <p class="text-muted small">Optional</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Upload Thumbnail Image</label>
+                                                        <InputFile id="thumbnail" class="form-control"
+                                                                   OnChange="HandleThumbnailUpload"
+                                                                   accept="image/png, image/jpeg, image/jpg, image/gif, image/webp" />
+                                                        <div class="form-text">
+                                                            Optional. Recommended: 1280x720px, JPG, PNG, or GIF format, max 5MB
+                                                        </div>
+                                                        @if (!string.IsNullOrEmpty(imageUploadError))
+                                                        {
+                                                            <div class="alert alert-danger p-2 mt-2">
+                                                                <i class="fas fa-exclamation-circle me-2"></i>
+                                                                @imageUploadError
+                                                            </div>
+                                                        }
+                                                        @if (thumbnailFile != null)
+                                                        {
+                                                            <div class="alert alert-info mt-2 p-2">
+                                                                <i class="fas fa-check-circle me-2 text-success"></i>
+                                                                File selected: @thumbnailFile.Name (@((thumbnailFile.Size / 1024).ToString("N0")) KB)
+                                                            </div>
+                                                        }
+                                                    </div>
+
+                                                    <!-- Image Alt Text -->
+                                                    <div class="mb-3">
+                                                        <label class="form-label" for="imageAltText">Image Description (Alt Text)</label>
+                                                        <input type="text"
+                                                               class="form-control"
+                                                               id="imageAltText"
+                                                               placeholder="Describe the image for accessibility"
+                                                               @bind="newAnnouncement.ImageAltText" />
+                                                        <div class="form-text">
+                                                            Optional. Helps visually impaired users understand the image content
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Importance and Expiry -->
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input"
+                                                       type="checkbox"
+                                                       id="isImportant"
+                                                       @bind="newAnnouncement.IsImportant" />
+                                                <label class="form-check-label" for="isImportant">
+                                                    Mark as Important
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                Important announcements will be highlighted
+                                            </small>
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="expiryDate">
+                                                Expiry Date (Optional)
+                                            </label>
+                                            <input type="date"
+                                                   class="form-control"
+                                                   id="expiryDate"
+                                                   value="@(expiryDateString)"
+                                                   @onchange="@((ChangeEventArgs e) => expiryDateString = e.Value?.ToString())"
+                                                   min="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                                            <small class="form-text text-muted">
+                                                Announcement will automatically expire on this date
+                                            </small>
+                                        </div>
+
+                                        <!-- Audience Selection -->
+                                        <div class="col-md-12 mb-4">
+                                            <label class="form-label d-block">
+                                                Target Audience <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Select who should see this announcement
+                                            </div>
+
+                                            <div class="row g-3">
+                                                <!-- For All Users -->
+                                                <div class="col-md-4">
+                                                    <div class="card h-100 @(newAnnouncement.ForAllUsers ? "border-primary" : "")"
+                                                         style="cursor: pointer;"
+                                                         @onclick='() => ToggleAudience("all")'>
+                                                        <div class="card-body text-center">
+                                                            <div class="mb-3">
+                                                                <i class="fas fa-users fa-3x @(newAnnouncement.ForAllUsers ? "text-primary" : "text-muted")"></i>
+                                                            </div>
+                                                            <h5 class="card-title">All Users</h5>
+                                                            <p class="card-text small text-muted">
+                                                                Show to all users including doctors and regular users
+                                                            </p>
+                                                            <div class="form-check d-inline-block">
+                                                                <input class="form-check-input"
+                                                                       type="radio"
+                                                                       name="audience"
+                                                                       checked="@(newAnnouncement.ForAllUsers)"
+                                                                       @onchange='() => ToggleAudience("all")' />
+                                                                <label class="form-check-label">Select</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- For Doctors Only -->
+                                                <div class="col-md-4">
+                                                    <div class="card h-100 @(newAnnouncement.ForDoctorsOnly ? "border-info" : "")"
+                                                         style="cursor: pointer;"
+                                                         @onclick='() => ToggleAudience("doctors")'>
+                                                        <div class="card-body text-center">
+                                                            <div class="mb-3">
+                                                                <i class="fas fa-user-md fa-3x @(newAnnouncement.ForDoctorsOnly ? "text-info" : "text-muted")"></i>
+                                                            </div>
+                                                            <h5 class="card-title">Doctors Only</h5>
+                                                            <p class="card-text small text-muted">
+                                                                Show only to doctors (content creators)
+                                                            </p>
+                                                            <div class="form-check d-inline-block">
+                                                                <input class="form-check-input"
+                                                                       type="radio"
+                                                                       name="audience"
+                                                                       checked="@(newAnnouncement.ForDoctorsOnly)"
+                                                                       @onchange='() => ToggleAudience("doctors")' />
+                                                                <label class="form-check-label">Select</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- For Regular Users Only -->
+                                                <div class="col-md-4">
+                                                    <div class="card h-100 @(newAnnouncement.ForRegularUsersOnly ? "border-success" : "")"
+                                                         style="cursor: pointer;"
+                                                         @onclick='() => ToggleAudience("regular")'>
+                                                        <div class="card-body text-center">
+                                                            <div class="mb-3">
+                                                                <i class="fas fa-user-graduate fa-3x @(newAnnouncement.ForRegularUsersOnly ? "text-success" : "text-muted")"></i>
+                                                            </div>
+                                                            <h5 class="card-title">Students Only</h5>
+                                                            <p class="card-text small text-muted">
+                                                                Show only to regular users (students)
+                                                            </p>
+                                                            <div class="form-check d-inline-block">
+                                                                <input class="form-check-input"
+                                                                       type="radio"
+                                                                       name="audience"
+                                                                       checked="@(newAnnouncement.ForRegularUsersOnly)"
+                                                                       @onchange='() => ToggleAudience("regular")' />
+                                                                <label class="form-check-label">Select</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            @if (validationErrors.ContainsKey("Audience"))
+                                            {
+                                                <div class="alert alert-danger mt-3">
+                                                    @validationErrors["Audience"]
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Preview Section -->
+                                        <div class="col-md-12 mb-4">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="mb-0">
+                                                        <i class="fas fa-eye me-2"></i> Preview
+                                                    </h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    @if (string.IsNullOrEmpty(newAnnouncement.Title))
+                                                    {
+                                                        <p class="text-muted text-center py-3">
+                                                            Start typing to see a preview of your announcement
+                                                        </p>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="announcement-preview">
+                                                            @if (newAnnouncement.IsImportant)
+                                                            {
+                                                                <div class="alert alert-warning mb-3">
+                                                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                                                    <strong>Important Announcement</strong>
+                                                                </div>
+                                                            }
+
+                                                            <h4 class="preview-title">@newAnnouncement.Title</h4>
+
+                                                            @if (!string.IsNullOrEmpty(previewImageUrl))
+                                                            {
+                                                                <div class="mb-3">
+                                                                    <img src="@previewImageUrl" class="img-fluid rounded"
+                                                                         alt="@newAnnouncement.ImageAltText"
+                                                                         style="max-height: 200px;" />
+                                                                    @if (!string.IsNullOrEmpty(newAnnouncement.ImageAltText))
+                                                                    {
+                                                                        <small class="text-muted d-block mt-1">
+                                                                            <i class="fas fa-info-circle me-1"></i>
+                                                                            @newAnnouncement.ImageAltText
+                                                                        </small>
+                                                                    }
+                                                                </div>
+                                                            }
+
+                                                            <div class="preview-meta mb-3">
+                                                                <span class="badge bg-secondary me-2">
+                                                                    <i class="fas fa-calendar me-1"></i>
+                                                                    @DateTime.Now.ToString("MMM dd, yyyy")
+                                                                </span>
+                                                                <span class="badge @GetAudienceBadgeColor()">
+                                                                    @GetAudienceText()
+                                                                </span>
+                                                            </div>
+                                                            <div class="preview-content">
+                                                                @((MarkupString)FormatContentPreview(newAnnouncement.Content))
+                                                            </div>
+
+                                                            @if (newAnnouncement.ExpiryDate.HasValue)
+                                                            {
+                                                                <div class="alert alert-light mt-3">
+                                                                    <i class="fas fa-clock me-2"></i>
+                                                                    <strong>Expires:</strong>
+                                                                    @newAnnouncement.ExpiryDate.Value.ToString("MMMM dd, yyyy")
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Form Actions (Desktop) -->
+                                        <div class="col-md-12">
+                                            <div class="d-flex justify-content-between">
+                                                <button type="button"
+                                                        class="btn btn-outline-secondary"
+                                                        @onclick="GoBack">
+                                                    <i class="fas fa-times me-2"></i> Cancel
+                                                </button>
+                                                <div>
+                                                    <button type="button"
+                                                            class="btn btn-outline-primary me-2"
+                                                            @onclick="SaveDraft"
+                                                            disabled="@isSubmitting">
+                                                        <i class="fas fa-save me-2"></i> Save Draft
+                                                    </button>
+                                                    <button type="submit"
+                                                            class="btn btn-primary"
+                                                            disabled="@isSubmitting">
+                                                        @if (isSubmitting)
+                                                        {
+                                                            <span>
+                                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                                Creating...
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>
+                                                                <i class="fas fa-paper-plane me-2"></i> Publish Announcement
+                                                            </span>
+                                                        }
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // ... (keep all your existing code in the @code block exactly as is)
+    private CreateAnnouncementDto newAnnouncement = new CreateAnnouncementDto();
+    private bool isAuthenticated = false;
+    private bool isAdmin = false;
+    private bool isSubmitting = false;
+    private Dictionary<string, string> validationErrors = new Dictionary<string, string>();
+    private string expiryDateString = "";
+    private UserDto? currentUser = null;
+
+    // Image upload related
+    private string previewImageUrl = "";
+    private string imageUploadError = "";
+    private IBrowserFile? thumbnailFile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+
+            if (isAuthenticated)
+            {
+                currentUser = await GetUserFromStorage();
+
+                if (currentUser == null)
+                {
+                    currentUser = await AuthService.GetCurrentUserAsync();
+                    if (currentUser != null)
+                    {
+                        await JS.InvokeVoidAsync("localStorage.setItem", "currentUser",
+                            System.Text.Json.JsonSerializer.Serialize(currentUser));
+                    }
+                }
+
+                isAdmin = currentUser?.UserType == UserType.Admin;
+            }
+            else
+            {
+                currentUser = null;
+                isAdmin = false;
+                await JS.InvokeVoidAsync("localStorage.removeItem", "currentUser");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+            isAdmin = false;
+        }
+    }
+
+    private async Task<UserDto?> GetUserFromStorage()
+    {
+        try
+        {
+            var userJson = await JS.InvokeAsync<string>("localStorage.getItem", "currentUser");
+
+            if (!string.IsNullOrEmpty(userJson))
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<UserDto>(userJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting user from storage: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    private void OnTitleInput(ChangeEventArgs e)
+    {
+        newAnnouncement.Title = e.Value?.ToString();
+        ClearValidation("Title");
+    }
+
+    private void OnContentInput(ChangeEventArgs e)
+    {
+        newAnnouncement.Content = e.Value?.ToString();
+        ClearValidation("Content");
+    }
+
+    private async Task HandleThumbnailUpload(InputFileChangeEventArgs e)
+    {
+        imageUploadError = "";
+        var file = e.File;
+
+        if (file.Size > 5 * 1024 * 1024)
+        {
+            imageUploadError = "File size must be less than 5MB";
+            await ShowToast("error", imageUploadError);
+            return;
+        }
+
+        var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
+        if (!allowedTypes.Contains(file.ContentType.ToLower()))
+        {
+            imageUploadError = "Please upload a JPG, JPEG, PNG, GIF, or WEBP file";
+            await ShowToast("error", imageUploadError);
+            return;
+        }
+
+        thumbnailFile = file;
+
+        try
+        {
+            var format = "image/jpeg";
+            var resizedImage = await file.RequestImageFileAsync(format, 800, 450);
+            var buffer = new byte[resizedImage.Size];
+            await resizedImage.OpenReadStream().ReadAsync(buffer);
+            previewImageUrl = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+        }
+        catch (Exception ex)
+        {
+            imageUploadError = $"Error creating preview: {ex.Message}";
+            Console.WriteLine($"Error creating preview: {ex.Message}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void TriggerFileUpload()
+    {
+        // This would need JavaScript interop to trigger file input click
+        JS.InvokeVoidAsync("document.getElementById('mobile-thumbnail').click()");
+    }
+
+    private void RemoveThumbnail()
+    {
+        thumbnailFile = null;
+        previewImageUrl = "";
+        imageUploadError = "";
+        StateHasChanged();
+    }
+
+    private void ToggleAudience(string audienceType)
+    {
+        // Reset all audience options
+        newAnnouncement.ForAllUsers = false;
+        newAnnouncement.ForDoctorsOnly = false;
+        newAnnouncement.ForRegularUsersOnly = false;
+
+        // Set the selected option
+        switch (audienceType)
+        {
+            case "all":
+                newAnnouncement.ForAllUsers = true;
+                break;
+            case "doctors":
+                newAnnouncement.ForDoctorsOnly = true;
+                break;
+            case "regular":
+                newAnnouncement.ForRegularUsersOnly = true;
+                break;
+        }
+    }
+
+    private string GetAudienceText()
+    {
+        if (newAnnouncement.ForAllUsers) return "All Users";
+        if (newAnnouncement.ForDoctorsOnly) return "Doctors Only";
+        if (newAnnouncement.ForRegularUsersOnly) return "Students Only";
+        return "No Audience Selected";
+    }
+
+    private string GetAudienceBadgeColor()
+    {
+        if (newAnnouncement.ForAllUsers) return "bg-primary";
+        if (newAnnouncement.ForDoctorsOnly) return "bg-info";
+        if (newAnnouncement.ForRegularUsersOnly) return "bg-success";
+        return "bg-secondary";
+    }
+
+    private string FormatContentPreview(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return "";
+
+        // Replace newlines with <br> tags for HTML display
+        return content.Replace("\n", "<br>");
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (!ValidateForm())
+            return;
+
+        isSubmitting = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Parse expiry date if provided
+            if (!string.IsNullOrEmpty(expiryDateString))
+            {
+                if (DateTime.TryParse(expiryDateString, out var expiryDate))
+                {
+                    newAnnouncement.ExpiryDate = expiryDate;
+                }
+            }
+
+            // Create multipart form data
+            using var form = new MultipartFormDataContent();
+
+            // Add all required form fields as StringContent
+            form.Add(new StringContent(newAnnouncement.Title), "Title");
+            form.Add(new StringContent(newAnnouncement.Content), "Content");
+            form.Add(new StringContent(newAnnouncement.IsImportant.ToString()), "IsImportant");
+            form.Add(new StringContent(newAnnouncement.ForAllUsers.ToString()), "ForAllUsers");
+            form.Add(new StringContent(newAnnouncement.ForDoctorsOnly.ToString()), "ForDoctorsOnly");
+            form.Add(new StringContent(newAnnouncement.ForRegularUsersOnly.ToString()), "ForRegularUsersOnly");
+
+            if (newAnnouncement.ExpiryDate.HasValue)
+            {
+                form.Add(new StringContent(newAnnouncement.ExpiryDate.Value.ToString("yyyy-MM-dd")), "ExpiryDate");
+            }
+
+            if (!string.IsNullOrEmpty(newAnnouncement.ImageAltText))
+            {
+                form.Add(new StringContent(newAnnouncement.ImageAltText), "ImageAltText");
+            }
+
+            // Add thumbnail file if provided
+            if (thumbnailFile != null)
+            {
+                var fileContent = new StreamContent(thumbnailFile.OpenReadStream(5 * 1024 * 1024));
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(thumbnailFile.ContentType);
+                form.Add(fileContent, "ThumbnailImage", thumbnailFile.Name);
+            }
+
+            // Add authentication token
+            var token = await TokenService.GetTokenAsync();
+            if (!string.IsNullOrEmpty(token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+
+            var response = await _httpClient.PostAsync("api/announcements", form);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var createdAnnouncement = await response.Content.ReadFromJsonAsync<AnnouncementDto>();
+                Console.WriteLine("Announcement created successfully!");
+                await ShowToast("success", "Announcement created successfully!");
+                Navigation.NavigateTo("/admin/announcements");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Failed to create announcement: {response.StatusCode}, {errorContent}");
+                validationErrors["General"] = "Failed to create announcement. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating announcement: {ex.Message}");
+            validationErrors["General"] = "An error occurred while creating the announcement.";
+        }
+        finally
+        {
+            isSubmitting = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        validationErrors.Clear();
+
+        // Title validation
+        if (string.IsNullOrWhiteSpace(newAnnouncement.Title))
+        {
+            validationErrors["Title"] = "Title is required";
+        }
+        else if (newAnnouncement.Title.Length > 200)
+        {
+            validationErrors["Title"] = "Title must be 200 characters or less";
+        }
+
+        // Content validation
+        if (string.IsNullOrWhiteSpace(newAnnouncement.Content))
+        {
+            validationErrors["Content"] = "Content is required";
+        }
+        else if (newAnnouncement.Content.Length > 4000)
+        {
+            validationErrors["Content"] = "Content must be 4000 characters or less";
+        }
+
+        // Audience validation
+        if (!newAnnouncement.ForAllUsers &&
+            !newAnnouncement.ForDoctorsOnly &&
+            !newAnnouncement.ForRegularUsersOnly)
+        {
+            validationErrors["Audience"] = "Please select a target audience";
+        }
+
+        return validationErrors.Count == 0;
+    }
+
+    private void ClearValidation(string fieldName)
+    {
+        if (validationErrors.ContainsKey(fieldName))
+        {
+            validationErrors.Remove(fieldName);
+        }
+    }
+
+    private async Task SaveDraft()
+    {
+        // Save to localStorage as draft
+        try
+        {
+            var draft = new
+            {
+                Title = newAnnouncement.Title,
+                Content = newAnnouncement.Content,
+                IsImportant = newAnnouncement.IsImportant,
+                ExpiryDate = expiryDateString,
+                ForAllUsers = newAnnouncement.ForAllUsers,
+                ForDoctorsOnly = newAnnouncement.ForDoctorsOnly,
+                ForRegularUsersOnly = newAnnouncement.ForRegularUsersOnly,
+                ImageAltText = newAnnouncement.ImageAltText,
+                SavedAt = DateTime.Now
+            };
+
+            await JS.InvokeVoidAsync("localStorage.setItem",
+                "announcement_draft",
+                System.Text.Json.JsonSerializer.Serialize(draft));
+
+            await ShowToast("success", "Draft saved successfully!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving draft: {ex.Message}");
+            await ShowToast("error", "Failed to save draft");
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/announcements");
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private void NavigateToHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", type, message);
+        }
+        catch
+        {
+            Console.WriteLine($"{type.ToUpper()}: {message}");
+        }
+    }
+
+    // You need to inject HttpClient in your component
+    [Inject] private HttpClient _httpClient { get; set; } = default!;
+}

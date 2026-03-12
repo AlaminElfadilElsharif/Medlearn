@@ -1,0 +1,2100 @@
+﻿@page "/doctor/content"
+@implements IDisposable
+
+<PageTitle>Manage Content - Doctor Dashboard</PageTitle>
+
+<div class="doctor-content-management">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Mobile Header -->
+        <div class="d-block d-md-none">
+            <div class="bg-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                        <i class="fas fa-arrow-left fa-lg"></i>
+                    </button>
+                    <h5 class="mb-0 flex-grow-1">Content Management</h5>
+                    <button class="btn btn-link text-white p-0 me-2" @onclick="RefreshData">
+                        <i class="fas fa-sync-alt fa-lg"></i>
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-link text-white p-0" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-plus fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="/createspecialization">
+                                    <i class="fas fa-book me-2"></i> Specialization
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/createcourse">
+                                    <i class="fas fa-graduation-cap me-2"></i> Course
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/createlecture">
+                                    <i class="fas fa-video me-2"></i> Lecture
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-1">
+                    <i class="fas fa-tasks me-2"></i> Content Management
+                </h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/doctor/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Content Management</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="d-flex align-items-center">
+                <div class="dropdown me-2">
+                    <button class="btn btn-primary dropdown-toggle" type="button" id="createContentDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-plus me-2"></i> Create New
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="createContentDropdown">
+                        <li>
+                            <a class="dropdown-item" href="/createspecialization">
+                                <i class="fas fa-book me-2"></i> Specialization
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/createCourse">
+                                <i class="fas fa-graduation-cap me-2"></i> Course
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" @onclick="async () => await NavigateToCreateLecture()">
+                                <i class="fas fa-video me-2"></i> Lecture
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <button class="btn btn-outline-secondary" @onclick="RefreshData">
+                    <i class="fas fa-sync-alt me-2"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Horizontal Scroll Tabs -->
+        <div class="d-block d-md-none mb-3">
+            <div class="overflow-auto" style="white-space: nowrap; -webkit-overflow-scrolling: touch;">
+                <div class="btn-group" role="group">
+                    <button class="btn @(activeTab == ContentTab.All ? "btn-primary" : "btn-outline-primary")" 
+                            @onclick="() => SetActiveTab(ContentTab.All)">
+                        <i class="fas fa-th-large me-1"></i> All
+                        <span class="badge bg-light text-dark ms-1">@totalContentCount</span>
+                    </button>
+                    <button class="btn @(activeTab == ContentTab.Specialization ? "btn-primary" : "btn-outline-primary")" 
+                            @onclick="() => SetActiveTab(ContentTab.Specialization)">
+                        <i class="fas fa-book me-1"></i> Spec
+                        <span class="badge bg-light text-dark ms-1">@specializations.Count</span>
+                    </button>
+                    <button class="btn @(activeTab == ContentTab.Course ? "btn-primary" : "btn-outline-primary")" 
+                            @onclick="() => SetActiveTab(ContentTab.Course)">
+                        <i class="fas fa-graduation-cap me-1"></i> Courses
+                        <span class="badge bg-light text-dark ms-1">@courses.Count</span>
+                    </button>
+                    <button class="btn @(activeTab == ContentTab.Lecture ? "btn-primary" : "btn-outline-primary")" 
+                            @onclick="() => SetActiveTab(ContentTab.Lecture)">
+                        <i class="fas fa-video me-1"></i> Lectures
+                        <span class="badge bg-light text-dark ms-1">@lectures.Count</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Tabs -->
+        <div class="d-none d-md-block card mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link @(activeTab == ContentTab.All ? "active" : "")" 
+                           @onclick="() => SetActiveTab(ContentTab.All)">
+                            <i class="fas fa-th-large me-2"></i> All Content
+                            <span class="badge bg-secondary ms-1">@totalContentCount</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(activeTab == ContentTab.Specialization ? "active" : "")" 
+                           @onclick="() => SetActiveTab(ContentTab.Specialization)">
+                            <i class="fas fa-book me-2"></i> Specializations
+                            <span class="badge bg-primary ms-1">@specializations.Count</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(activeTab == ContentTab.Course ? "active" : "")" 
+                           @onclick="() => SetActiveTab(ContentTab.Course)">
+                            <i class="fas fa-graduation-cap me-2"></i> Courses
+                            <span class="badge bg-success ms-1">@courses.Count</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(activeTab == ContentTab.Lecture ? "active" : "")" 
+                           @onclick="() => SetActiveTab(ContentTab.Lecture)">
+                            <i class="fas fa-video me-2"></i> Lectures
+                            <span class="badge bg-info ms-1">@lectures.Count</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Mobile Collapsible Stats -->
+        <div class="d-block d-md-none mb-3">
+            <div class="accordion" id="statsAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#statsCollapse">
+                            <i class="fas fa-chart-bar me-2 text-primary"></i>
+                            <span class="flex-grow-1">Content Statistics</span>
+                            <span class="badge bg-primary">@totalContentCount items</span>
+                        </button>
+                    </h2>
+                    <div id="statsCollapse" class="accordion-collapse collapse" data-bs-parent="#statsAccordion">
+                        <div class="accordion-body">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="bg-light p-2 rounded">
+                                        <small class="text-muted d-block">Enrollments</small>
+                                        <span class="h6 mb-0 text-primary">@totalEnrollments</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-light p-2 rounded">
+                                        <small class="text-muted d-block">Revenue</small>
+                                        <span class="h6 mb-0 text-success">$@totalRevenue.ToString("N2")</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-light p-2 rounded">
+                                        <small class="text-muted d-block">Avg Rating</small>
+                                        <span class="h6 mb-0 text-warning">@averageRating.ToString("0.0")</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-light p-2 rounded">
+                                        <small class="text-muted d-block">Reviews</small>
+                                        <span class="h6 mb-0 text-info">@totalReviews</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+     <!-- Desktop Stats - COMPLETELY FIXED -->
+<div class="d-none d-md-block">
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-start border-primary border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-users fa-2x text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="mb-0">@totalEnrollments</h5>
+                            <small class="text-muted">Total Enrollments</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-start border-success border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-dollar-sign fa-2x text-success"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="mb-0">$@totalRevenue.ToString("N2")</h5>
+                            <small class="text-muted">Total Revenue</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-start border-warning border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-star fa-2x text-warning"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="mb-0">@averageRating.ToString("0.0")</h5>
+                            <small class="text-muted">Average Rating</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-start border-info border-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-chart-line fa-2x text-info"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="mb-0">@totalReviews</h5>
+                            <small class="text-muted">Total Reviews</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <!-- Mobile Search and Filters -->
+        <div class="d-block d-md-none mb-3">
+            <div class="input-group mb-2">
+                <span class="input-group-text bg-white">
+                    <i class="fas fa-search text-muted"></i>
+                </span>
+                <input type="text" class="form-control" placeholder="Search content..." 
+                       @bind="searchTerm" @bind:event="oninput" />
+                @if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                        <i class="fas fa-times"></i>
+                    </button>
+                }
+            </div>
+            
+            <div class="row g-2">
+                <div class="col-6">
+                    <select class="form-select form-select-sm" @onchange="OnStatusFilterChange">
+                        <option value="All">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Featured">Featured</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <select class="form-select form-select-sm" @onchange="OnSortChange">
+                        <option value="created_desc">Newest</option>
+                        <option value="created_asc">Oldest</option>
+                        <option value="title_asc">Title A-Z</option>
+                        <option value="title_desc">Title Z-A</option>
+                        <option value="enrollments_desc">Most Enrolled</option>
+                        <option value="rating_desc">Highest Rated</option>
+                        <option value="revenue_desc">Most Revenue</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Search and Filters - FIXED -->
+<div class="d-none d-md-flex flex-wrap align-items-center gap-3 mb-4">
+    <div class="flex-grow-1" style="min-width: 300px;">
+        <div class="input-group">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-search text-primary"></i>
+            </span>
+            <input type="text" class="form-control" placeholder="Search content by title, description, or parent content..." 
+                   @bind="searchTerm" @bind:event="oninput" />
+            @if (!string.IsNullOrEmpty(searchTerm))
+            {
+                <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                    <i class="fas fa-times"></i>
+                </button>
+            }
+        </div>
+    </div>
+    <div style="min-width: 180px;">
+        <select class="form-select" @onchange="OnStatusFilterChange">
+            <option value="All">📊 All Status</option>
+            <option value="Active">✅ Active</option>
+            <option value="Inactive">⭕ Inactive</option>
+            <option value="Featured">⭐ Featured</option>
+        </select>
+    </div>
+    <div style="min-width: 200px;">
+        <select class="form-select" @onchange="OnSortChange">
+            <option value="created_desc">🆕 Newest First</option>
+            <option value="created_asc">📅 Oldest First</option>
+            <option value="title_asc">🔤 Title A-Z</option>
+            <option value="title_desc">🔠 Title Z-A</option>
+            <option value="enrollments_desc">👥 Most Enrollments</option>
+            <option value="rating_desc">⭐ Highest Rating</option>
+            <option value="revenue_desc">💰 Most Revenue</option>
+        </select>
+    </div>
+</div>
+
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading content...</p>
+            </div>
+        }
+        else if (!isAuthenticated)
+        {
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Please log in to manage your content.
+                <a href="/account/login" class="alert-link ms-2">Login</a>
+            </div>
+        }
+        else if (doctor == null || doctor.UserType != UserType.Doctor)
+        {
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                Access denied. This page is only available for doctors.
+                <a href="/" class="alert-link ms-2">Go to Home</a>
+            </div>
+        }
+        else if (!filteredContent.Any())
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Content Found</h4>
+                <p class="text-muted">
+                    @(string.IsNullOrEmpty(searchTerm) 
+                        ? "You haven't created any content yet." 
+                        : "No content matches your search.")
+                </p>
+                <a href="/createspecialization" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i> Create Your First Content
+                </a>
+            </div>
+        }
+        else
+        {
+            <!-- Content Display -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        @(activeTab == ContentTab.All ? "All Content" : $"{activeTab}s")
+                        <span class="badge bg-primary ms-2">@filteredContent.Count</span>
+                    </h5>
+                    <div class="d-flex align-items-center">
+                        <!-- Mobile view toggle -->
+                        <div class="d-block d-md-none">
+                            <button class="btn btn-sm btn-outline-secondary me-2" @onclick="() => isGridView = !isGridView">
+                                <i class="fas @(isGridView ? "fa-list" : "fa-th-large")"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="ExportData">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Desktop view toggle -->
+                        <div class="d-none d-md-flex">
+                            <div class="form-check form-switch me-3">
+                                <input class="form-check-input" type="checkbox" id="gridViewToggle" @bind="isGridView" />
+                                <label class="form-check-label" for="gridViewToggle">
+                                    <i class="fas @(isGridView ? "fa-list" : "fa-th-large")"></i>
+                                </label>
+                            </div>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-secondary" @onclick="ExportData">
+                                    <i class="fas fa-download me-1"></i> Export
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="PrintView">
+                                    <i class="fas fa-print me-1"></i> Print
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    @if (isGridView)
+                    {
+                        <!-- Grid View - Responsive -->
+                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 g-md-4">
+                            @foreach (var content in filteredContent)
+                            {
+                                <div class="col">
+                                    <div class="card h-100 content-card shadow-sm">
+                                        <!-- Mobile card layout -->
+                                        <div class="d-block d-md-none">
+                                            <div class="position-relative">
+                                                @if (!string.IsNullOrEmpty(content.ThumbnailUrl))
+                                                {
+                                                    <img src="@GetImageUrl(content.ThumbnailUrl)" 
+                                                         class="card-img-top" alt="@content.Title" 
+                                                         style="height: 140px; object-fit: cover;">
+                                                }
+                                                else
+                                                {
+                                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                                         style="height: 140px;">
+                                                        <i class="fas @GetContentIcon(content.ContentTypeTab) fa-3x text-muted"></i>
+                                                    </div>
+                                                }
+                                                <div class="position-absolute top-0 end-0 m-2">
+                                                    <span class="badge @GetContentTypeBadge(content.ContentTypeTab)">
+                                                        @GetContentTypeShortName(content.ContentTypeTab)
+                                                    </span>
+                                                </div>
+                                                @if (content.IsFeatured)
+                                                {
+                                                    <div class="position-absolute top-0 start-0 m-2">
+                                                        <span class="badge bg-warning">
+                                                            <i class="fas fa-star"></i>
+                                                        </span>
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="card-body p-2">
+                                                <h6 class="card-title mb-1">@TruncateText(content.Title, 40)</h6>
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span class="badge @(content.IsActive ? "bg-success" : "bg-danger")">
+                                                        @(content.IsActive ? "Active" : "Inactive")
+                                                    </span>
+                                                    <small class="text-muted">@content.CreatedAt.ToString("MMM dd")</small>
+                                                </div>
+                                                <div class="row g-1 mb-2">
+                                                    <div class="col-4 text-center">
+                                                        <small class="d-block text-primary fw-bold">@content.TotalEnrollments</small>
+                                                        <small class="text-muted">Enroll</small>
+                                                    </div>
+                                                    <div class="col-4 text-center">
+                                                        <small class="d-block text-success fw-bold">$@content.Revenue.ToString("N0")</small>
+                                                        <small class="text-muted">Rev</small>
+                                                    </div>
+                                                    <div class="col-4 text-center">
+                                                        <small class="d-block text-warning fw-bold">@content.Rating.ToString("0.0")</small>
+                                                        <small class="text-muted">Rate</small>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex gap-1">
+                                                    <button class="btn btn-sm btn-outline-primary flex-grow-1" @onclick="() => EditContent(content)">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-info flex-grow-1" @onclick="() => ViewContent(content)">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end">
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" @onclick="() => ViewEnrollments(content)">
+                                                                    <i class="fas fa-users me-2"></i> Enrollments
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" @onclick="() => ViewReviews(content)">
+                                                                    <i class="fas fa-star me-2"></i> Reviews
+                                                                </a>
+                                                            </li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            @GenerateActionMenuItems(content)
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Desktop card layout -->
+                                        <div class="d-none d-md-block">
+                                            <div class="position-relative">
+                                                @if (!string.IsNullOrEmpty(content.ThumbnailUrl))
+                                                {
+                                                    <img src="@GetImageUrl(content.ThumbnailUrl)" 
+                                                         class="card-img-top" alt="@content.Title" 
+                                                         style="height: 180px; object-fit: cover;">
+                                                }
+                                                else
+                                                {
+                                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                                                         style="height: 180px;">
+                                                        <i class="fas @GetContentIcon(content.ContentTypeTab) fa-3x text-muted"></i>
+                                                    </div>
+                                                }
+                                                <div class="position-absolute top-0 end-0 m-2">
+                                                    <span class="badge @GetContentTypeBadge(content.ContentTypeTab)">
+                                                        @content.ContentTypeTab
+                                                    </span>
+                                                </div>
+                                                @if (content.IsFeatured)
+                                                {
+                                                    <div class="position-absolute top-0 start-0 m-2">
+                                                        <span class="badge bg-warning">
+                                                            <i class="fas fa-star me-1"></i> Featured
+                                                        </span>
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="card-body d-flex flex-column">
+                                                <h6 class="card-title mb-2">
+                                                    <a href="@GetContentUrl(content)" class="text-decoration-none text-dark">
+                                                        @content.Title
+                                                    </a>
+                                                </h6>
+                                                <p class="card-text small text-muted flex-grow-1">
+                                                    @TruncateText(content.Description, 100)
+                                                </p>
+                                                <div class="row g-2 mb-3">
+                                                    <div class="col-4 text-center">
+                                                        <div class="border rounded p-1">
+                                                            <div class="small text-primary fw-bold">@content.TotalEnrollments</div>
+                                                            <div class="x-small text-muted">Enrollments</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-4 text-center">
+                                                        <div class="border rounded p-1">
+                                                            <div class="small text-success fw-bold">$@content.Revenue.ToString("N0")</div>
+                                                            <div class="x-small text-muted">Revenue</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-4 text-center">
+                                                        <div class="border rounded p-1">
+                                                            <div class="small text-warning fw-bold">@content.Rating.ToString("0.0")</div>
+                                                            <div class="x-small text-muted">Rating</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-content-between">
+                                                    <div>
+                                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditContent(content)">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-info ms-1" @onclick="() => ViewContent(content)">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                                                type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end">
+                                                            @GenerateActionMenuItems(content)
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="card-footer bg-transparent">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar me-1"></i>
+                                                    Created @content.CreatedAt.ToString("MMM dd, yyyy")
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Table View - Desktop Only (hide on mobile) -->
+                        <div class="d-none d-md-block">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th width="50"></th>
+                                            <th>Title</th>
+                                            <th>Type</th>
+                                            <th class="text-center">Enrollments</th>
+                                            <th class="text-center">Revenue</th>
+                                            <th class="text-center">Rating</th>
+                                            <th class="text-center">Status</th>
+                                            <th class="text-center">Created</th>
+                                            <th class="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var content in filteredContent)
+                                        {
+                                            <tr class="@(content.IsFeatured ? "table-warning" : "")">
+                                                <td>
+                                                    @if (!string.IsNullOrEmpty(content.ThumbnailUrl))
+                                                    {
+                                                        <img src="@GetImageUrl(content.ThumbnailUrl)" 
+                                                             class="rounded" width="40" height="40" 
+                                                             alt="@content.Title" style="object-fit: cover;" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                                             style="width: 40px; height: 40px;">
+                                                            <i class="fas @GetContentIcon(content.ContentTypeTab) text-muted"></i>
+                                                        </div>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div>
+                                                        <a href="@GetContentUrl(content)" class="text-decoration-none fw-bold">
+                                                            @content.Title
+                                                        </a>
+                                                        @if (content.IsFeatured)
+                                                        {
+                                                            <span class="badge bg-warning ms-2">
+                                                                <i class="fas fa-star me-1"></i> Featured
+                                                            </span>
+                                                        }
+                                                        <div class="text-muted small">
+                                                            @TruncateText(content.Description, 50)
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @GetContentTypeBadge(content.ContentTypeTab)">
+                                                        @content.ContentTypeTab
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="fw-bold text-primary">@content.TotalEnrollments</div>
+                                                    <small class="text-muted">students</small>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="fw-bold text-success">$@content.Revenue.ToString("N2")</div>
+                                                    <small class="text-muted">earned</small>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="d-flex align-items-center justify-content-center">
+                                                        <div class="rating-stars me-2">
+                                                            @for (int i = 1; i <= 5; i++)
+                                                            {
+                                                                <i class="fas fa-star @(i <= Math.Round(content.Rating) ? "text-warning" : "text-muted")" style="font-size: 0.8rem;"></i>
+                                                            }
+                                                        </div>
+                                                        <span class="fw-bold">@content.Rating.ToString("0.0")</span>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (content.IsActive)
+                                                    {
+                                                        <span class="badge bg-success">
+                                                            <i class="fas fa-check-circle me-1"></i> Active
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger">
+                                                            <i class="fas fa-times-circle me-1"></i> Inactive
+                                                        </span>
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    <small class="text-muted">@content.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <button class="btn btn-outline-primary" @onclick="() => ViewContent(content)" title="View">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-success" @onclick="() => EditContent(content)" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <div class="dropdown">
+                                                            <button class="btn btn-outline-secondary dropdown-toggle" 
+                                                                    type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <i class="fas fa-ellipsis-v"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                                @GenerateActionMenuItems(content)
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Mobile List View (alternative to table) -->
+                        <div class="d-block d-md-none">
+                            @foreach (var content in filteredContent)
+                            {
+                                <div class="card mb-2">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex align-items-center mb-2">
+                                            @if (!string.IsNullOrEmpty(content.ThumbnailUrl))
+                                            {
+                                                <img src="@GetImageUrl(content.ThumbnailUrl)" 
+                                                     class="rounded me-2" width="40" height="40" 
+                                                     alt="@content.Title" style="object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="bg-light rounded d-flex align-items-center justify-content-center me-2" 
+                                                     style="width: 40px; height: 40px;">
+                                                    <i class="fas @GetContentIcon(content.ContentTypeTab) text-muted"></i>
+                                                </div>
+                                            }
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold">@TruncateText(content.Title, 30)</div>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge @GetContentTypeBadge(content.ContentTypeTab) me-2">
+                                                        @GetContentTypeShortName(content.ContentTypeTab)
+                                                    </span>
+                                                    <span class="badge @(content.IsActive ? "bg-success" : "bg-danger")">
+                                                        @(content.IsActive ? "Active" : "Inactive")
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row g-1 mb-2">
+                                            <div class="col-4 text-center">
+                                                <small class="d-block text-primary fw-bold">@content.TotalEnrollments</small>
+                                                <small class="text-muted">Enroll</small>
+                                            </div>
+                                            <div class="col-4 text-center">
+                                                <small class="d-block text-success fw-bold">$@content.Revenue.ToString("N0")</small>
+                                                <small class="text-muted">Rev</small>
+                                            </div>
+                                            <div class="col-4 text-center">
+                                                <small class="d-block text-warning fw-bold">@content.Rating.ToString("0.0")</small>
+                                                <small class="text-muted">Rate</small>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm btn-outline-primary flex-grow-1" @onclick="() => ViewContent(content)">
+                                                <i class="fas fa-eye me-1"></i> View
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-success flex-grow-1" @onclick="() => EditContent(content)">
+                                                <i class="fas fa-edit me-1"></i> Edit
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => ShowMobileMenu(content)">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Mobile Pagination -->
+                    @if (totalPages > 1)
+                    {
+                        <div class="d-block d-md-none mt-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-sm btn-outline-primary @(currentPage == 1 ? "disabled" : "")" 
+                                        @onclick="async () => await ChangePage(currentPage - 1)">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="text-muted small">Page @currentPage of @totalPages</span>
+                                <button class="btn btn-sm btn-outline-primary @(currentPage == totalPages ? "disabled" : "")" 
+                                        @onclick="async () => await ChangePage(currentPage + 1)">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Desktop Pagination -->
+                        <div class="d-none d-md-block">
+                            <nav aria-label="Page navigation" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                        <a class="page-link" href="javascript:void(0)" @onclick="async () => await ChangePage(currentPage - 1)" 
+                                           @onclick:preventDefault>
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                    
+                                    @for (int i = 1; i <= totalPages; i++)
+                                    {
+                                        if (i == 1 || i == totalPages || (i >= currentPage - 2 && i <= currentPage + 2))
+                                        {
+                                            <li class="page-item @(currentPage == i ? "active" : "")">
+                                                <a class="page-link" href="javascript:void(0)" @onclick="async () => await ChangePage(i)" 
+                                                   @onclick:preventDefault>@i</a>
+                                            </li>
+                                        }
+                                        else if (i == currentPage - 3 || i == currentPage + 3)
+                                        {
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        }
+                                    }
+                                    
+                                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                        <a class="page-link" href="javascript:void(0)" @onclick="async () => await ChangePage(currentPage + 1)" 
+                                           @onclick:preventDefault>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    }
+
+                    <!-- Summary Footer - Mobile -->
+                    <div class="d-block d-md-none mt-3 pt-2 border-top">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="bg-light p-2 rounded">
+                                    <small class="text-muted d-block">Showing</small>
+                                    <span class="h6 mb-0">@filteredContent.Count items</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="bg-light p-2 rounded">
+                                    <small class="text-muted d-block">Revenue</small>
+                                    <span class="h6 mb-0 text-success">$@filteredContent.Sum(c => c.Revenue).ToString("N2")</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Footer - Desktop -->
+                    <div class="d-none d-md-block mt-4 pt-3 border-top">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h5 class="text-primary mb-1">@filteredContent.Count</h5>
+                                    <small class="text-muted">Showing Content</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h5 class="text-success mb-1">$@filteredContent.Sum(c => c.Revenue).ToString("N2")</h5>
+                                    <small class="text-muted">Total Revenue</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h5 class="text-info mb-1">@filteredContent.Sum(c => c.TotalEnrollments)</h5>
+                                    <small class="text-muted">Total Enrollments</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <h5 class="text-warning mb-1">@(filteredContent.Average(c => c.Rating).ToString("0.0"))</h5>
+                                    <small class="text-muted">Average Rating</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Mobile Action Bottom Sheet -->
+@if (showMobileMenu)
+{
+    <div class="modal fade show d-block d-md-none" style="background-color: rgba(0,0,0,0.5);" tabindex="-1" @onclick="HideMobileMenu">
+        <div class="modal-dialog modal-dialog-bottom">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Actions</h5>
+                    <button type="button" class="btn-close" @onclick="HideMobileMenu"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="list-group list-group-flush">
+                        @if (selectedContent != null)
+                        {
+                            <a class="list-group-item list-group-item-action" href="#" @onclick="() => ViewEnrollments(selectedContent)">
+                                <i class="fas fa-users me-3 text-primary"></i> View Enrollments
+                            </a>
+                            <a class="list-group-item list-group-item-action" href="#" @onclick="() => ViewReviews(selectedContent)">
+                                <i class="fas fa-star me-3 text-warning"></i> View Reviews
+                            </a>
+                            <div class="list-group-item">
+                                <hr class="my-1">
+                            </div>
+                            @if (selectedContent.IsFeatured)
+                            {
+                                <a class="list-group-item list-group-item-action" href="#" @onclick="() => ToggleFeatured(selectedContent)">
+                                    <i class="fas fa-star me-3 text-warning"></i> Unfeature
+                                </a>
+                            }
+                            else
+                            {
+                                <a class="list-group-item list-group-item-action" href="#" @onclick="() => ToggleFeatured(selectedContent)">
+                                    <i class="fas fa-star me-3 text-muted"></i> Feature
+                                </a>
+                            }
+                            @if (selectedContent.IsActive)
+                            {
+                                <a class="list-group-item list-group-item-action text-warning" href="#" @onclick="() => ConfirmDeactivate(selectedContent)">
+                                    <i class="fas fa-power-off me-3"></i> Deactivate
+                                </a>
+                            }
+                            else
+                            {
+                                <a class="list-group-item list-group-item-action text-success" href="#" @onclick="() => ActivateContent(selectedContent)">
+                                    <i class="fas fa-power-off me-3"></i> Activate
+                                </a>
+                            }
+                            <a class="list-group-item list-group-item-action text-danger" href="#" @onclick="() => ConfirmDelete(selectedContent)">
+                                <i class="fas fa-trash me-3"></i> Delete
+                            </a>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary w-100" @onclick="HideMobileMenu">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Loading Modal (keep as is) -->
+@if (showLoadingModal)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5>@loadingMessage</h5>
+                    <p class="text-muted mb-0">Please wait...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+<!-- Course Selection Modal for Content Management -->
+@if (ShowCourseDropdown)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1" @onclick="HideCourseDropdown">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                        Select Course
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="HideCourseDropdown"></button>
+                </div>
+                <div class="modal-body p-0">
+                    @if (courses != null && courses.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var course in courses)
+                            {
+                                <button class="list-group-item list-group-item-action d-flex align-items-center p-3 border-bottom"
+                                        @onclick="() => NavigateToCreateLectureForCourse(course.Id)">
+                                    <div class="me-3">
+                                        @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                                        {
+                                            <img src="@GetImageUrl(course.ThumbnailUrl)"
+                                                 class="rounded" width="45" height="45" alt="Course"
+                                                 style="object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                                 style="width: 45px; height: 45px;">
+                                                <i class="fas fa-graduation-cap text-muted"></i>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="flex-grow-1 text-start">
+                                        <div class="fw-bold">@course.Title</div>
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-video me-1"></i> @(course.Lectures?.Count ?? 0) lectures
+                                        </small>
+                                        <small class="text-success">
+                                            <i class="fas fa-dollar-sign me-1"></i> @course.Price.ToString("C")
+                                        </small>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-muted"></i>
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center p-4">
+                            <i class="fas fa-exclamation-circle fa-3x text-warning mb-3"></i>
+                            <p class="mb-2">No courses available</p>
+                            <small class="text-muted d-block mb-3">You need to create a course first</small>
+                            <button class="btn btn-primary btn-sm" @onclick='() => Navigation.NavigateTo("/createcourse")'>
+                                <i class="fas fa-plus me-2"></i> Create Course
+                            </button>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary w-100" @onclick="HideCourseDropdown">
+                        <i class="fas fa-times me-2"></i> Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Confirmation Modal (keep as is) -->
+@if (showConfirmationModal)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        Confirm Action
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="HideConfirmationModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@confirmationMessage</p>
+                    @if (contentToDelete != null)
+                    {
+                        <div class="alert alert-warning">
+                            <strong>Warning:</strong> This action cannot be undone. All associated data will be permanently deleted.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" @onclick="HideConfirmationModal">Cancel</button>
+                    <button type="button" class="btn @(confirmationAction == "delete" ? "btn-danger" : "btn-primary")" 
+                            @onclick="ExecuteConfirmationAction">
+                        @(confirmationAction == "delete" ? "Delete" : 
+                          confirmationAction == "deactivate" ? "Deactivate" : 
+                          confirmationAction == "activate" ? "Activate" : 
+                          confirmationAction == "feature" ? "Feature" : "Unfeature")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add this CSS to your styles -->
+<style>
+    /* Mobile optimizations */
+    @@media (max-width: 767.98px) {
+        .modal-dialog-bottom {
+            margin: 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 100%;
+        }
+        
+        .modal-dialog-bottom .modal-content {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+        }
+        
+        .btn-group .btn {
+            padding: 0.5rem 0.75rem;
+        }
+        
+        .content-card {
+            border-radius: 0.5rem;
+        }
+        
+        /* Smooth scrolling for horizontal tabs */
+        .overflow-auto {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        .overflow-auto::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+    }
+    modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        z-index: 1040;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .modal-content {
+        max-height: 80vh;
+        overflow-y: auto;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 400px;
+    }
+    /* Fix for iOS tap highlight */
+    .btn, .list-group-item {
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Improve touch targets */
+    .btn, .dropdown-item, .list-group-item {
+        min-height: 44px;
+    }
+</style>
+
+@code {
+    // ... (keep all your existing code in the @code block exactly as is)
+    // Parameters
+    [Parameter] public string? ContentTypeParam { get; set; }
+    [Parameter] public int? ContentId { get; set; }
+
+    // Services and dependencies
+    private UserDto? doctor;
+    private bool isAuthenticated = false;
+    private bool isLoading = true;
+    private bool showLoadingModal = false;
+    private string loadingMessage = "Loading...";
+    
+    // Content lists
+    private List<SpecializationDto> specializations = new();
+    private List<CourseDto> courses = new();
+    private List<LectureDto> lectures = new();
+    private List<DoctorContentItem> allContent = new();
+    private List<DoctorContentItem> filteredContent = new();
+    
+    // Statistics
+    private int totalContentCount = 0;
+    private int totalEnrollments = 0;
+    private decimal totalRevenue = 0;
+    private double averageRating = 0;
+    private int totalReviews = 0;
+
+    // Filters and sorting
+    private string searchTerm = string.Empty;
+    private string sortBy = "created_desc";
+    private ContentTab activeTab = ContentTab.All;
+    private ContentStatusFilter selectedStatusFilter = ContentStatusFilter.All;
+    private bool isGridView = true;
+    
+    // Pagination
+    private int currentPage = 1;
+    private int pageSize = 12;
+    private int totalPages = 1;
+
+    // Modal states
+    private bool showConfirmationModal = false;
+    private string confirmationMessage = string.Empty;
+    private string confirmationAction = string.Empty;
+    private DoctorContentItem? contentToDelete = null;
+    
+    // Mobile menu
+    private bool showMobileMenu = false;
+    private DoctorContentItem? selectedContent = null;
+
+    // Enums
+    private enum ContentTab
+    {
+        All,
+        Specialization,
+        Course,
+        Lecture
+    }
+
+    private enum ContentStatusFilter
+    {
+        All,
+        Active,
+        Inactive,
+        Featured
+    }
+
+    // Models
+    private class DoctorContentItem
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string ThumbnailUrl { get; set; } = string.Empty;
+        public ContentTab ContentTypeTab { get; set; }
+        public decimal Price { get; set; }
+        public int TotalEnrollments { get; set; }
+        public decimal Revenue { get; set; }
+        public double Rating { get; set; }
+        public bool IsActive { get; set; } = true;
+        public bool IsFeatured { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public int? ParentId { get; set; } // For lectures (courseId) and courses (specializationId)
+        public string? ParentTitle { get; set; }
+    }
+    
+    private async Task NavigateToCreateLecture()
+    {
+        try
+        {
+            // Check if courses are loaded, if not load them
+            if (!courses.Any())
+            {
+                // Try to load courses if not already loaded
+                await LoadDoctorContent();
+            }
+
+            if (!courses.Any())
+            {
+                await JS.InvokeVoidAsync("showToast", "warning", "Please create a course first before adding lectures");
+                Navigation.NavigateTo("/createcourse");
+                return;
+            }
+
+            if (courses.Count == 1)
+            {
+                // If doctor has only one course, navigate directly
+                var courseId = courses[0].Id;
+                Navigation.NavigateTo($"/createlecture/{courseId}");
+            }
+            else
+            {
+                // Use dropdown approach since we don't have GetDoctorCoursesAsync
+                ShowCourseDropdown = !ShowCourseDropdown;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error navigating to create lecture: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", "Error loading courses");
+
+            // Fallback: navigate to create course page
+            Navigation.NavigateTo("/createcourse");
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDoctorData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(ContentTypeParam))
+        {
+            // Set active tab based on URL parameter
+            if (Enum.TryParse<ContentTab>(ContentTypeParam, true, out var tab))
+            {
+                activeTab = tab;
+            }
+            
+            // If ContentId is provided, navigate to edit that specific content
+            if (ContentId.HasValue && ContentId > 0)
+            {
+                await EditSpecificContent(ContentTypeParam, ContentId.Value);
+            }
+        }
+        
+        await ApplyFiltersAndSorting();
+    }
+
+    // Helper methods for mobile
+    private string GetSortDisplayName()
+    {
+        return sortBy switch
+        {
+            "created_desc" => "Newest First",
+            "created_asc" => "Oldest First",
+            "title_asc" => "Title A-Z",
+            "title_desc" => "Title Z-A",
+            "enrollments_desc" => "Most Enrollments",
+            "rating_desc" => "Highest Rating",
+            "revenue_desc" => "Most Revenue",
+            _ => "Newest First"
+        };
+    }
+
+    private void OnStatusFilterChange(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        selectedStatusFilter = value switch
+        {
+            "Active" => ContentStatusFilter.Active,
+            "Inactive" => ContentStatusFilter.Inactive,
+            "Featured" => ContentStatusFilter.Featured,
+            _ => ContentStatusFilter.All
+        };
+        currentPage = 1;
+        _ = ApplyFiltersAndSorting();
+    }
+
+    private void OnSortChange(ChangeEventArgs e)
+    {
+        sortBy = e.Value?.ToString() ?? "created_desc";
+        _ = ApplyFiltersAndSorting();
+    }
+
+    private string GetContentTypeShortName(ContentTab contentType)
+    {
+        return contentType switch
+        {
+            ContentTab.Specialization => "Spec",
+            ContentTab.Course => "Course",
+            ContentTab.Lecture => "Lecture",
+            _ => "All"
+        };
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        return text.Length <= maxLength ? text : text.Substring(0, maxLength - 3) + "...";
+    }
+
+    private void ShowMobileMenu(DoctorContentItem content)
+    {
+        selectedContent = content;
+        showMobileMenu = true;
+        StateHasChanged();
+    }
+
+    private void HideMobileMenu()
+    {
+        showMobileMenu = false;
+        selectedContent = null;
+        StateHasChanged();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/doctor/dashboard");
+    }
+
+    private RenderFragment GenerateActionMenuItems(DoctorContentItem content) => __builder =>
+{
+    <li>
+        <button class="dropdown-item" @onclick="() => ViewEnrollments(content)">
+            <i class="fas fa-users me-2"></i> Enrollments
+        </button>
+    </li>
+    <li>
+        <button class="dropdown-item" @onclick="() => ViewReviews(content)">
+            <i class="fas fa-star me-2"></i> Reviews
+        </button>
+    </li>
+    <li><hr class="dropdown-divider"></li>
+    @if (content.IsFeatured)
+    {
+        <li>
+            <button class="dropdown-item" @onclick="() => ToggleFeatured(content)">
+                <i class="fas fa-star me-2 text-warning"></i> Unfeature
+            </button>
+        </li>
+    }
+    else
+    {
+        <li>
+            <button class="dropdown-item" @onclick="() => ToggleFeatured(content)">
+                <i class="fas fa-star me-2"></i> Feature
+            </button>
+        </li>
+    }
+    @if (content.IsActive)
+    {
+        <li>
+            <button class="dropdown-item text-warning" @onclick="() => ConfirmDeactivate(content)">
+                <i class="fas fa-power-off me-2"></i> Deactivate
+            </button>
+        </li>
+    }
+    else
+    {
+        <li>
+            <button class="dropdown-item text-success" @onclick="() => ActivateContent(content)">
+                <i class="fas fa-power-off me-2"></i> Activate
+            </button>
+        </li>
+    }
+    <li>
+        <button class="dropdown-item text-danger" @onclick="() => ConfirmDelete(content)">
+            <i class="fas fa-trash me-2"></i> Delete
+        </button>
+    </li>
+};
+
+    private async Task LoadDoctorData()
+    {
+        try
+        {
+            isLoading = true;
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            
+            if (!isAuthenticated)
+            {
+                await JS.InvokeVoidAsync("showToast", "warning", "Please log in to manage content.");
+                return;
+            }
+
+            doctor = await AuthService.GetCurrentUserAsync();
+            
+            if (doctor == null || doctor.UserType != UserType.Doctor)
+            {
+                await JS.InvokeVoidAsync("showToast", "error", "Access denied. Doctors only.");
+                return;
+            }
+
+            await LoadDoctorContent();
+            await CalculateStatistics();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading doctor data: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", $"Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadDoctorContent()
+    {
+        try
+        {
+            allContent.Clear();
+            
+            // Load specializations
+            var specList = await SpecializationService.GetMySpecializationsAsync();
+            if (specList != null)
+            {
+                specializations = specList;
+                foreach (var spec in specList)
+                {
+                    allContent.Add(new DoctorContentItem
+                    {
+                        Id = spec.Id,
+                        Title = spec.Title,
+                        Description = spec.Description,
+                        ThumbnailUrl = spec.ThumbnailUrl,
+                        ContentTypeTab = ContentTab.Specialization,
+                        Price = spec.Price,
+                        TotalEnrollments = spec.TotalEnrollments,
+                        Revenue = CalculateSpecializationRevenue(spec),
+                        Rating = (double)spec.AverageRating,
+                        IsActive = spec.IsActive,
+                        IsFeatured = spec.IsFeatured,
+                        CreatedAt = spec.CreatedAt
+                    });
+                }
+            }
+
+            // Load courses
+            foreach (var spec in specializations)
+            {
+                var courseList = await CourseService.GetCoursesBySpecializationAsync(spec.Id);
+                if (courseList != null)
+                {
+                    var doctorCourses = courseList.Where(c => c.DoctorId == doctor?.Id).ToList();
+                    courses.AddRange(doctorCourses);
+                    
+                    foreach (var course in doctorCourses)
+                    {
+                        allContent.Add(new DoctorContentItem
+                        {
+                            Id = course.Id,
+                            Title = course.Title,
+                            Description = course.Description,
+                            ThumbnailUrl = course.ThumbnailUrl,
+                            ContentTypeTab = ContentTab.Course,
+                            Price = course.Price,
+                            TotalEnrollments = course.TotalEnrollments,
+                            Revenue = CalculateCourseRevenue(course),
+                            Rating = (double)course.AverageRating,
+                            IsActive = course.IsActive,
+                            IsFeatured = false,
+                            CreatedAt = course.CreatedAt,
+                            ParentId = spec.Id,
+                            ParentTitle = spec.Title
+                        });
+                    }
+                }
+            }
+
+            // Load lectures
+            foreach (var course in courses)
+            {
+                var lectureList = await LectureService.GetLecturesByCourseAsync(course.Id);
+                if (lectureList != null)
+                {
+                    var doctorLectures = lectureList.Where(l => l.DoctorId == doctor?.Id).ToList();
+                    lectures.AddRange(doctorLectures);
+                    
+                    foreach (var lecture in doctorLectures)
+                    {
+                        allContent.Add(new DoctorContentItem
+                        {
+                            Id = lecture.Id,
+                            Title = lecture.Title,
+                            Description = lecture.Description,
+                            ThumbnailUrl = string.Empty,
+                            ContentTypeTab = ContentTab.Lecture,
+                            Price = lecture.Price,
+                            TotalEnrollments = lecture.TotalEnrollments,
+                            Revenue = CalculateLectureRevenue(lecture),
+                            Rating = (double)lecture.AverageRating,
+                            IsActive = lecture.IsActive,
+                            IsFeatured = false,
+                            CreatedAt = lecture.CreatedAt,
+                            ParentId = course.Id,
+                            ParentTitle = course.Title
+                        });
+                    }
+                }
+            }
+
+            totalContentCount = allContent.Count;
+            
+            // Log for debugging
+            Console.WriteLine($"Loaded {allContent.Count} total items");
+            Console.WriteLine($"Active items: {allContent.Count(c => c.IsActive)}");
+            Console.WriteLine($"Inactive items: {allContent.Count(c => !c.IsActive)}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading doctor content: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", $"Error loading content: {ex.Message}");
+        }
+    }
+    private void NavigateToCreateLectureForCourse(int courseId)
+    {
+        ShowCourseDropdown = false;
+        Navigation.NavigateTo($"/createlecture/{courseId}");
+    }
+    private bool ShowCourseDropdown = false;
+    private void HideCourseDropdown()
+    {
+        ShowCourseDropdown = false;
+        StateHasChanged();
+    }
+    private decimal CalculateSpecializationRevenue(SpecializationDto spec)
+    {
+        return spec.TotalEnrollments * spec.Price * 0.8m;
+    }
+
+    private decimal CalculateCourseRevenue(CourseDto course)
+    {
+        return course.TotalEnrollments * course.Price * 0.8m;
+    }
+
+    private decimal CalculateLectureRevenue(LectureDto lecture)
+    {
+        return lecture.TotalEnrollments * lecture.Price * 0.8m;
+    }
+
+    private async Task CalculateStatistics()
+    {
+        totalEnrollments = allContent.Sum(c => c.TotalEnrollments);
+        totalRevenue = allContent.Sum(c => c.Revenue);
+        
+        var itemsWithRating = allContent.Where(c => c.Rating > 0).ToList();
+        averageRating = itemsWithRating.Any() ? itemsWithRating.Average(c => c.Rating) : 0;
+        
+        totalReviews = allContent.Sum(c => (int)(c.TotalEnrollments * 0.3));
+    }
+
+    private async Task ApplyFiltersAndSorting()
+    {
+        try
+        {
+            filteredContent = allContent
+                .Where(FilterByTab)
+                .Where(FilterBySearch)
+                .Where(FilterByStatus)
+                .ToList();
+
+            // Apply sorting
+            filteredContent = sortBy switch
+            {
+                "created_desc" => filteredContent.OrderByDescending(c => c.CreatedAt).ToList(),
+                "created_asc" => filteredContent.OrderBy(c => c.CreatedAt).ToList(),
+                "title_asc" => filteredContent.OrderBy(c => c.Title).ToList(),
+                "title_desc" => filteredContent.OrderByDescending(c => c.Title).ToList(),
+                "enrollments_desc" => filteredContent.OrderByDescending(c => c.TotalEnrollments).ToList(),
+                "rating_desc" => filteredContent.OrderByDescending(c => c.Rating).ToList(),
+                "revenue_desc" => filteredContent.OrderByDescending(c => c.Revenue).ToList(),
+                _ => filteredContent.OrderByDescending(c => c.CreatedAt).ToList()
+            };
+
+            // Calculate pagination
+            totalPages = (int)Math.Ceiling((double)filteredContent.Count / pageSize);
+            currentPage = Math.Clamp(currentPage, 1, totalPages);
+            
+            // Apply pagination
+            var startIndex = (currentPage - 1) * pageSize;
+            filteredContent = filteredContent
+                .Skip(startIndex)
+                .Take(pageSize)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error applying filters: {ex.Message}");
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private bool FilterByTab(DoctorContentItem content)
+    {
+        return activeTab == ContentTab.All || content.ContentTypeTab == activeTab;
+    }
+
+    private bool FilterBySearch(DoctorContentItem content)
+    {
+        if (string.IsNullOrEmpty(searchTerm))
+            return true;
+        
+        var searchLower = searchTerm.ToLower();
+        return content.Title.ToLower().Contains(searchLower) ||
+               content.Description.ToLower().Contains(searchLower) ||
+               (content.ParentTitle?.ToLower().Contains(searchLower) ?? false);
+    }
+
+    private bool FilterByStatus(DoctorContentItem content)
+    {
+        return selectedStatusFilter switch
+        {
+            ContentStatusFilter.All => true,
+            ContentStatusFilter.Active => content.IsActive,
+            ContentStatusFilter.Inactive => !content.IsActive,
+            ContentStatusFilter.Featured => content.IsFeatured,
+            _ => true
+        };
+    }
+
+    // UI Helper Methods
+    private string GetImageUrl(string? relativePath)
+    {
+        return ImageUrlService.GetImageUrl(relativePath);
+    }
+
+    private string GetContentIcon(ContentTab contentType)
+    {
+        return contentType switch
+        {
+            ContentTab.Specialization => "fa-book",
+            ContentTab.Course => "fa-graduation-cap",
+            ContentTab.Lecture => "fa-video",
+            _ => "fa-file"
+        };
+    }
+
+    private string GetContentTypeBadge(ContentTab contentType)
+    {
+        return contentType switch
+        {
+            ContentTab.Specialization => "bg-primary",
+            ContentTab.Course => "bg-success",
+            ContentTab.Lecture => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetContentUrl(DoctorContentItem content)
+    {
+        return content.ContentTypeTab switch
+        {
+            ContentTab.Specialization => $"/specialization/{content.Id}",
+            ContentTab.Course => $"/course/{content.Id}",
+            ContentTab.Lecture => $"/lectureinfo/{content.Id}",
+            _ => "#"
+        };
+    }
+
+    // Action Methods
+    private void SetActiveTab(ContentTab tab)
+    {
+        activeTab = tab;
+        currentPage = 1;
+        _ = ApplyFiltersAndSorting();
+    }
+
+    private void SetStatusFilter(ContentStatusFilter filter)
+    {
+        selectedStatusFilter = filter;
+        currentPage = 1;
+        _ = ApplyFiltersAndSorting();
+    }
+
+    private void SetSortBy(string sort)
+    {
+        sortBy = sort;
+        _ = ApplyFiltersAndSorting();
+    }
+
+    private void ClearSearch()
+    {
+        searchTerm = string.Empty;
+        currentPage = 1;
+        _ = ApplyFiltersAndSorting();
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || page > totalPages || page == currentPage)
+            return;
+        
+        currentPage = page;
+        await ApplyFiltersAndSorting();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadDoctorData();
+        await ApplyFiltersAndSorting();
+        await JS.InvokeVoidAsync("showToast", "success", "Content refreshed successfully");
+    }
+
+    private void ViewContent(DoctorContentItem content)
+    {
+        Navigation.NavigateTo(GetContentUrl(content));
+    }
+
+    private void EditContent(DoctorContentItem content)
+    {
+        var contentTypeParam = content.ContentTypeTab.ToString().ToLower();
+        Navigation.NavigateTo($"/doctor/content/{contentTypeParam}/{content.Id}");
+    }
+
+    private async Task EditSpecificContent(string contentType, int contentId)
+    {
+        try
+        {
+            if (allContent.Count == 0)
+            {
+                await LoadDoctorContent();
+            }
+            
+            var content = allContent.FirstOrDefault(c => 
+                c.Id == contentId && 
+                c.ContentTypeTab.ToString().Equals(contentType, StringComparison.OrdinalIgnoreCase));
+            
+            if (content != null)
+            {
+                EditContent(content);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("showToast", "error", "Content not found");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error editing specific content: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", "Error loading content");
+        }
+    }
+
+    private async Task ViewEnrollments(DoctorContentItem content)
+    {
+        if (showMobileMenu) HideMobileMenu();
+        
+        var url = content.ContentTypeTab switch
+        {
+            ContentTab.Specialization => $"/doctor/enrollments?type=specialization&id={content.Id}",
+            ContentTab.Course => $"/doctor/enrollments?type=course&id={content.Id}",
+            ContentTab.Lecture => $"/doctor/enrollments?type=lecture&id={content.Id}",
+            _ => "/doctor/enrollments"
+        };
+        
+        Navigation.NavigateTo(url);
+    }
+
+    private async Task ViewReviews(DoctorContentItem content)
+    {
+        if (showMobileMenu) HideMobileMenu();
+        
+        var url = content.ContentTypeTab switch
+        {
+            ContentTab.Specialization => $"/doctor/reviews?type=specialization&id={content.Id}",
+            ContentTab.Course => $"/doctor/reviews?type=course&id={content.Id}",
+            ContentTab.Lecture => $"/doctor/reviews?type=lecture&id={content.Id}",
+            _ => "/doctor/reviews"
+        };
+        
+        Navigation.NavigateTo(url);
+    }
+
+    private async Task ToggleFeatured(DoctorContentItem content)
+    {
+        try
+        {
+            if (content.ContentTypeTab != ContentTab.Specialization)
+            {
+                await JS.InvokeVoidAsync("showToast", "warning", "Only specializations can be featured");
+                return;
+            }
+
+            if (showMobileMenu) HideMobileMenu();
+
+            confirmationMessage = content.IsFeatured 
+                ? $"Are you sure you want to remove the featured status from \"{content.Title}\"?"
+                : $"Are you sure you want to feature \"{content.Title}\"?";
+            
+            confirmationAction = content.IsFeatured ? "unfeature" : "feature";
+            contentToDelete = content;
+            showConfirmationModal = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error toggling featured status: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", "Error updating featured status");
+        }
+    }
+
+    private async Task ConfirmDeactivate(DoctorContentItem content)
+    {
+        if (showMobileMenu) HideMobileMenu();
+        
+        confirmationMessage = $"Are you sure you want to deactivate \"{content.Title}\"? " +
+                            "Users will no longer be able to enroll in this content.";
+        confirmationAction = "deactivate";
+        contentToDelete = content;
+        showConfirmationModal = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ActivateContent(DoctorContentItem content)
+    {
+        if (showMobileMenu) HideMobileMenu();
+        
+        confirmationMessage = $"Are you sure you want to activate \"{content.Title}\"? " +
+                            "Users will be able to enroll in this content again.";
+        confirmationAction = "activate";
+        contentToDelete = content;
+        showConfirmationModal = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ConfirmDelete(DoctorContentItem content)
+    {
+        if (showMobileMenu) HideMobileMenu();
+        
+        confirmationMessage = $"Are you sure you want to delete \"{content.Title}\"? " +
+                            "This action cannot be undone and will permanently remove all associated data.";
+        confirmationAction = "delete";
+        contentToDelete = content;
+        showConfirmationModal = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void HideConfirmationModal()
+    {
+        showConfirmationModal = false;
+        contentToDelete = null;
+        confirmationMessage = string.Empty;
+        confirmationAction = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task ExecuteConfirmationAction()
+    {
+        try
+        {
+            if (contentToDelete == null) return;
+
+            showLoadingModal = true;
+            loadingMessage = confirmationAction switch
+            {
+                "delete" => $"Deleting {contentToDelete.Title}...",
+                "deactivate" => $"Deactivating {contentToDelete.Title}...",
+                "activate" => $"Activating {contentToDelete.Title}...",
+                "feature" => $"Featuring {contentToDelete.Title}...",
+                "unfeature" => $"Removing featured status from {contentToDelete.Title}...",
+                _ => "Processing..."
+            };
+            
+            await InvokeAsync(StateHasChanged);
+
+            bool success = false;
+            string successMessage = string.Empty;
+
+            switch (confirmationAction)
+            {
+                case "delete":
+                    success = await DeleteContent(contentToDelete);
+                    successMessage = $"\"{contentToDelete.Title}\" has been deleted successfully.";
+                    break;
+                    
+                case "deactivate":
+                    success = await DeactivateContent(contentToDelete);
+                    successMessage = $"\"{contentToDelete.Title}\" has been deactivated successfully.";
+                    break;
+                    
+                case "activate":
+                    success = await ActivateContentInternal(contentToDelete);
+                    successMessage = $"\"{contentToDelete.Title}\" has been activated successfully.";
+                    break;
+                    
+                case "feature":
+                    success = await FeatureContent(contentToDelete, true);
+                    successMessage = $"\"{contentToDelete.Title}\" has been featured successfully.";
+                    break;
+                    
+                case "unfeature":
+                    success = await FeatureContent(contentToDelete, false);
+                    successMessage = $"\"{contentToDelete.Title}\" is no longer featured.";
+                    break;
+            }
+
+            showLoadingModal = false;
+            HideConfirmationModal();
+
+            if (success)
+            {
+                await JS.InvokeVoidAsync("showToast", "success", successMessage);
+                await RefreshData();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("showToast", "error", "Operation failed. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            showLoadingModal = false;
+            HideConfirmationModal();
+            Console.WriteLine($"Error executing action: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", $"Error: {ex.Message}");
+        }
+    }
+
+    private async Task<bool> DeleteContent(DoctorContentItem content)
+    {
+        try
+        {
+            return content.ContentTypeTab switch
+            {
+                ContentTab.Specialization => await SpecializationService.DeleteSpecializationAsync(content.Id),
+                ContentTab.Course => await CourseService.DeleteCourseAsync(content.Id),
+                ContentTab.Lecture => await LectureService.DeleteLectureAsync(content.Id),
+                _ => false
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting content: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<bool> DeactivateContent(DoctorContentItem content)
+    {
+        try
+        {
+            var item = allContent.FirstOrDefault(c => c.Id == content.Id && c.ContentTypeTab == content.ContentTypeTab);
+            if (item != null)
+            {
+                item.IsActive = false;
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deactivating content: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<bool> ActivateContentInternal(DoctorContentItem content)
+    {
+        try
+        {
+            var item = allContent.FirstOrDefault(c => c.Id == content.Id && c.ContentTypeTab == content.ContentTypeTab);
+            if (item != null)
+            {
+                item.IsActive = true;
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error activating content: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<bool> FeatureContent(DoctorContentItem content, bool isFeatured)
+    {
+        try
+        {
+            if (content.ContentTypeTab != ContentTab.Specialization)
+            {
+                return false;
+            }
+
+            var item = allContent.FirstOrDefault(c => c.Id == content.Id && c.ContentTypeTab == ContentTab.Specialization);
+            if (item != null)
+            {
+                item.IsFeatured = isFeatured;
+                
+                var updateDto = new UpdateSpecializationDtos
+                {
+                    IsFeatured = isFeatured
+                };
+                
+                return await SpecializationService.UpdateSpecializationAsync(content.Id, updateDto, null, null);
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating featured status: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task ExportData()
+    {
+        try
+        {
+            var csvContent = "Title,Type,Enrollments,Revenue,Rating,Status,Featured,Created\n";
+            
+            foreach (var content in allContent)
+            {
+                csvContent += $"\"{content.Title}\"," +
+                             $"{content.ContentTypeTab}," +
+                             $"{content.TotalEnrollments}," +
+                             $"{content.Revenue:F2}," +
+                             $"{content.Rating:F1}," +
+                             $"{(content.IsActive ? "Active" : "Inactive")}," +
+                             $"{(content.IsFeatured ? "Yes" : "No")}," +
+                             $"{content.CreatedAt:yyyy-MM-dd}\n";
+            }
+            
+            var fileName = $"doctor-content-export-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            await JS.InvokeVoidAsync("downloadFile", fileName, "text/csv", csvContent);
+            
+            await JS.InvokeVoidAsync("showToast", "success", "Data exported successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting data: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", "Error exporting data");
+        }
+    }
+
+    private async Task PrintView()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+
+    public void Dispose()
+    {
+        // Clean up any resources if needed
+    }
+}

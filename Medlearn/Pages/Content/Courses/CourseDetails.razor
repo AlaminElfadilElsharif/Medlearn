@@ -1,0 +1,1259 @@
+﻿@page "/course/{CourseId:int}"
+
+
+<PageTitle>@(course?.Title ?? "Course Details")</PageTitle>
+
+<div class="content-details course-details">
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading course details...</p>
+        </div>
+    }
+    else if (course == null)
+    {
+        <div class="alert alert-danger m-3">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Course not found
+        </div>
+    }
+    else
+    {
+        <!-- Mobile View (d-block d-md-none) -->
+        <div class="d-block d-md-none">
+            <!-- Mobile Header with Gradient -->
+            <div class="mobile-course-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="header-top p-3">
+                    <div class="d-flex align-items-center text-white">
+                        <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                            <i class="fas fa-arrow-left fa-lg"></i>
+                        </button>
+                        <h6 class="mb-0 flex-grow-1">Course Details</h6>
+                        <button class="btn btn-link text-white p-0" @onclick="ShareCourse">
+                            <i class="fas fa-share-alt fa-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mobile Course Title Section -->
+                <div class="px-3 pb-4 text-white">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-white text-primary">Course</span>
+                        @if (isEnrolled)
+                        {
+                            <span class="badge bg-success">
+                                <i class="fas fa-check-circle me-1"></i> Enrolled
+                            </span>
+                        }
+                    </div>
+                    <h4 class="fw-bold mb-2">@course.Title</h4>
+                    @if (specialization != null)
+                    {
+                        <div class="small opacity-75 mb-2">
+                            <i class="fas fa-layer-group me-1"></i>
+                            Part of @specialization.Title
+                        </div>
+                    }
+                    <div class="d-flex align-items-center gap-3 mt-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-star text-warning me-1"></i>
+                            <span>@course.AverageRating.ToString("0.0")</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-users me-1"></i>
+                            <span>@course.TotalEnrollments students</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Thumbnail (if available) -->
+            @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+            {
+                <div class="mobile-thumbnail">
+                    <img src="@GetImageUrl(course.ThumbnailUrl)"
+                         class="img-fluid w-100"
+                         alt="@course.Title"
+                         style="max-height: 200px; object-fit: cover;"
+                         onerror="this.onerror=null;this.src='https://placehold.co/600x200?text=Course';" />
+                </div>
+            }
+
+            <!-- Mobile Content -->
+            <div class="p-3">
+                <!-- Mobile Action Buttons -->
+                <div class="mobile-action-bar mb-3">
+                    @if (isEnrolled)
+                    {
+                        <button class="btn btn-success w-100 py-3 fw-bold" @onclick="ContinueLearning">
+                            <i class="fas fa-play me-2"></i> Continue Learning
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="row g-2">
+                            <div class="col-8">
+                                @if (course.Price == 0)
+                                {
+                                    <button class="btn btn-success w-100 py-3 fw-bold" @onclick="EnrollFree">
+                                        <i class="fas fa-graduation-cap me-2"></i> Enroll for Free
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-info w-100 py-3 fw-bold" @onclick="EnrollNow">
+                                        <i class="fas fa-shopping-cart me-2"></i> Enroll Now • $@course.Price
+                                    </button>
+                                }
+                            </div>
+                            <div class="col-4">
+                                <button class="btn btn-outline-info w-100 py-3" @onclick="AddToWishlist">
+                                    <i class="fas fa-heart"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Mobile Stats Cards -->
+                <div class="row g-2 mb-4">
+                    <div class="col-3">
+                        <div class="mobile-stat-card text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Lectures</div>
+                            <div class="fw-bold">@(course.Lectures?.Count ?? 0)</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="mobile-stat-card text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Hours</div>
+                            <div class="fw-bold">@GetTotalDuration()</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="mobile-stat-card text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Rating</div>
+                            <div class="fw-bold">@course.AverageRating.ToString("0.0")</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="mobile-stat-card text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Students</div>
+                            <div class="fw-bold">@FormatNumber(course.TotalEnrollments)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Progress (if enrolled) -->
+                @if (isEnrolled)
+                {
+                    <div class="mobile-progress-card bg-light p-3 rounded mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold">Your Progress</span>
+                            <span class="text-primary">@CalculateProgress()%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" role="progressbar"
+                                 style="width: @CalculateProgress()%;"
+                                 aria-valuenow="@CalculateProgress()"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"></div>
+                        </div>
+                        <small class="text-muted mt-2 d-block">
+                            @GetCompletedLectures() of @(course.Lectures?.Count ?? 0) lectures completed
+                        </small>
+                    </div>
+                }
+
+                <!-- Mobile Tabs -->
+                <ul class="nav nav-tabs mb-3" id="mobileTabs" role="tablist">
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link active w-100"
+                                data-bs-toggle="tab"
+                                data-bs-target="#about"
+                                type="button">
+                            About
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100"
+                                data-bs-toggle="tab"
+                                data-bs-target="#curriculum"
+                                type="button">
+                            Curriculum
+                        </button>
+                    </li>
+                    <li class="nav-item flex-fill text-center">
+                        <button class="nav-link w-100"
+                                data-bs-toggle="tab"
+                                data-bs-target="#instructor"
+                                type="button">
+                            Instructor
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Mobile Tab Content -->
+                <div class="tab-content mb-5">
+                    <!-- About Tab -->
+                    <div class="tab-pane fade show active" id="about">
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-2">About This Course</h6>
+                            <p class="mb-0">@course.Description</p>
+                        </div>
+
+                        <!-- What You'll Learn -->
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-2">What You'll Learn</h6>
+                            <div class="learn-items">
+                                <div class="d-flex align-items-start mb-2">
+                                    <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                    <span>Master key concepts</span>
+                                </div>
+                                <div class="d-flex align-items-start mb-2">
+                                    <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                    <span>Hands-on practice</span>
+                                </div>
+                                <div class="d-flex align-items-start mb-2">
+                                    <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                    <span>Industry best practices</span>
+                                </div>
+                                <div class="d-flex align-items-start mb-2">
+                                    <i class="fas fa-check-circle text-success mt-1 me-2"></i>
+                                    <span>Certificate of completion</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Curriculum Tab -->
+                    <div class="tab-pane fade" id="curriculum">
+                        @if (course.Lectures != null && course.Lectures.Any())
+                        {
+                            <div class="lecture-list-mobile">
+                                @foreach (var lecture in course.Lectures.OrderBy(l => l.Order))
+                                {
+                                    <div class="mobile-lecture-item bg-light p-3 rounded mb-2"
+                                         @onclick="() => ViewLecture(lecture.Id)">
+                                        <div class="d-flex align-items-center">
+                                            <div class="lecture-number-circle bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+                                                 style="width: 32px; height: 32px; font-size: 14px;">
+                                                @lecture.Order
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">@lecture.Title</h6>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i> @lecture.EstimatedDurationMinutes min
+                                                </small>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-muted"></i>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No lectures available yet</p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Instructor Tab -->
+                    <div class="tab-pane fade" id="instructor">
+                        @if (course.Doctor != null)
+                        {
+                            <div class="instructor-card-mobile bg-light p-3 rounded">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="instructor-avatar-mobile me-3">
+                                        @if (!string.IsNullOrEmpty(course.Doctor.ProfileImageUrl))
+                                        {
+                                            <img src="@GetImageUrl(course.Doctor.ProfileImageUrl)"
+                                                 class="rounded-circle"
+                                                 alt="Instructor"
+                                                 style="width: 60px; height: 60px; object-fit: cover;"
+                                                 onerror="this.onerror=null;this.src='https://placehold.co/60x60?text=DR';" />
+                                        }
+                                        else
+                                        {
+                                            <div class="avatar-placeholder-mobile bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                                 style="width: 60px; height: 60px;">
+                                                @GetInitials(course.Doctor.FirstName, course.Doctor.LastName)
+                                            </div>
+                                        }
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1">@course.Doctor.FirstName @course.Doctor.LastName</h6>
+                                        @if (course.Doctor.Profile != null)
+                                        {
+                                            <small class="text-muted d-block">@course.Doctor.Profile.Title</small>
+                                            <div class="d-flex gap-2 mt-1">
+                                                <small><i class="fas fa-star text-warning"></i> @course.Doctor.Profile.RatingAverage.ToString("0.0")</small>
+                                                <small><i class="fas fa-users"></i> @FormatNumber(course.Doctor.Profile.TotalStudents)</small>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(course.Doctor.Bio))
+                                {
+                                    <p class="small mb-0">@course.Doctor.Bio</p>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Bottom Padding -->
+            <div class="pb-5"></div>
+        </div>
+
+        <!-- Desktop View (d-none d-md-block) -->
+        <div class="d-none d-md-block">
+            <div class="container-fluid">
+                <!-- Breadcrumb Navigation -->
+                <nav aria-label="breadcrumb" class="mb-4">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="/browse">Browse</a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="/specializations">Specializations</a>
+                        </li>
+                        @if (specialization != null)
+                        {
+                            <li class="breadcrumb-item">
+                                <a href="/specialization/@specialization.Id">@specialization.Title</a>
+                            </li>
+                        }
+                        <li class="breadcrumb-item active" aria-current="page">
+                            @course.Title
+                            @if (isEnrolled)
+                            {
+                                <span class="badge bg-success ms-2">Enrolled</span>
+                            }
+                        </li>
+                    </ol>
+                </nav>
+
+                <!-- Back Button -->
+                <div class="mb-4">
+                    @if (specialization != null)
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="GoBackToSpecialization">
+                            <i class="fas fa-arrow-left me-2"></i> Back to @specialization.Title
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="GoBack">
+                            <i class="fas fa-arrow-left me-2"></i> Back to Courses
+                        </button>
+                    }
+                </div>
+
+                <div class="row">
+                    <!-- Main Content Column -->
+                    <div class="col-lg-8">
+                        <!-- Header Card -->
+                        <div class="card content-header-card mb-4">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h1 class="content-title mb-2">@course.Title</h1>
+                                        <div class="content-meta mb-3">
+                                            <span class="content-type-badge badge bg-info">Course</span>
+                                            @if (isEnrolled)
+                                            {
+                                                <span class="badge bg-success ms-2">
+                                                    <i class="fas fa-check-circle me-1"></i> Enrolled
+                                                </span>
+                                            }
+                                        </div>
+                                        @if (specialization != null)
+                                        {
+                                            <div class="content-parent">
+                                                <i class="fas fa-layer-group me-2"></i>
+                                                Part of:
+                                                <a href="/specialization/@specialization.Id"
+                                                   class="text-decoration-none fw-bold">
+                                                    @specialization.Title
+                                                </a>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="content-price">
+                                        <div class="price-amount">$@course.Price.ToString("N2")</div>
+                                        @if (course.Price == 0)
+                                        {
+                                            <div class="price-badge badge bg-success">FREE</div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Thumbnail Image -->
+                                @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                                {
+                                    <div class="content-thumbnail mb-4">
+                                        <img src="@GetImageUrl(course.ThumbnailUrl)"
+                                             class="img-fluid rounded"
+                                             alt="@course.Title"
+                                             onerror="this.onerror=null;this.src='https://placehold.co/1200x400?text=Course';" />
+                                    </div>
+                                }
+
+                                <!-- Description -->
+                                <div class="content-description mb-4">
+                                    <h4 class="section-title">
+                                        <i class="fas fa-info-circle me-2"></i>About This Course
+                                    </h4>
+                                    <p>@course.Description</p>
+                                </div>
+
+                                <!-- Stats Row -->
+                                <div class="row stats-row mb-4">
+                                    <div class="col-md-3 col-6">
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="fas fa-video"></i>
+                                            </div>
+                                            <div class="stat-value">@(course.Lectures?.Count ?? 0)</div>
+                                            <div class="stat-label">Lectures</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="fas fa-clock"></i>
+                                            </div>
+                                            <div class="stat-value">@GetTotalDuration()</div>
+                                            <div class="stat-label">Hours</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="fas fa-star"></i>
+                                            </div>
+                                            <div class="stat-value">@course.AverageRating.ToString("0.0")</div>
+                                            <div class="stat-label">Rating</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="stat-card">
+                                            <div class="stat-icon">
+                                                <i class="fas fa-users"></i>
+                                            </div>
+                                            <div class="stat-value">@course.TotalEnrollments</div>
+                                            <div class="stat-label">Enrollments</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- What You'll Learn -->
+                                <div class="content-section mb-4">
+                                    <h4 class="section-title">
+                                        <i class="fas fa-check-circle text-success me-2"></i>What You'll Learn
+                                    </h4>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <ul class="learn-list">
+                                                <li><i class="fas fa-check text-success me-2"></i>Master key concepts</li>
+                                                <li><i class="fas fa-check text-success me-2"></i>Hands-on practice</li>
+                                                <li><i class="fas fa-check text-success me-2"></i>Industry best practices</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <ul class="learn-list">
+                                                <li><i class="fas fa-check text-success me-2"></i>Real-world examples</li>
+                                                <li><i class="fas fa-check text-success me-2"></i>Certificate of completion</li>
+                                                <li><i class="fas fa-check text-success me-2"></i>Lifetime access</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Instructor -->
+                                @if (course.Doctor != null)
+                                {
+                                    <div class="content-section mb-4">
+                                        <h4 class="section-title">
+                                            <i class="fas fa-user-md me-2"></i>Instructor
+                                        </h4>
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="instructor-avatar me-3">
+                                                        @if (!string.IsNullOrEmpty(course.Doctor.ProfileImageUrl))
+                                                        {
+                                                            <img src="@GetImageUrl(course.Doctor.ProfileImageUrl)"
+                                                                 class="rounded-circle"
+                                                                 alt="Instructor"
+                                                                 onerror="this.onerror=null;this.src='https://placehold.co/80x80?text=DR';" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="avatar-placeholder">
+                                                                @GetInitials(course.Doctor.FirstName, course.Doctor.LastName)
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <h5 class="mb-1">@course.Doctor.FirstName @course.Doctor.LastName</h5>
+                                                        @if (course.Doctor.Profile != null)
+                                                        {
+                                                            <p class="text-muted mb-2">@course.Doctor.Profile.Title</p>
+                                                            <div class="instructor-stats">
+                                                                <span class="me-3">
+                                                                    <i class="fas fa-star text-warning"></i>
+                                                                    @course.Doctor.Profile.RatingAverage.ToString("0.0")
+                                                                </span>
+                                                                <span>
+                                                                    <i class="fas fa-users"></i>
+                                                                    @course.Doctor.Profile.TotalStudents students
+                                                                </span>
+                                                            </div>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(course.Doctor.Bio))
+                                                        {
+                                                            <p class="mt-2 mb-0">@course.Doctor.Bio</p>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Curriculum Section -->
+                        <div class="card content-section-card mb-4">
+                            <div class="card-header">
+                                <h4 class="mb-0">
+                                    <i class="fas fa-video me-2"></i>Course Content
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                @if (course.Lectures != null && course.Lectures.Any())
+                                {
+                                    <div class="lectures-list">
+                                        @foreach (var lecture in course.Lectures.OrderBy(l => l.Order))
+                                        {
+                                            <div class="lecture-item card mb-3">
+                                                <div class="card-body">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex align-items-center mb-2">
+                                                                <div class="lecture-number me-3">
+                                                                    @lecture.Order
+                                                                </div>
+                                                                <div>
+                                                                    <h5 class="mb-0">@lecture.Title</h5>
+                                                                    <div class="lecture-meta">
+                                                                        <i class="fas fa-clock"></i> @lecture.EstimatedDurationMinutes minutes
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <p>@lecture.Description</p>
+                                                        </div>
+                                                        <div class="lecture-actions">
+                                                            <button class="btn btn-outline-primary btn-sm"
+                                                                    @onclick="() => ViewLecture(lecture.Id)">
+                                                                View Lecture
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No lectures available yet</p>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Column -->
+                    <div class="col-lg-4">
+                        <!-- Enrollment Card -->
+                        <div class="card enrollment-card sticky-top" style="top: 20px; z-index: 100;">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">Enrollment Options</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- Price Display -->
+                                <div class="text-center mb-4">
+                                    <div class="price-display">$@course.Price.ToString("N2")</div>
+                                    @if (course.Price == 0)
+                                    {
+                                        <span class="badge bg-success">FREE COURSE</span>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">One-time payment</small>
+                                    }
+                                </div>
+
+                                <!-- Features List -->
+                                <div class="features-list mb-4">
+                                    <h6><i class="fas fa-gift me-2"></i>What's Included</h6>
+                                    <ul>
+                                        <li><i class="fas fa-check text-success me-2"></i>@(course.Lectures?.Count ?? 0) lectures</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Downloadable resources</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Certificate of completion</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Lifetime access</li>
+                                    </ul>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="action-buttons mb-4">
+                                    @if (isEnrolled)
+                                    {
+                                        <button class="btn btn-success w-100 mb-2" @onclick="ContinueLearning">
+                                            <i class="fas fa-play me-2"></i> Continue Learning
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        @if (course.Price == 0)
+                                        {
+                                            <button class="btn btn-success w-100 mb-2" @onclick="EnrollFree">
+                                                <i class="fas fa-graduation-cap me-2"></i> Enroll for Free
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-info w-100 mb-2" @onclick="EnrollNow">
+                                                <i class="fas fa-shopping-cart me-2"></i> Enroll Now
+                                            </button>
+                                        }
+                                        <button class="btn btn-outline-info w-100" @onclick="AddToWishlist">
+                                            <i class="fas fa-heart me-2"></i> Add to Wishlist
+                                        </button>
+                                    }
+                                </div>
+
+                                <!-- Specialization Info -->
+                                @if (specialization != null)
+                                {
+                                    <div class="specialization-info border-top pt-3">
+                                        <h6><i class="fas fa-layer-group me-2"></i>Part of Specialization</h6>
+                                        <div class="card mt-2">
+                                            <div class="card-body">
+                                                <h6>@specialization.Title</h6>
+                                                <p class="small">@specialization.Courses?.Count courses</p>
+                                                <button class="btn btn-sm btn-outline-info w-100"
+                                                        @onclick="() => ViewSpecialization(specialization.Id)">
+                                                    View Specialization
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Progress Card (if enrolled) -->
+                        @if (isEnrolled)
+                        {
+                            <div class="card progress-card mt-4">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Your Progress</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="progress-circle mx-auto mb-3">
+                                        <div class="progress-value">@CalculateProgress()%</div>
+                                        <small class="text-muted">Complete</small>
+                                    </div>
+                                    <p class="text-center mb-0">@GetCompletedLectures() of @(course.Lectures?.Count ?? 0) lectures completed</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int CourseId { get; set; }
+
+    private CourseDto? course;
+    private SpecializationDto? specialization;
+    private bool isLoading = true;
+    private bool isEnrolled = false;
+    private bool isAuthenticated = false;
+    private UserDto? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+        await LoadData();
+    }
+
+    private async Task CheckAuthentication()
+    {
+        isAuthenticated = await TokenService.IsAuthenticatedAsync();
+        if (isAuthenticated)
+        {
+            currentUser = await AuthService.GetCurrentUserAsync();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            course = await CourseService.GetCourseAsync(CourseId);
+            if (course != null && course.SpecializationId > 0)
+            {
+                specialization = await SpecializationService.GetSpecializationAsync(course.SpecializationId);
+            }
+
+            if (isAuthenticated && course != null)
+            {
+                await CheckEnrollmentStatus();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowToast("error", $"Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CheckEnrollmentStatus()
+    {
+        var enrollments = await EnrollmentService.GetMyEnrollmentsAsync();
+        isEnrolled = enrollments?.Any(e => e.CourseId == CourseId) ?? false;
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/courses");
+    }
+
+    private void GoBackToSpecialization()
+    {
+        if (specialization != null)
+        {
+            Navigation.NavigateTo($"/specialization/{specialization.Id}");
+        }
+        else
+        {
+            GoBack();
+        }
+    }
+
+    // Helper methods
+    private string GetImageUrl(string? url) => ImageUrlService.GetImageUrl(url);
+
+    private string GetInitials(string firstName, string lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName[0] : 'U';
+        var last = !string.IsNullOrEmpty(lastName) ? lastName[0] : 'S';
+        return $"{first}{last}";
+    }
+
+    private string GetTotalDuration()
+    {
+        var minutes = course?.Lectures?.Sum(l => l.EstimatedDurationMinutes) ?? 0;
+        var hours = Math.Round(minutes / 60.0, 1);
+        return hours.ToString("0.0");
+    }
+
+    private string FormatNumber(int number)
+    {
+        if (number >= 1000)
+            return $"{number / 1000}K";
+        return number.ToString();
+    }
+
+    private int CalculateProgress()
+    {
+        // Implement based on your logic
+        return 0;
+    }
+
+    private int GetCompletedLectures()
+    {
+        // Implement based on your logic
+        return 0;
+    }
+
+    // Action methods
+    private void ContinueLearning()
+    {
+        Navigation.NavigateTo($"/student/mylearning/course/{CourseId}");
+    }
+
+    private void EnrollNow()
+    {
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo($"/account/login?returnUrl=/course/{CourseId}");
+            return;
+        }
+        Navigation.NavigateTo($"/student/payments/make?type=Course&id={CourseId}");
+    }
+
+    private async Task EnrollFree()
+    {
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo($"/account/login?returnUrl=/course/{CourseId}");
+            return;
+        }
+        try
+        {
+            var enrollment = await EnrollmentService.CreateEnrollmentAsync(new CreateEnrollmentDto
+            {
+                EnrollmentType = EnrollmentType.Course,
+                CourseId = CourseId
+            });
+
+            if (enrollment != null)
+            {
+                await ShowToast("success", "Successfully enrolled!");
+                isEnrolled = true;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowToast("error", $"Enrollment failed: {ex.Message}");
+        }
+    }
+
+    private async Task AddToWishlist()
+    {
+        await ShowToast("info", "Added to wishlist!");
+    }
+
+    private async Task ShareCourse()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.share", new
+            {
+                title = course?.Title,
+                text = course?.Description,
+                url = Navigation.Uri
+            });
+        }
+        catch
+        {
+            // Fallback for browsers that don't support Web Share API
+            await JS.InvokeVoidAsync("copyToClipboard", Navigation.Uri);
+            await ShowToast("info", "Link copied to clipboard!");
+        }
+    }
+
+    private void ViewLecture(int lectureId)
+    {
+        Navigation.NavigateTo($"/lectureinfo/{lectureId}");
+    }
+
+    private void ViewSpecialization(int specializationId)
+    {
+        Navigation.NavigateTo($"/specialization/{specializationId}");
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        await JS.InvokeVoidAsync("showToast", type, message);
+    }
+}
+
+<style>
+    /* Desktop Styles (keep your existing desktop styles) */
+    .content-details {
+        min-height: 100vh;
+        background-color: #f8f9fa;
+    }
+
+    /* Header Card */
+    .content-header-card {
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 10px;
+    }
+
+    .content-title {
+        color: #2c3e50;
+        font-weight: 700;
+        font-size: 2rem;
+    }
+
+    .content-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .content-type-badge {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+
+    .content-instructor,
+    .content-parent {
+        color: #6c757d;
+        font-size: 0.95rem;
+    }
+
+    .content-price {
+        text-align: right;
+    }
+
+    .price-amount {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0d6efd;
+    }
+
+    .price-badge {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+
+    /* Thumbnail */
+    .content-thumbnail img {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+
+    /* Description */
+    .content-description {
+        line-height: 1.6;
+    }
+
+    .section-title {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #0d6efd;
+        padding-bottom: 0.5rem;
+    }
+
+    /* Stats Row */
+    .stats-row {
+        margin: 1.5rem 0;
+    }
+
+    .stat-card {
+        text-align: center;
+        padding: 1rem;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .stat-icon {
+        font-size: 1.5rem;
+        color: #0d6efd;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    /* Section Cards */
+    .content-section-card {
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 10px;
+    }
+
+    /* Learn List */
+    .learn-list {
+        list-style: none;
+        padding-left: 0;
+    }
+
+        .learn-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+            .learn-list li:last-child {
+                border-bottom: none;
+            }
+
+    /* Instructor Avatar */
+    .instructor-avatar {
+        width: 80px;
+        height: 80px;
+    }
+
+        .instructor-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+    .avatar-placeholder {
+        width: 80px;
+        height: 80px;
+        background: #0d6efd;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .instructor-stats {
+        display: flex;
+        gap: 1rem;
+        color: #6c757d;
+    }
+
+    /* Enrollment Card */
+    .enrollment-card {
+        border: none;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        border-radius: 10px;
+    }
+
+        .enrollment-card .card-header {
+            border-radius: 10px 10px 0 0 !important;
+            padding: 1rem 1.25rem;
+        }
+
+    /* Price Display in Enrollment Card */
+    .price-display {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0d6efd;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Features List */
+    .features-list ul {
+        list-style: none;
+        padding-left: 0;
+        margin-bottom: 0;
+    }
+
+    .features-list li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+        .features-list li:last-child {
+            border-bottom: none;
+        }
+
+    /* Action Buttons */
+    .action-buttons .btn {
+        padding: 0.75rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+        .action-buttons .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+    /* Progress Card */
+    .progress-card {
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 10px;
+    }
+
+    .progress-circle {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid #0d6efd;
+    }
+
+    .progress-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #0d6efd;
+    }
+
+    /* Lecture Items */
+    .lecture-item {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+        .lecture-item:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+    .lecture-number {
+        width: 36px;
+        height: 36px;
+        background: #0d6efd;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .lecture-meta {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .lecture-actions .btn {
+        font-size: 0.9rem;
+        padding: 0.25rem 0.75rem;
+    }
+
+    /* Back Button */
+    .btn-outline-secondary {
+        border-color: #6c757d;
+        color: #6c757d;
+        transition: all 0.3s ease;
+        padding: 0.5rem 1rem;
+    }
+
+        .btn-outline-secondary:hover {
+            background-color: #6c757d;
+            color: white;
+            border-color: #6c757d;
+            transform: translateX(-5px);
+        }
+
+            .btn-outline-secondary:hover i {
+                transform: translateX(-3px);
+            }
+
+    /* Mobile Specific Styles */
+    @@media (max-width: 767.98px) {
+        .mobile-course-header {
+            margin: -1px;
+        }
+
+        .mobile-stat-card {
+            background: #f8f9fa;
+        }
+
+        .mobile-lecture-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+            .mobile-lecture-item:active {
+                background: #e9ecef !important;
+                transform: scale(0.98);
+            }
+
+        .lecture-number-circle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .nav-tabs .nav-link {
+            color: #6c757d;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 0.75rem 0;
+            font-weight: 500;
+        }
+
+            .nav-tabs .nav-link.active {
+                color: #0d6efd;
+                border-bottom: 2px solid #0d6efd;
+                background: none;
+            }
+
+        .avatar-placeholder-mobile {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    }
+
+    /* Responsive Design */
+    @@media (max-width: 991.98px) {
+        .content-title {
+            font-size: 1.5rem;
+        }
+
+        .price-amount {
+            font-size: 1.5rem;
+        }
+
+        .enrollment-card {
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-card {
+            margin-top: 1.5rem;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .stats-row .col-6,
+        .stats-row .col-12 {
+            margin-bottom: 1rem;
+        }
+
+        .content-price {
+            text-align: left;
+            margin-top: 1rem;
+        }
+
+        .action-buttons .btn {
+            font-size: 0.9rem;
+        }
+    }
+
+    /* Smooth scrolling for the entire page */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Desktop sidebar spacing */
+    .content-details .col-lg-4 {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+</style>

@@ -1,0 +1,59 @@
+﻿@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Authorization
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Rendering
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Text
+@using System.Threading
+@using System.Security.Claims
+@using System.Text.Json
+@using System.Text.Json.Nodes
+@using System.Globalization
+@using System.ComponentModel
+@using System.Linq
+@using System.Text.RegularExpressions
+@using Medlearn
+@using Medlearn.Pages.Doctor.MyContent
+@using Medlearn.Pages.Public
+@using Medlearn.Layout
+@using Medlearn.DTOs
+@using Medlearn.Model
+@using Medlearn.Services.Implementations
+@using Medlearn.Pages.Shared
+@using Medlearn.Pages.viewer
+@using Medlearn.Pages.Content.Courses
+@using Medlearn.Pages.Content.Lectures
+@using Medlearn.Pages.Content.Material
+@using Medlearn.Pages.Content.Specializations
+@using System.ComponentModel.DataAnnotations
+@inject IAuthService AuthService
+@inject ITokenService TokenService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IImageUrlService ImageUrlService
+@inject IContactService ContactService
+@inject HttpClient Http
+@inject IAnnouncementService AnnouncementService
+@inject IPaymentService PaymentService
+@inject IDashboardService DashboardService
+@inject ISpecializationService SpecializationService
+@inject IWithdrawalService WithdrawalService
+@inject ICourseService CourseService
+@inject IUserService UserService
+@inject ILectureService LectureService
+@inject IEnrollmentService EnrollmentService
+@inject IReviewService ReviewService
+@inject ISecureFileViewerService SecureFileViewerService
+@inject ISearchService SearchService
+@inject IMessageService MessageService
+@inject INotificationService NotificationService
+@inject ISecureMaterialService SecureMaterialService
+

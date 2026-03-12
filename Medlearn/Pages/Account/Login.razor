@@ -1,0 +1,596 @@
+﻿@page "/account/login"
+
+
+<PageTitle>Login - Learning Platform</PageTitle>
+
+<!-- Mobile View -->
+<div class="d-block d-md-none">
+    <!-- Full screen mobile layout -->
+    <div class="min-vh-100 d-flex flex-column">
+        <!-- Mobile Header -->
+        <div class="bg-primary text-white py-4 px-3">
+            <div class="d-flex align-items-center mb-3">
+                <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                    <i class="fas fa-arrow-left fa-lg"></i>
+                </button>
+                <h4 class="mb-0">Sign In</h4>
+            </div>
+            <p class="mb-0 small opacity-75">Welcome back! Please sign in to continue</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-grow-1 p-4">
+            @if (showError)
+            {
+                <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                    <div class="d-flex">
+                        <i class="fas fa-exclamation-circle me-2 mt-1"></i>
+                        <div class="flex-grow-1">@errorMessage</div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="() => showError = false"></button>
+                </div>
+            }
+
+            <form @onsubmit="HandleLogin">
+                <!-- Email Field -->
+                <div class="mb-4">
+                    <label for="mobile-email" class="form-label fw-bold">Email Address</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0">
+                            <i class="fas fa-envelope text-primary"></i>
+                        </span>
+                        <input type="email"
+                               class="form-control border-start-0 ps-0 @(errors.ContainsKey("Email") ? "is-invalid" : "")"
+                               id="mobile-email"
+                               @bind="loginDto.Email"
+                               @bind:event="oninput"
+                               placeholder="Enter your email"
+                               required>
+                    </div>
+                    @if (errors.ContainsKey("Email"))
+                    {
+                        <div class="text-danger small mt-1">
+                            <i class="fas fa-exclamation-circle me-1"></i>@errors["Email"]
+                        </div>
+                    }
+                </div>
+
+                <!-- Password Field -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label for="mobile-password" class="form-label fw-bold">Password</label>
+                        <a href="/account/reset-password" class="text-decoration-none small">
+                            Forgot?
+                        </a>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0">
+                            <i class="fas fa-lock text-primary"></i>
+                        </span>
+                        <input type="@(showPassword ? "text" : "password")"
+                               class="form-control border-start-0 ps-0 @(errors.ContainsKey("Password") ? "is-invalid" : "")"
+                               id="mobile-password"
+                               @bind="loginDto.Password"
+                               @bind:event="oninput"
+                               placeholder="Enter your password"
+                               required>
+                        <button class="btn btn-outline-secondary border-start-0"
+                                type="button"
+                                @onclick="TogglePasswordVisibility">
+                            <i class="@(showPassword ? "fas fa-eye-slash" : "fas fa-eye")"></i>
+                        </button>
+                    </div>
+                    @if (errors.ContainsKey("Password"))
+                    {
+                        <div class="text-danger small mt-1">
+                            <i class="fas fa-exclamation-circle me-1"></i>@errors["Password"]
+                        </div>
+                    }
+                </div>
+
+                <!-- Remember Me (Mobile) -->
+                <div class="mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="mobile-remember">
+                        <label class="form-check-label" for="mobile-remember">
+                            Remember me
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sign In Button -->
+                <button type="submit"
+                        class="btn btn-primary w-100 py-3 mb-4 fw-bold"
+                        disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Signing in...</span>
+                    }
+                    else
+                    {
+                        <span>
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                        </span>
+                    }
+                </button>
+
+                <!-- Social Login (Mobile) -->
+                <div class="text-center mb-4">
+                    <div class="position-relative mb-4">
+                        <hr class="text-muted">
+                        <span class="position-absolute top-50 start-50 translate-middle px-3 bg-white text-muted small">
+                            Or continue with
+                        </span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary flex-fill py-2">
+                            <i class="fab fa-google me-2"></i>Google
+                        </button>
+                        <button type="button" class="btn btn-outline-primary flex-fill py-2">
+                            <i class="fab fa-microsoft me-2"></i>Microsoft
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sign Up Link -->
+                <div class="text-center">
+                    <p class="mb-0">
+                        New to our platform?
+                        <a href="/account/register" class="text-decoration-none fw-bold text-primary">
+                            Create account
+                        </a>
+                    </p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Demo Accounts Section (Mobile) -->
+        <div class="bg-light p-4">
+            <p class="text-center text-muted small mb-3">Try with demo accounts</p>
+            <div class="d-flex flex-column gap-2">
+                <button class="btn btn-outline-secondary w-100 text-start" @onclick="() => LoginAsDemoUser(UserType.User)">
+                    <i class="fas fa-user-graduate me-2 text-primary"></i>
+                    <span class="flex-grow-1">Student Demo</span>
+                    <small class="text-muted">student@demo.com</small>
+                </button>
+                <button class="btn btn-outline-secondary w-100 text-start" @onclick="() => LoginAsDemoUser(UserType.Doctor)">
+                    <i class="fas fa-user-md me-2 text-info"></i>
+                    <span class="flex-grow-1">Doctor Demo</span>
+                    <small class="text-muted">doctor@demo.com</small>
+                </button>
+                <button class="btn btn-outline-secondary w-100 text-start" @onclick="() => LoginAsDemoUser(UserType.Admin)">
+                    <i class="fas fa-user-cog me-2 text-warning"></i>
+                    <span class="flex-grow-1">Admin Demo</span>
+                    <small class="text-muted">admin@demo.com</small>
+                </button>
+            </div>
+            <p class="text-center text-muted small mt-3 mb-0">
+                Password: <span class="font-monospace">Demo@123</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop View -->
+<div class="d-none d-md-block">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6 col-xl-5">
+                <!-- Back Button -->
+                <div class="mb-3">
+                    <button class="btn btn-link text-decoration-none p-0" @onclick="GoBack">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Home
+                    </button>
+                </div>
+
+                <!-- Main Card -->
+                <div class="card shadow-lg border-0">
+                    <!-- Card Header -->
+                    <div class="card-header bg-primary text-white text-center py-4">
+                        <h3 class="mb-0">
+                            <i class="fas fa-sign-in-alt me-2"></i>Welcome Back
+                        </h3>
+                        <p class="mb-0 mt-2 small opacity-75">Sign in to continue your learning journey</p>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="card-body p-4 p-lg-5">
+                        @if (showError)
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-exclamation-circle me-2 fa-lg"></i>
+                                    <div>@errorMessage</div>
+                                    <button type="button" class="btn-close ms-auto" @onclick="() => showError = false"></button>
+                                </div>
+                            </div>
+                        }
+
+                        <form @onsubmit="HandleLogin">
+                            <!-- Email Field -->
+                            <div class="mb-4">
+                                <label for="desktop-email" class="form-label fw-bold">
+                                    <i class="fas fa-envelope me-2 text-primary"></i>Email Address
+                                </label>
+                                <input type="email"
+                                       class="form-control form-control-lg @(errors.ContainsKey("Email") ? "is-invalid" : "")"
+                                       id="desktop-email"
+                                       @bind="loginDto.Email"
+                                       @bind:event="oninput"
+                                       placeholder="Enter your email"
+                                       required>
+                                @if (errors.ContainsKey("Email"))
+                                {
+                                    <div class="invalid-feedback">
+                                        <i class="fas fa-exclamation-circle me-1"></i>@errors["Email"]
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Password Field -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label for="desktop-password" class="form-label fw-bold">
+                                        <i class="fas fa-lock me-2 text-primary"></i>Password
+                                    </label>
+                                    <a href="/account/reset-password" class="text-decoration-none small">
+                                        Forgot password?
+                                    </a>
+                                </div>
+                                <div class="input-group">
+                                    <input type="@(showPassword ? "text" : "password")"
+                                           class="form-control form-control-lg @(errors.ContainsKey("Password") ? "is-invalid" : "")"
+                                           id="desktop-password"
+                                           @bind="loginDto.Password"
+                                           @bind:event="oninput"
+                                           placeholder="Enter your password"
+                                           required>
+                                    <button class="btn btn-outline-secondary"
+                                            type="button"
+                                            @onclick="TogglePasswordVisibility">
+                                        <i class="@(showPassword ? "fas fa-eye-slash" : "fas fa-eye")"></i>
+                                    </button>
+                                </div>
+                                @if (errors.ContainsKey("Password"))
+                                {
+                                    <div class="invalid-feedback d-block">
+                                        <i class="fas fa-exclamation-circle me-1"></i>@errors["Password"]
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Remember Me -->
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="desktop-remember">
+                                    <label class="form-check-label" for="desktop-remember">
+                                        Remember me for 30 days
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Sign In Button -->
+                            <div class="d-grid gap-2 mb-4">
+                                <button type="submit"
+                                        class="btn btn-primary btn-lg"
+                                        disabled="@isLoading">
+                                    @if (isLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Signing in...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                        </span>
+                                    }
+                                </button>
+                            </div>
+
+                            <!-- Social Login -->
+                            <div class="text-center mb-4">
+                                <div class="position-relative mb-4">
+                                    <hr class="text-muted">
+                                    <span class="position-absolute top-50 start-50 translate-middle px-3 bg-white text-muted small">
+                                        Or continue with
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-center gap-3">
+                                    <button type="button" class="btn btn-outline-primary px-4">
+                                        <i class="fab fa-google me-2"></i>Google
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary px-4">
+                                        <i class="fab fa-microsoft me-2"></i>Microsoft
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Sign Up Link -->
+                            <div class="text-center">
+                                <p class="mb-0">
+                                    Don't have an account?
+                                    <a href="/account/register" class="text-decoration-none fw-bold text-primary">
+                                        Sign up here
+                                    </a>
+                                </p>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Card Footer -->
+                    <div class="card-footer text-center py-3 bg-light">
+                        <small class="text-muted">
+                            By signing in, you agree to our
+                            <a href="/terms" class="text-decoration-none">Terms of Service</a> and
+                            <a href="/privacy" class="text-decoration-none">Privacy Policy</a>
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Demo Accounts Section (Desktop) -->
+                <div class="mt-4 text-center">
+                    <p class="text-muted small mb-3">Try our demo accounts (Password: Demo@123)</p>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-secondary" @onclick="() => LoginAsDemoUser(UserType.User)">
+                            <i class="fas fa-user-graduate me-2"></i>Student Demo
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="() => LoginAsDemoUser(UserType.Doctor)">
+                            <i class="fas fa-user-md me-2"></i>Doctor Demo
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="() => LoginAsDemoUser(UserType.Admin)">
+                            <i class="fas fa-user-cog me-2"></i>Admin Demo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay (for both views) -->
+@if (isLoading)
+{
+    <div class="loading-overlay">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+
+@code {
+    private LoginDto loginDto = new LoginDto();
+    private Dictionary<string, string> errors = new Dictionary<string, string>();
+    private bool isLoading = false;
+    private bool showError = false;
+    private string errorMessage = string.Empty;
+    private bool showPassword = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckExistingAuth();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task CheckExistingAuth()
+    {
+        try
+        {
+            var isAuthenticated = await TokenService.IsAuthenticatedAsync();
+            if (isAuthenticated)
+            {
+                var currentUser = await GetUserFromStorage();
+                if (currentUser != null)
+                {
+                    RedirectBasedOnUserType(currentUser.UserType);
+                }
+                else
+                {
+                    currentUser = await AuthService.GetCurrentUserAsync();
+                    if (currentUser != null)
+                    {
+                        RedirectBasedOnUserType(currentUser.UserType);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking existing auth: {ex.Message}");
+        }
+    }
+
+    private async Task<UserDto?> GetUserFromStorage()
+    {
+        try
+        {
+            var userJson = await JS.InvokeAsync<string>("localStorage.getItem", "currentUser");
+
+            if (!string.IsNullOrEmpty(userJson))
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<UserDto>(userJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting user from storage: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        showError = false;
+        errors.Clear();
+        await InvokeAsync(StateHasChanged);
+
+        // Validation
+        if (string.IsNullOrWhiteSpace(loginDto.Email))
+        {
+            errors["Email"] = "Email is required";
+        }
+        else if (!IsValidEmail(loginDto.Email))
+        {
+            errors["Email"] = "Please enter a valid email address";
+        }
+
+        if (string.IsNullOrWhiteSpace(loginDto.Password))
+        {
+            errors["Password"] = "Password is required";
+        }
+        else if (loginDto.Password.Length < 6)
+        {
+            errors["Password"] = "Password must be at least 6 characters";
+        }
+
+        if (errors.Count > 0)
+        {
+            isLoading = false;
+            showError = true;
+            errorMessage = "Please fix the validation errors";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        try
+        {
+            Console.WriteLine("=== Login: Attempting to authenticate ===");
+
+            var authResponse = await AuthService.LoginAsync(loginDto);
+
+            if (authResponse == null || string.IsNullOrEmpty(authResponse.Token))
+            {
+                throw new Exception("Invalid login response from server");
+            }
+
+            Console.WriteLine($"=== Login: Authentication successful ===");
+
+            var storedToken = await TokenService.GetTokenAsync();
+            if (string.IsNullOrEmpty(storedToken))
+            {
+                await TokenService.SetTokenAsync(authResponse.Token);
+                storedToken = await TokenService.GetTokenAsync();
+
+                if (string.IsNullOrEmpty(storedToken))
+                {
+                    throw new Exception("Token was not stored properly");
+                }
+            }
+
+            // Store user data
+            await JS.InvokeVoidAsync("localStorage.setItem", "currentUser",
+                System.Text.Json.JsonSerializer.Serialize(authResponse.User));
+
+            await AuthService.InitializeAsync();
+
+            // Show success message before redirect
+            await ShowToast("success", "Login successful! Redirecting...");
+
+            // Small delay for toast to be visible
+            await Task.Delay(500);
+
+            RedirectBasedOnUserType(authResponse.User.UserType);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"=== Login Error: {ex.Message} ===");
+
+            isLoading = false;
+            showError = true;
+            errorMessage = GetUserFriendlyErrorMessage(ex);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void RedirectBasedOnUserType(UserType userType)
+    {
+        switch (userType)
+        {
+            case UserType.Admin:
+                Navigation.NavigateTo("/admin/dashboard", true);
+                break;
+            case UserType.Doctor:
+                Navigation.NavigateTo("/doctor/dashboard", true);
+                break;
+            default:
+                Navigation.NavigateTo("/student/dashboard", true);
+                break;
+        }
+    }
+
+    private string GetUserFriendlyErrorMessage(Exception ex)
+    {
+        var message = ex.Message.ToLower();
+
+        if (message.Contains("invalid email or password") || message.Contains("401"))
+            return "Invalid email or password. Please try again.";
+
+        if (message.Contains("invalid login response"))
+            return "Login failed. Please check your credentials.";
+
+        if (message.Contains("user not found"))
+            return "Account not found. Please check your email.";
+
+        if (message.Contains("locked") || message.Contains("suspended"))
+            return "Account is temporarily locked. Please try again later.";
+
+        if (message.Contains("network") || message.Contains("failed to fetch"))
+            return "Network error. Please check your connection and try again.";
+
+        if (message.Contains("token was not stored"))
+            return "Login successful but session could not be saved. Please try again.";
+
+        return "Login failed. Please check your credentials and try again.";
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+        StateHasChanged();
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task LoginAsDemoUser(UserType userType)
+    {
+        loginDto.Email = userType switch
+        {
+            UserType.Doctor => "doctor@demo.com",
+            UserType.Admin => "admin@demo.com",
+            _ => "student@demo.com"
+        };
+        loginDto.Password = "Demo@123";
+        await HandleLogin();
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", type, message);
+        }
+        catch
+        {
+            Console.WriteLine($"{type.ToUpper()}: {message}");
+        }
+    }
+}

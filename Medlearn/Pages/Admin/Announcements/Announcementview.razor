@@ -1,0 +1,1160 @@
+﻿@page "/announcements/{id:int}"
+
+
+<PageTitle>@(announcement?.Title ?? "Announcement Details")</PageTitle>
+
+<div class="announcement-detail">
+    <div class="container-fluid px-0 px-md-3">
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3">Loading announcement...</p>
+            </div>
+        }
+        else if (!isAuthenticated)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+                <h4>Authentication Required</h4>
+                <p class="text-muted mb-4">Please log in to view this announcement</p>
+                <button class="btn btn-primary" @onclick="NavigateToLogin">
+                    <i class="fas fa-sign-in-alt me-2"></i> Go to Login
+                </button>
+            </div>
+        }
+        else if (!hasAccess)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-ban fa-3x text-danger mb-3"></i>
+                <h4>Access Denied</h4>
+                <p class="text-muted mb-4">You don't have permission to view this announcement</p>
+                <button class="btn btn-primary" @onclick="NavigateToHome">
+                    <i class="fas fa-home me-2"></i> Go to Home
+                </button>
+            </div>
+        }
+        else if (announcement == null)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h4>Announcement Not Found</h4>
+                <p class="text-muted mb-4">The announcement you're looking for doesn't exist or has been removed</p>
+                <button class="btn btn-primary" @onclick="NavigateToHome">
+                    <i class="fas fa-home me-2"></i> Go to Home
+                </button>
+            </div>
+        }
+        else if (isExpired)
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                <h4>Announcement Expired</h4>
+                <p class="text-muted mb-4">This announcement has expired and is no longer available</p>
+                @if (isAdmin)
+                {
+                    <button class="btn btn-primary" @onclick="NavigateToEdit">
+                        <i class="fas fa-edit me-2"></i> Edit Announcement
+                    </button>
+                }
+                <button class="btn btn-outline-secondary ms-2" @onclick="NavigateToAnnouncements">
+                    <i class="fas fa-arrow-left me-2"></i> Back to Announcements
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Mobile Header -->
+            <div class="d-block d-md-none">
+                <div class="bg-primary text-white p-3">
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-link text-white p-0 me-3" @onclick="NavigateToAnnouncements">
+                            <i class="fas fa-arrow-left fa-lg"></i>
+                        </button>
+                        <h5 class="mb-0 flex-grow-1">Announcement Details</h5>
+                        @if (isAdmin)
+                        {
+                            <div class="dropdown">
+                                <button class="btn btn-link text-white p-0" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v fa-lg"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" href="#" @onclick="NavigateToEdit">
+                                            <i class="fas fa-edit me-2 text-primary"></i> Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#" @onclick="ConfirmDelete">
+                                            <i class="fas fa-trash me-2 text-danger"></i> Delete
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Header -->
+            <div class="d-none d-md-block row mb-4">
+                <div class="col-12">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-outline-secondary me-3" @onclick="NavigateToAnnouncements">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <div>
+                                <h1 class="mb-0">Announcement</h1>
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item">
+                                            <a href="/">Home</a>
+                                        </li>
+                                        <li class="breadcrumb-item">
+                                            <a href="/announcements">Announcements</a>
+                                        </li>
+                                        <li class="breadcrumb-item active" aria-current="page">Details</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                        </div>
+
+                        @if (isAdmin)
+                        {
+                            <div class="btn-group">
+                                <button class="btn btn-outline-primary" @onclick="NavigateToEdit">
+                                    <i class="fas fa-edit me-2"></i> Edit
+                                </button>
+                                <button class="btn btn-outline-danger" @onclick="ConfirmDelete">
+                                    <i class="fas fa-trash me-2"></i> Delete
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="row g-0 g-md-3 justify-content-center">
+                <div class="col-12 col-lg-10 col-xl-8">
+                    <!-- Announcement Card -->
+                    <div class="card border-0 border-md mb-4">
+                        <!-- Thumbnail Image -->
+                        @if (!string.IsNullOrEmpty(announcement.ThumbnailUrl))
+                        {
+                            <div class="announcement-thumbnail-container position-relative">
+                                <img src="@announcement.ThumbnailUrl"
+                                     class="announcement-thumbnail-detail w-100"
+                                     alt="@(announcement.ImageAltText ?? announcement.Title)"
+                                     loading="lazy" />
+
+                                <!-- Mobile Image Alt Text (Overlay) -->
+                                @if (!string.IsNullOrEmpty(announcement.ImageAltText))
+                                {
+                                    <div class="d-block d-md-none image-alt-text-overlay">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        @announcement.ImageAltText
+                                    </div>
+                                }
+
+                                <!-- Desktop Image Alt Text (Banner) -->
+                                @if (!string.IsNullOrEmpty(announcement.ImageAltText))
+                                {
+                                    <div class="d-none d-md-block image-alt-text-banner">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        @announcement.ImageAltText
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="card-body p-3 p-md-4">
+                            <!-- Mobile Status Row -->
+                            <div class="d-block d-md-none mb-3">
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    @if (announcement.IsImportant)
+                                    {
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-exclamation-circle me-1"></i> Important
+                                        </span>
+                                    }
+                                    <span class="badge @GetAudienceBadgeColor()">
+                                        <i class="fas fa-users me-1"></i> @GetAudienceText()
+                                    </span>
+                                </div>
+
+                                @if (announcement.ExpiryDate.HasValue)
+                                {
+                                    <div class="small text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Expires: @announcement.ExpiryDate.Value.ToString("MMM dd, yyyy")
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="small text-muted">
+                                        <i class="fas fa-infinity me-1"></i> No Expiry
+                                    </div>
+                                }
+
+                                @if (isAdmin)
+                                {
+                                    <div class="badge bg-dark mt-2">
+                                        <i class="fas fa-user-shield me-1"></i> Admin View
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Desktop Status Row -->
+                            <div class="d-none d-md-flex justify-content-between align-items-start mb-4">
+                                <div class="d-flex flex-wrap gap-2">
+                                    @if (announcement.IsImportant)
+                                    {
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-exclamation-circle me-1"></i> Important
+                                        </span>
+                                    }
+                                    <span class="badge @GetAudienceBadgeColor()">
+                                        <i class="fas fa-users me-1"></i> @GetAudienceText()
+                                    </span>
+
+                                    @if (announcement.ExpiryDate.HasValue)
+                                    {
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Expires: @announcement.ExpiryDate.Value.ToString("MMM dd, yyyy")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-infinity me-1"></i> No Expiry
+                                        </span>
+                                    }
+                                </div>
+
+                                @if (isAdmin)
+                                {
+                                    <span class="badge bg-dark">
+                                        <i class="fas fa-user-shield me-1"></i> Admin View
+                                    </span>
+                                }
+                            </div>
+
+                            <!-- Title -->
+                            <h1 class="display-6 display-md-5 fw-bold mb-3 mb-md-4 text-primary">
+                                @announcement.Title
+                            </h1>
+
+                            <!-- Mobile Meta Information -->
+                            <div class="d-block d-md-none mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-user-circle fa-lg me-2 text-muted"></i>
+                                    <div class="small">
+                                        <span class="text-muted">By</span>
+                                        <strong>@announcement.CreatedByAdmin?.FirstName @announcement.CreatedByAdmin?.LastName</strong>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calendar-alt fa-lg me-2 text-muted"></i>
+                                    <div class="small">
+                                        <span class="text-muted">Published</span>
+                                        <strong>@announcement.CreatedAt.ToString("MMM dd, yyyy")</strong>
+                                    </div>
+                                </div>
+                                @if (announcement.ExpiryDate.HasValue)
+                                {
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-hourglass-end fa-lg me-2 text-muted"></i>
+                                        <div class="small">
+                                            <span class="text-muted">Expires in</span>
+                                            <strong>@GetDaysRemaining() days</strong>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Desktop Meta Information -->
+                            <div class="d-none d-md-flex align-items-center mb-5 text-muted">
+                                <div class="d-flex align-items-center me-4">
+                                    <i class="fas fa-user-circle fa-lg me-2"></i>
+                                    <div>
+                                        <small class="d-block">Created By</small>
+                                        <strong>@announcement.CreatedByAdmin?.FirstName @announcement.CreatedByAdmin?.LastName</strong>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center me-4">
+                                    <i class="fas fa-calendar-alt fa-lg me-2"></i>
+                                    <div>
+                                        <small class="d-block">Published</small>
+                                        <strong>@announcement.CreatedAt.ToString("MMMM dd, yyyy hh:mm tt")</strong>
+                                    </div>
+                                </div>
+                                @if (announcement.ExpiryDate.HasValue)
+                                {
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-hourglass-end fa-lg me-2"></i>
+                                        <div>
+                                            <small class="d-block">Expires In</small>
+                                            <strong>@GetDaysRemaining() days</strong>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Content -->
+                            <div class="announcement-content mb-4 mb-md-5">
+                                @((MarkupString)FormatContent(announcement.Content))
+                            </div>
+
+                            <!-- Mobile Actions -->
+                            <div class="d-block d-md-none mb-4">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <button class="btn btn-outline-secondary w-100" @onclick="PrintAnnouncement">
+                                            <i class="fas fa-print me-1"></i> Print
+                                        </button>
+                                    </div>
+                                    <div class="col-6">
+                                        <button class="btn btn-outline-primary w-100" @onclick="ShareAnnouncement">
+                                            <i class="fas fa-share-alt me-1"></i> Share
+                                        </button>
+                                    </div>
+                                </div>
+
+                                @if (isAdmin)
+                                {
+                                    <div class="mt-2 small text-center text-muted">
+                                        <i class="fas fa-eye me-1"></i> Viewed @totalViews times
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Admin Info Section (Desktop) -->
+                            @if (isAdmin)
+                            {
+                                <div class="d-none d-md-block card border-info mb-4">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-info-circle me-2"></i> Admin Information
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <dl class="row mb-0">
+                                                    <dt class="col-sm-4">Announcement ID:</dt>
+                                                    <dd class="col-sm-8">@announcement.Id</dd>
+
+                                                    <dt class="col-sm-4">For All Users:</dt>
+                                                    <dd class="col-sm-8">
+                                                        <i class="fas @(announcement.ForAllUsers ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                                        @announcement.ForAllUsers
+                                                    </dd>
+
+                                                    <dt class="col-sm-4">For Doctors Only:</dt>
+                                                    <dd class="col-sm-8">
+                                                        <i class="fas @(announcement.ForDoctorsOnly ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                                        @announcement.ForDoctorsOnly
+                                                    </dd>
+
+                                                    <dt class="col-sm-4">Has Thumbnail:</dt>
+                                                    <dd class="col-sm-8">
+                                                        <i class="fas @(!string.IsNullOrEmpty(announcement.ThumbnailUrl) ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                                        @(!string.IsNullOrEmpty(announcement.ThumbnailUrl) ? "Yes" : "No")
+                                                    </dd>
+                                                </dl>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <dl class="row mb-0">
+                                                    <dt class="col-sm-4">For Regular Users:</dt>
+                                                    <dd class="col-sm-8">
+                                                        <i class="fas @(announcement.ForRegularUsersOnly ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                                        @announcement.ForRegularUsersOnly
+                                                    </dd>
+
+                                                    <dt class="col-sm-4">Admin Email:</dt>
+                                                    <dd class="col-sm-8">@announcement.CreatedByAdmin?.Email</dd>
+
+                                                    <dt class="col-sm-4">Total Views:</dt>
+                                                    <dd class="col-sm-8">@totalViews</dd>
+
+                                                    <dt class="col-sm-4">Image Alt Text:</dt>
+                                                    <dd class="col-sm-8">
+                                                        @(string.IsNullOrEmpty(announcement.ImageAltText) ? "Not set" : announcement.ImageAltText)
+                                                    </dd>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Admin Info Section (Mobile - Collapsible) -->
+                                <div class="d-block d-md-none mb-4">
+                                    <div class="accordion" id="adminInfoAccordion">
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed bg-info text-white" type="button" data-bs-toggle="collapse" data-bs-target="#adminInfo">
+                                                    <i class="fas fa-info-circle me-2"></i> Admin Information
+                                                </button>
+                                            </h2>
+                                            <div id="adminInfo" class="accordion-collapse collapse" data-bs-parent="#adminInfoAccordion">
+                                                <div class="accordion-body p-3">
+                                                    <div class="mb-2">
+                                                        <small class="text-muted">Announcement ID:</small>
+                                                        <div><strong>@announcement.Id</strong></div>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <small class="text-muted">For All Users:</small>
+                                                        <div>
+                                                            <i class="fas @(announcement.ForAllUsers ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                                            @announcement.ForAllUsers
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <small class="text-muted">For Doctors Only:</small>
+                                                        <div>
+                                                            <i class="fas @(announcement.ForDoctorsOnly ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                                            @announcement.ForDoctorsOnly
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <small class="text-muted">For Regular Users:</small>
+                                                        <div>
+                                                            <i class="fas @(announcement.ForRegularUsersOnly ? "fa-check text-success" : "fa-times text-danger")"></i>
+                                                            @announcement.ForRegularUsersOnly
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <small class="text-muted">Admin Email:</small>
+                                                        <div><strong>@announcement.CreatedByAdmin?.Email</strong></div>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <small class="text-muted">Total Views:</small>
+                                                        <div><strong>@totalViews</strong></div>
+                                                    </div>
+                                                    <div class="mb-2">
+                                                        <small class="text-muted">Image Alt Text:</small>
+                                                        <div><strong>@(string.IsNullOrEmpty(announcement.ImageAltText) ? "Not set" : announcement.ImageAltText)</strong></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Desktop Actions Footer -->
+                            <div class="d-none d-md-flex justify-content-between align-items-center pt-4 border-top">
+                                <div>
+                                    @if (isAdmin)
+                                    {
+                                        <span class="text-muted me-3">
+                                            <i class="fas fa-eye me-1"></i> Viewed @totalViews times
+                                        </span>
+                                    }
+                                    <small class="text-muted">
+                                        Last updated: @lastUpdated
+                                    </small>
+                                </div>
+                                <div>
+                                    <button class="btn btn-outline-secondary me-2" @onclick="PrintAnnouncement">
+                                        <i class="fas fa-print me-2"></i> Print
+                                    </button>
+                                    <button class="btn btn-outline-primary" @onclick="ShareAnnouncement">
+                                        <i class="fas fa-share-alt me-2"></i> Share
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Related Announcements -->
+                    @if (relatedAnnouncements.Any())
+                    {
+                        <div class="card border-0 border-md mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-newspaper me-2"></i> Related Announcements
+                                </h5>
+                            </div>
+                            <div class="card-body p-3 p-md-4">
+                                <!-- Mobile Related (Horizontal Scroll) -->
+                                <div class="d-block d-md-none">
+                                    <div class="related-scroll-container">
+                                        <div class="d-flex gap-3" style="overflow-x: auto; padding-bottom: 10px;">
+                                            @foreach (var related in relatedAnnouncements)
+                                            {
+                                                <div class="flex-shrink-0" style="width: 200px;">
+                                                    <div class="card h-100 announcement-card"
+                                                         style="cursor: pointer;"
+                                                         @onclick="() => NavigateToAnnouncement(related.Id)">
+                                                        @if (!string.IsNullOrEmpty(related.ThumbnailUrl))
+                                                        {
+                                                            <div class="related-thumbnail-container-mobile">
+                                                                <img src="@related.ThumbnailUrl"
+                                                                     class="related-thumbnail w-100"
+                                                                     alt="@(related.ImageAltText ?? related.Title)"
+                                                                     loading="lazy"
+                                                                     style="height: 100px; object-fit: cover;" />
+                                                            </div>
+                                                        }
+                                                        <div class="card-body p-2">
+                                                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                                                <h6 class="card-title small mb-0 text-truncate">@related.Title</h6>
+                                                                @if (related.IsImportant)
+                                                                {
+                                                                    <span class="badge bg-warning ms-1" style="font-size: 0.6rem;">!</span>
+                                                                }
+                                                            </div>
+                                                            <p class="card-text small text-muted mb-1">
+                                                                @TruncateText(related.Content, 50)
+                                                            </p>
+                                                            <small class="text-muted d-block">
+                                                                @related.CreatedAt.ToString("MMM dd, yyyy")
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Desktop Related (Grid) -->
+                                <div class="d-none d-md-block">
+                                    <div class="row">
+                                        @foreach (var related in relatedAnnouncements)
+                                        {
+                                            <div class="col-md-6 mb-3">
+                                                <div class="card h-100 announcement-card"
+                                                     style="cursor: pointer;"
+                                                     @onclick="() => NavigateToAnnouncement(related.Id)">
+                                                    @if (!string.IsNullOrEmpty(related.ThumbnailUrl))
+                                                    {
+                                                        <div class="related-thumbnail-container">
+                                                            <img src="@related.ThumbnailUrl"
+                                                                 class="related-thumbnail"
+                                                                 alt="@(related.ImageAltText ?? related.Title)"
+                                                                 loading="lazy" />
+                                                        </div>
+                                                    }
+                                                    <div class="card-body">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <h6 class="card-title mb-0">@related.Title</h6>
+                                                            @if (related.IsImportant)
+                                                            {
+                                                                <span class="badge bg-warning">Important</span>
+                                                            }
+                                                        </div>
+                                                        <p class="card-text text-muted small mb-2">
+                                                            @TruncateText(related.Content, 100)
+                                                        </p>
+                                                        <div class="d-flex justify-content-between">
+                                                            <small class="text-muted">
+                                                                @related.CreatedAt.ToString("MMM dd, yyyy")
+                                                            </small>
+                                                            <small class="text-primary">
+                                                                Read More <i class="fas fa-arrow-right ms-1"></i>
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Back Button (Desktop) -->
+                    <div class="d-none d-md-block text-center mt-4">
+                        <button class="btn btn-primary" @onclick="NavigateToAnnouncements">
+                            <i class="fas fa-arrow-left me-2"></i> Back to All Announcements
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* Announcement Detail Page Styles */
+    .announcement-thumbnail-container {
+        position: relative;
+        width: 100%;
+        height: 400px;
+        overflow: hidden;
+        border-radius: 12px 12px 0 0;
+        background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
+    }
+
+    .announcement-thumbnail-detail {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+
+    .announcement-thumbnail-container:hover .announcement-thumbnail-detail {
+        transform: scale(1.05);
+    }
+
+    .image-alt-text-banner {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    .image-alt-text-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        text-align: center;
+    }
+
+    .related-thumbnail-container {
+        position: relative;
+        width: 100%;
+        height: 150px;
+        overflow: hidden;
+        border-radius: 8px 8px 0 0;
+        background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
+    }
+
+    .related-thumbnail {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .related-thumbnail-container-mobile {
+        position: relative;
+        width: 100%;
+        height: 100px;
+        overflow: hidden;
+        border-radius: 8px 8px 0 0;
+        background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
+    }
+
+    .announcement-card:hover .related-thumbnail {
+        transform: scale(1.05);
+    }
+
+    .announcement-content {
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #333;
+    }
+
+        .announcement-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .announcement-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+    /* Mobile related scroll container */
+    .related-scroll-container {
+        margin: -0.5rem;
+        padding: 0.5rem;
+    }
+
+        .related-scroll-container::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .related-scroll-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .related-scroll-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+            .related-scroll-container::-webkit-scrollbar-thumb:hover {
+                background: #555;
+            }
+
+    /* Responsive breakpoints */
+    @@media (max-width: 768px) {
+        .announcement-thumbnail-container {
+            height: 250px;
+        }
+
+        .announcement-content {
+            font-size: 1rem;
+        }
+
+        .display-6 {
+            font-size: 1.75rem;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .announcement-thumbnail-container {
+            height: 200px;
+            border-radius: 0;
+        }
+
+        .display-6 {
+            font-size: 1.5rem;
+        }
+
+        .announcement-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+    }
+
+    /* Card border utilities */
+    @@media (max-width: 767.98px) {
+        .border-md {
+            border: none !important;
+        }
+
+        .card {
+            border-radius: 0 !important;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private AnnouncementDto? announcement;
+    private List<AnnouncementDto> relatedAnnouncements = new List<AnnouncementDto>();
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private bool hasAccess = false;
+    private bool isAdmin = false;
+    private bool isExpired = false;
+    private int totalViews = 0;
+    private string lastUpdated = "";
+    private UserDto? currentUser = null;
+    private DateTime? lastViewed = null;
+
+    // ... (keep all your existing methods exactly as they are)
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+        if (isAuthenticated)
+        {
+            await LoadAnnouncement();
+            await LoadRelatedAnnouncements();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (isAuthenticated && Id > 0)
+        {
+            await LoadAnnouncement();
+            await LoadRelatedAnnouncements();
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+
+            if (isAuthenticated)
+            {
+                currentUser = await GetUserFromStorage();
+
+                if (currentUser == null)
+                {
+                    currentUser = await AuthService.GetCurrentUserAsync();
+                    if (currentUser != null)
+                    {
+                        await JS.InvokeVoidAsync("localStorage.setItem", "currentUser",
+                            System.Text.Json.JsonSerializer.Serialize(currentUser));
+                    }
+                }
+
+                isAdmin = currentUser?.UserType == UserType.Admin;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+            isAdmin = false;
+        }
+    }
+
+    private async Task<UserDto?> GetUserFromStorage()
+    {
+        try
+        {
+            var userJson = await JS.InvokeAsync<string>("localStorage.getItem", "currentUser");
+
+            if (!string.IsNullOrEmpty(userJson))
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<UserDto>(userJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting user from storage: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    private async Task LoadAnnouncement()
+    {
+        isLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            announcement = await AnnouncementService.GetAnnouncementAsync(Id);
+
+            if (announcement != null)
+            {
+                // Check if user has access
+                hasAccess = CheckAccess(announcement);
+
+                if (!hasAccess)
+                {
+                    isLoading = false;
+                    return;
+                }
+
+                // Check if announcement is expired
+                isExpired = announcement.ExpiryDate.HasValue &&
+                           announcement.ExpiryDate.Value < DateTime.UtcNow;
+
+                // Simulate view count (in a real app, this would come from the API)
+                totalViews = new Random().Next(50, 500);
+
+                // Calculate last updated
+                var timeSinceUpdate = DateTime.UtcNow - announcement.CreatedAt;
+                if (timeSinceUpdate.TotalDays < 1)
+                {
+                    lastUpdated = "Today";
+                }
+                else if (timeSinceUpdate.TotalDays < 7)
+                {
+                    lastUpdated = $"{(int)timeSinceUpdate.TotalDays} days ago";
+                }
+                else if (timeSinceUpdate.TotalDays < 30)
+                {
+                    lastUpdated = $"{(int)(timeSinceUpdate.TotalDays / 7)} weeks ago";
+                }
+                else
+                {
+                    lastUpdated = announcement.CreatedAt.ToString("MMMM dd, yyyy");
+                }
+
+                // Track view time
+                lastViewed = DateTime.Now;
+
+                // Save to recently viewed
+                await SaveToRecentlyViewed();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading announcement: {ex.Message}");
+
+            // Check if it's an access denied error
+            if (ex.Message.Contains("403") || ex.Message.Contains("Forbidden"))
+            {
+                hasAccess = false;
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool CheckAccess(AnnouncementDto announcement)
+    {
+        if (isAdmin) return true;
+
+        if (currentUser == null) return false;
+
+        // Check expiry
+        if (announcement.ExpiryDate.HasValue && announcement.ExpiryDate.Value < DateTime.UtcNow)
+        {
+            return false;
+        }
+
+        // Check audience
+        if (announcement.ForAllUsers) return true;
+
+        if (currentUser.UserType == UserType.Doctor && announcement.ForDoctorsOnly) return true;
+
+        if (currentUser.UserType == UserType.User && announcement.ForRegularUsersOnly) return true;
+
+        return false;
+    }
+
+    private async Task LoadRelatedAnnouncements()
+    {
+        try
+        {
+            var allAnnouncements = await AnnouncementService.GetAnnouncementsAsync();
+
+            if (allAnnouncements != null && announcement != null)
+            {
+                // Get announcements with same audience and not the current one
+                relatedAnnouncements = allAnnouncements
+                    .Where(a => a.Id != announcement.Id &&
+                               ((a.ForAllUsers && announcement.ForAllUsers) ||
+                                (a.ForDoctorsOnly && announcement.ForDoctorsOnly) ||
+                                (a.ForRegularUsersOnly && announcement.ForRegularUsersOnly)))
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Take(4)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading related announcements: {ex.Message}");
+        }
+    }
+
+    private string GetAudienceText()
+    {
+        if (announcement == null) return "";
+
+        if (announcement.ForAllUsers) return "All Users";
+        if (announcement.ForDoctorsOnly) return "Doctors Only";
+        if (announcement.ForRegularUsersOnly) return "Students Only";
+        return "Specific Audience";
+    }
+
+    private string GetAudienceBadgeColor()
+    {
+        if (announcement == null) return "bg-secondary";
+
+        if (announcement.ForAllUsers) return "bg-primary";
+        if (announcement.ForDoctorsOnly) return "bg-info";
+        if (announcement.ForRegularUsersOnly) return "bg-success";
+        return "bg-secondary";
+    }
+
+    private string FormatContent(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return "";
+
+        // Replace newlines with <br> tags for HTML display
+        var formattedContent = content.Replace("\n", "<br>");
+
+        // Add paragraphs for better readability
+        formattedContent = $"<p>{formattedContent}</p>";
+        formattedContent = formattedContent.Replace("<br><br>", "</p><p>");
+
+        return formattedContent;
+    }
+
+    private string GetDaysRemaining()
+    {
+        if (announcement == null || !announcement.ExpiryDate.HasValue)
+            return "∞";
+
+        var daysRemaining = (announcement.ExpiryDate.Value - DateTime.UtcNow).Days;
+        return daysRemaining > 0 ? daysRemaining.ToString() : "0";
+    }
+
+    private async Task SaveToRecentlyViewed()
+    {
+        try
+        {
+            var recentlyViewed = new List<RecentlyViewedAnnouncement>();
+
+            // Get existing recently viewed
+            var existingJson = await JS.InvokeAsync<string>("localStorage.getItem", "recently_viewed_announcements");
+            if (!string.IsNullOrEmpty(existingJson))
+            {
+                recentlyViewed = System.Text.Json.JsonSerializer.Deserialize<List<RecentlyViewedAnnouncement>>(existingJson)
+                              ?? new List<RecentlyViewedAnnouncement>();
+            }
+
+            // Remove if already exists
+            recentlyViewed.RemoveAll(r => r.Id == Id);
+
+            // Add to beginning
+            recentlyViewed.Insert(0, new RecentlyViewedAnnouncement
+            {
+                Id = Id,
+                Title = announcement?.Title ?? "",
+                ThumbnailUrl = announcement?.ThumbnailUrl ?? "",
+                ViewedAt = DateTime.Now
+            });
+
+            // Keep only last 10
+            if (recentlyViewed.Count > 10)
+            {
+                recentlyViewed = recentlyViewed.Take(10).ToList();
+            }
+
+            // Save back to localStorage
+            await JS.InvokeVoidAsync("localStorage.setItem",
+                "recently_viewed_announcements",
+                System.Text.Json.JsonSerializer.Serialize(recentlyViewed));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving to recently viewed: {ex.Message}");
+        }
+    }
+
+    private async Task PrintAnnouncement()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("window.print");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error printing announcement: {ex.Message}");
+        }
+    }
+
+    private async Task ShareAnnouncement()
+    {
+        try
+        {
+            var url = Navigation.Uri;
+            var title = announcement?.Title ?? "Announcement";
+            var text = TruncateText(announcement?.Content ?? "", 100);
+            var imageUrl = announcement?.ThumbnailUrl ?? "";
+
+            if (await JS.InvokeAsync<bool>("checkShareAPI"))
+            {
+                await JS.InvokeVoidAsync("shareContent", title, text, url, imageUrl);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("copyToClipboard", url);
+                await ShowToast("success", "Link copied to clipboard!");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sharing announcement: {ex.Message}");
+            await ShowToast("error", "Failed to share announcement");
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (announcement == null) return;
+
+        bool confirm = await JS.InvokeAsync<bool>("confirm",
+            $"Are you sure you want to delete this announcement?\n\n" +
+            $"Title: {announcement.Title}\n\n" +
+            $"This action cannot be undone.");
+
+        if (!confirm) return;
+
+        try
+        {
+            var success = await AnnouncementService.DeleteAnnouncementAsync(Id);
+            if (success)
+            {
+                await ShowToast("success", "Announcement deleted successfully");
+                Navigation.NavigateTo("/announcements");
+            }
+            else
+            {
+                await ShowToast("error", "Failed to delete announcement");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting announcement: {ex.Message}");
+            await ShowToast("error", $"Error: {ex.Message}");
+        }
+    }
+
+    private void NavigateToAnnouncement(int id)
+    {
+        Navigation.NavigateTo($"/announcements/{id}");
+    }
+
+    private void NavigateToEdit()
+    {
+        Navigation.NavigateTo($"/admin/announcements/edit/{Id}");
+    }
+
+    private void NavigateToAnnouncements()
+    {
+        Navigation.NavigateTo("/announcements");
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private void NavigateToHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+
+        return text.Substring(0, maxLength) + "...";
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", type, message);
+        }
+        catch
+        {
+            Console.WriteLine($"{type.ToUpper()}: {message}");
+        }
+    }
+
+    // Helper class for recently viewed
+    private class RecentlyViewedAnnouncement
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = "";
+        public string? ThumbnailUrl { get; set; }
+        public DateTime ViewedAt { get; set; }
+    }
+}

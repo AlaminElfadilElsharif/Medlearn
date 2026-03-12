@@ -1,0 +1,590 @@
+﻿@page "/account/register"
+
+
+<PageTitle>Register - Learning Platform</PageTitle>
+
+<!-- Mobile Header -->
+<div class="d-block d-md-none bg-success text-white p-3">
+    <div class="d-flex align-items-center">
+        <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+            <i class="fas fa-arrow-left fa-lg"></i>
+        </button>
+        <div class="flex-grow-1">
+            <h5 class="mb-0">Create Account</h5>
+            <small>Join our learning community</small>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-0 px-md-4 mt-0 mt-md-4">
+    <div class="row justify-content-center g-0 g-md-3">
+        <div class="col-12 col-md-8 col-lg-7">
+            <div class="card shadow-lg border-0 rounded-0 rounded-md">
+
+                <!-- Desktop Header -->
+                <div class="card-header bg-success text-white text-center py-4 d-none d-md-block">
+                    <h3 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Create Your Account
+                    </h3>
+                    <p class="mb-0 mt-2 small">Join our learning community today</p>
+                </div>
+
+                <div class="card-body p-3 p-md-4">
+                    @if (showSuccess)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Registration successful! Redirecting to login...
+                            <button type="button" class="btn-close" @onclick="() => showSuccess = false"></button>
+                        </div>
+                    }
+
+                    @if (showError)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>@errorMessage
+                            <button type="button" class="btn-close" @onclick="() => showError = false"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@createUserDto" OnValidSubmit="@HandleRegister">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="alert alert-danger" />
+
+                        <!-- User Type Information -->
+                        <div class="mb-4">
+                            <div class="alert alert-info">
+                                <div class="d-flex align-items-start align-items-md-center">
+                                    <i class="fas fa-user-graduate fa-2x me-3 d-none d-md-block"></i>
+                                    <i class="fas fa-user-graduate me-3 d-block d-md-none"></i>
+                                    <div>
+                                        <h6 class="mb-1">Register as a Student</h6>
+                                        <p class="mb-0 small">
+                                            Create a student account to browse and enroll in courses.
+                                            Instructor accounts must be created through admin panel.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Name Fields - Stack on mobile, side by side on desktop -->
+                        <div class="row">
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="firstName" class="form-label small fw-bold">
+                                    <i class="fas fa-user me-2"></i>First Name *
+                                </label>
+                                <InputText class="form-control form-control-sm form-control-md"
+                                           id="firstName"
+                                           @bind-Value="@createUserDto.FirstName"
+                                           placeholder="First name" />
+                                <ValidationMessage For="@(() => createUserDto.FirstName)" />
+                            </div>
+
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="lastName" class="form-label small fw-bold">Last Name *</label>
+                                <InputText class="form-control form-control-sm form-control-md"
+                                           id="lastName"
+                                           @bind-Value="@createUserDto.LastName"
+                                           placeholder="Last name" />
+                                <ValidationMessage For="@(() => createUserDto.LastName)" />
+                            </div>
+                        </div>
+
+                        <!-- Email (Full width) -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label small fw-bold">
+                                <i class="fas fa-envelope me-2"></i>Email Address *
+                            </label>
+                            <InputText class="form-control form-control-sm form-control-md"
+                                       id="email"
+                                       @bind-Value="@createUserDto.Email"
+                                       placeholder="Enter your email" />
+                            <ValidationMessage For="@(() => createUserDto.Email)" />
+                        </div>
+
+                        <!-- Phone (Mobile optimized) -->
+                        <div class="mb-3">
+                            <label for="phone" class="form-label small fw-bold">
+                                <i class="fas fa-phone me-2"></i>Phone Number
+                                <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <div class="input-group">
+                                <InputText class="form-control form-control-sm form-control-md"
+                                           id="phone"
+                                           @bind-Value="@phoneInput"
+                                           @oninput="HandlePhoneInput"
+                                           placeholder="123-456-7890" />
+                                <span class="input-group-text">
+                                    <i class="fas fa-info-circle" title="Format: 123-456-7890"></i>
+                                </span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(phoneError))
+                            {
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>@phoneError
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Password Fields - Stack on mobile, side by side on desktop -->
+                        <div class="row">
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="password" class="form-label small fw-bold">
+                                    <i class="fas fa-lock me-2"></i>Password *
+                                </label>
+                                <div class="input-group">
+                                    <InputText type="@(showPassword ? "text" : "password")"
+                                               class="form-control form-control-sm form-control-md"
+                                               id="password"
+                                               @bind-Value="@createUserDto.Password"
+                                               placeholder="Create password" />
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm btn-md"
+                                            @onclick="TogglePasswordVisibility">
+                                        <i class="fas @(showPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                    </button>
+                                </div>
+                                <ValidationMessage For="@(() => createUserDto.Password)" />
+                                <div class="form-text small d-none d-md-block">
+                                    Min 8 chars with uppercase, lowercase, number & special char
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6 mb-3">
+                                <label for="confirmPassword" class="form-label small fw-bold">
+                                    <i class="fas fa-lock me-2"></i>Confirm Password *
+                                </label>
+                                <div class="input-group">
+                                    <InputText type="@(showConfirmPassword ? "text" : "password")"
+                                               class="form-control form-control-sm form-control-md"
+                                               id="confirmPassword"
+                                               @bind-Value="@confirmPassword"
+                                               placeholder="Confirm password" />
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm btn-md"
+                                            @onclick="ToggleConfirmPasswordVisibility">
+                                        <i class="fas @(showConfirmPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                    </button>
+                                </div>
+                                @if (!string.IsNullOrEmpty(confirmPassword) && createUserDto.Password != confirmPassword)
+                                {
+                                    <div class="text-danger small mt-1">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Passwords do not match
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Date of Birth -->
+                        <div class="mb-3">
+                            <label for="dateOfBirth" class="form-label small fw-bold">
+                                <i class="fas fa-birthday-cake me-2"></i>Date of Birth
+                            </label>
+                            <InputDate class="form-control form-control-sm form-control-md"
+                                       id="dateOfBirth"
+                                       @bind-Value="@dateOfBirth"
+                                       max="@DateTime.Now.AddYears(-13).ToString("yyyy-MM-dd")" />
+                            <div class="form-text small">Must be at least 13 years old</div>
+                        </div>
+
+                        <!-- Student Information - Collapsible on Mobile -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-info text-white py-2 py-md-3"
+                                 @onclick="ToggleStudentInfo"
+                                 style="cursor: pointer;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-user-graduate me-2"></i>Student Information
+                                    </h6>
+                                    <i class="fas d-block d-md-none @(showStudentInfo ? "fa-chevron-up" : "fa-chevron-down")"></i>
+                                </div>
+                            </div>
+                            <div class="card-body @(showStudentInfo ? "d-block" : "d-none d-md-block")">
+                                <div class="mb-3">
+                                    <label for="learningGoals" class="form-label small">Learning Goals (Optional)</label>
+                                    <InputTextArea class="form-control form-control-sm"
+                                                   id="learningGoals"
+                                                   @bind-Value="@learningGoals"
+                                                   placeholder="What skills are you hoping to gain?"
+                                                   rows="2" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="educationBackground" class="form-label small">Education Background (Optional)</label>
+                                    <InputText class="form-control form-control-sm"
+                                               id="educationBackground"
+                                               @bind-Value="@educationBackground"
+                                               placeholder="e.g., High School, College" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terms and Conditions - Mobile optimized -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input"
+                                               id="acceptTerms"
+                                               @bind-Value="@acceptTerms" />
+                                <label class="form-check-label small" for="acceptTerms">
+                                    I agree to the
+                                    <a href="/terms" target="_blank" class="text-decoration-none">Terms</a>
+                                    and <a href="/privacy" target="_blank" class="text-decoration-none">Privacy Policy</a> *
+                                </label>
+                            </div>
+                            @if (!acceptTerms && showValidationErrors)
+                            {
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>You must accept the terms
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Newsletter - Mobile optimized -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input"
+                                               id="subscribeNewsletter"
+                                               @bind-Value="@subscribeNewsletter" />
+                                <label class="form-check-label small" for="subscribeNewsletter">
+                                    Subscribe to our newsletter for updates
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Desktop Submit Button -->
+                        <div class="d-none d-md-block">
+                            <div class="d-grid gap-2">
+                                <button type="submit"
+                                        class="btn btn-success btn-lg"
+                                        disabled="@isLoading">
+                                    @if (isLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Creating Account...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            <i class="fas fa-user-plus me-2"></i>Create Student Account
+                                        </span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Mobile Fixed Bottom Submit Button -->
+                        <div class="d-block d-md-none fixed-bottom p-3 bg-white border-top">
+                            <div class="d-flex gap-2">
+                                <button type="button"
+                                        class="btn btn-outline-secondary flex-fill"
+                                        @onclick="GoBack">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                        class="btn btn-success flex-fill"
+                                        disabled="@isLoading">
+                                    @if (isLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-user-plus me-1"></i>
+                                    }
+                                    Register
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Spacer for mobile fixed button -->
+                        <div class="mb-5 pb-3 d-block d-md-none"></div>
+                    </EditForm>
+
+                    <!-- Instructor Information - Desktop -->
+                    <div class="d-none d-md-block text-center mt-4">
+                        <div class="alert alert-warning">
+                            <p class="mb-2">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Want to become an instructor?</strong>
+                            </p>
+                            <p class="mb-0 small">
+                                Instructor accounts are created by administrators. Contact
+                                <a href="mailto:instructors@learningplatform.com" class="text-decoration-none">
+                                    instructors@learningplatform.com
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Login Link -->
+                    <div class="text-center mt-3 mt-md-4">
+                        <p class="mb-0 small">
+                            Already have an account?
+                            <a href="/account/login" class="text-decoration-none fw-bold">
+                                Sign in
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile Instructor Info (Bottom) -->
+<div class="d-block d-md-none mt-3 p-3 bg-light">
+    <div class="alert alert-warning mb-0">
+        <p class="mb-1">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Want to be an instructor?</strong>
+        </p>
+        <p class="mb-0 small">
+            Contact <a href="mailto:instructors@learningplatform.com">
+                instructors@learningplatform.com
+            </a>
+        </p>
+    </div>
+</div>
+
+@code {
+    private CreateUserDto createUserDto = new CreateUserDto();
+    private string confirmPassword = string.Empty;
+    private DateTime? dateOfBirth = null;
+    private string learningGoals = string.Empty;
+    private string educationBackground = string.Empty;
+    private bool acceptTerms = false;
+    private bool subscribeNewsletter = false;
+    private bool showPassword = false;
+    private bool showConfirmPassword = false;
+    private bool isLoading = false;
+    private bool showError = false;
+    private bool showSuccess = false;
+    private bool showValidationErrors = false;
+    private string errorMessage = string.Empty;
+
+    // Mobile specific
+    private bool showStudentInfo = false;
+
+    // Phone number handling
+    private string phoneInput = string.Empty;
+    private string phoneError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Force UserType.User (Student) only
+        createUserDto.UserType = UserType.User;
+
+        // Check if user is already logged in
+        var isAuthenticated = await TokenService.IsAuthenticatedAsync();
+        if (isAuthenticated)
+        {
+            // Redirect to appropriate dashboard
+            Navigation.NavigateTo("/", true);
+        }
+    }
+
+    private void HandlePhoneInput(ChangeEventArgs e)
+    {
+        var input = e.Value?.ToString() ?? string.Empty;
+
+        // Remove all non-digit characters
+        var digits = new string(input.Where(char.IsDigit).ToArray());
+
+        if (string.IsNullOrEmpty(digits))
+        {
+            phoneInput = string.Empty;
+            createUserDto.PhoneNumber = string.Empty;
+            phoneError = string.Empty;
+            return;
+        }
+
+        // Limit to 10 digits for US/Canada format
+        if (digits.Length > 10)
+        {
+            digits = digits.Substring(0, 10);
+        }
+
+        // Format as xxx-xxx-xxxx
+        if (digits.Length <= 3)
+        {
+            phoneInput = digits;
+        }
+        else if (digits.Length <= 6)
+        {
+            phoneInput = $"{digits.Substring(0, 3)}-{digits.Substring(3)}";
+        }
+        else
+        {
+            phoneInput = $"{digits.Substring(0, 3)}-{digits.Substring(3, 3)}-{digits.Substring(6)}";
+        }
+
+        // Set the actual phone number (just digits for now, will be formatted in controller)
+        createUserDto.PhoneNumber = digits;
+
+        // Validate length
+        if (digits.Length < 10 && digits.Length > 0)
+        {
+            phoneError = "Phone number must have 10 digits";
+        }
+        else
+        {
+            phoneError = string.Empty;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+        StateHasChanged();
+    }
+
+    private void ToggleConfirmPasswordVisibility()
+    {
+        showConfirmPassword = !showConfirmPassword;
+        StateHasChanged();
+    }
+
+    private void ToggleStudentInfo()
+    {
+        showStudentInfo = !showStudentInfo;
+        StateHasChanged();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task HandleRegister()
+    {
+        showValidationErrors = true;
+
+        // Validate phone number if provided
+        if (!string.IsNullOrEmpty(createUserDto.PhoneNumber))
+        {
+            var digits = new string(createUserDto.PhoneNumber.Where(char.IsDigit).ToArray());
+            if (digits.Length != 10)
+            {
+                showError = true;
+                errorMessage = "Phone number must have exactly 10 digits";
+                return;
+            }
+        }
+
+        // Check if passwords match
+        if (createUserDto.Password != confirmPassword)
+        {
+            showError = true;
+            errorMessage = "Passwords do not match";
+            return;
+        }
+
+        // Check if terms are accepted
+        if (!acceptTerms)
+        {
+            showError = true;
+            errorMessage = "You must accept the terms and conditions";
+            return;
+        }
+
+        // Check age requirement (13+)
+        if (dateOfBirth.HasValue && dateOfBirth.Value > DateTime.Now.AddYears(-13))
+        {
+            showError = true;
+            errorMessage = "You must be at least 13 years old to register";
+            return;
+        }
+
+        // Set date of birth if provided
+        if (dateOfBirth.HasValue)
+        {
+            createUserDto.DateOfBirth = dateOfBirth.Value;
+        }
+
+        // Add student information to bio
+        var bioBuilder = new List<string>();
+
+        if (!string.IsNullOrEmpty(learningGoals))
+        {
+            bioBuilder.Add($"Learning Goals: {learningGoals}");
+        }
+
+        if (!string.IsNullOrEmpty(educationBackground))
+        {
+            bioBuilder.Add($"Education Background: {educationBackground}");
+        }
+
+        if (bioBuilder.Any())
+        {
+            createUserDto.Bio = string.Join("\n\n", bioBuilder);
+        }
+
+        // Ensure user type is always User (Student)
+        createUserDto.UserType = UserType.User;
+
+        isLoading = true;
+        showError = false;
+        showSuccess = false;
+        StateHasChanged();
+
+        try
+        {
+            Console.WriteLine("=== Starting Student Registration ===");
+            Console.WriteLine($"Email: {createUserDto.Email}");
+            Console.WriteLine($"Phone: {createUserDto.PhoneNumber}");
+            Console.WriteLine($"UserType: {createUserDto.UserType} (Student)");
+
+            // Use IAuthService to register
+            var user = await AuthService.RegisterAsync(createUserDto);
+
+            if (user == null)
+            {
+                showError = true;
+                errorMessage = "Registration failed. Please check your information and try again.";
+                Console.WriteLine("Registration failed: AuthService returned null");
+                return;
+            }
+
+            Console.WriteLine($"Student registration successful for user: {user.Email}");
+
+            // Show success message
+            showSuccess = true;
+            errorMessage = "Student account created successfully! Redirecting to login...";
+
+            // Wait and redirect to login page
+            await Task.Delay(2000);
+
+            // Redirect to login page
+            Navigation.NavigateTo("/account/login", true);
+        }
+        catch (HttpRequestException httpEx)
+        {
+            showError = true;
+            if (httpEx.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                errorMessage = "Invalid registration data. Please check your information.";
+            }
+            else if (httpEx.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                errorMessage = "Email already registered. Please use a different email or try logging in.";
+            }
+            else
+            {
+                errorMessage = $"Registration error: {httpEx.Message}";
+            }
+            Console.WriteLine($"HTTP Error: {httpEx.Message}");
+        }
+        catch (Exception ex)
+        {
+            showError = true;
+            errorMessage = $"An error occurred: {ex.Message}";
+            Console.WriteLine($"Registration Error: {ex.Message}\n{ex.StackTrace}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

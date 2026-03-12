@@ -1,0 +1,1710 @@
+﻿
+
+<!-- Desktop View (visible on md and up) -->
+<div class="student-home-view d-none d-md-block">
+    <!-- Welcome Header with Gradient Background -->
+    <div class="welcome-header bg-gradient-primary text-white p-4 p-md-5 mb-4">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-circle bg-white bg-opacity-20 me-3">
+                            <span class="initial">@GetInitials(User?.FirstName, User?.LastName)</span>
+                        </div>
+                        <div>
+                            <h1 class="h2 mb-1">Welcome back, @User?.FirstName! 👋</h1>
+                            <p class="mb-0 opacity-75">Explore our catalog and discover new learning opportunities</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats in Header -->
+                    <div class="d-flex flex-wrap gap-4 mt-3">
+                        <div class="stat-pill">
+                            <i class="fas fa-play-circle me-2"></i>
+                            <span><strong>@InProgressCount</strong> In Progress</span>
+                        </div>
+                        <div class="stat-pill">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span><strong>@CompletedCount</strong> Completed</span>
+                        </div>
+                        <div class="stat-pill">
+                            <i class="fas fa-chart-line me-2"></i>
+                            <span><strong>@AverageProgress.ToString("0")%</strong> Avg Progress</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                    <button class="btn btn-light btn-lg" @onclick="ResetFilters">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh Catalog
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Pending Payments Alert (if any) -->
+        @if (PendingPayments > 0)
+        {
+            <div class="alert alert-warning alert-dismissible fade show mb-4 shadow-sm" role="alert">
+                <div class="d-flex align-items-center">
+                    <div class="alert-icon me-3">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <strong>Payment Required!</strong> You have <strong>@PendingPayments</strong> pending payment request(s).
+                    </div>
+                    <button class="btn btn-warning ms-3" @onclick="OnViewPayments">
+                        View Payments <i class="fas fa-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        }
+
+        <!-- SEARCH & FILTER SECTION -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-4 pb-0">
+                        <div class="d-flex justify-content-between align-items-center px-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-search me-2 text-primary"></i>Browse Our Catalog
+                            </h5>
+                            <span class="badge bg-light text-dark px-3 py-2">
+                                <i class="fas fa-layer-group me-1 text-primary"></i>@totalItems items
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Enhanced Search Bar -->
+                        <div class="search-container mb-4">
+                            <div class="input-group search-box">
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="fas fa-search text-primary"></i>
+                                </span>
+                                <input type="text"
+                                       class="form-control border-start-0 border-end-0 py-3"
+                                       placeholder="Search by title, description, or instructor..."
+                                       @bind="searchQuery"
+                                       @bind:event="oninput"
+                                       @onkeyup="HandleKeyUp"
+                                       autocomplete="off" />
+                                @if (!string.IsNullOrEmpty(searchQuery))
+                                {
+                                    <button class="btn btn-light border-start-0 border-end-0" @onclick="ClearSearch">
+                                        <i class="fas fa-times text-muted"></i>
+                                    </button>
+                                }
+                                <button class="btn btn-primary px-4" @onclick="ApplySearch">
+                                    <i class="fas fa-search d-md-none"></i>
+                                    <span class="d-none d-md-block">Search</span>
+                                </button>
+                            </div>
+
+                            <!-- Filter Pills -->
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <span class="text-muted me-2 align-self-center">Filter by type:</span>
+                                <button class="btn btn-sm @(activeContentType == "all" ? "btn-primary" : "btn-outline-primary") rounded-pill px-3"
+                                        @onclick='() => SetContentType("all")'>
+                                    <i class="fas fa-th-large me-1"></i>All
+                                    <span class="badge bg-light text-dark ms-1">@totalItems</span>
+                                </button>
+                                <button class="btn btn-sm @(activeContentType == "specializations" ? "btn-primary" : "btn-outline-primary") rounded-pill px-3"
+                                        @onclick='() => SetContentType("specializations")'>
+                                    <i class="fas fa-layer-group me-1"></i>Specializations
+                                    <span class="badge bg-light text-dark ms-1">@allSpecializations.Count</span>
+                                </button>
+                                <button class="btn btn-sm @(activeContentType == "courses" ? "btn-primary" : "btn-outline-primary") rounded-pill px-3"
+                                        @onclick='() => SetContentType("courses")'>
+                                    <i class="fas fa-book-open me-1"></i>Courses
+                                    <span class="badge bg-light text-dark ms-1">@allCourses.Count</span>
+                                </button>
+                                <button class="btn btn-sm @(activeContentType == "lectures" ? "btn-primary" : "btn-outline-primary") rounded-pill px-3"
+                                        @onclick='() => SetContentType("lectures")'>
+                                    <i class="fas fa-play-circle me-1"></i>Lectures
+                                    <span class="badge bg-light text-dark ms-1">@allLectures.Count</span>
+                                </button>
+                            </div>
+
+                            <!-- Additional Filters Row -->
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <span class="text-muted me-2 align-self-center">Sort by:</span>
+                                <button class="btn btn-sm @(sortBy == "relevance" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetSortBy("relevance")'>
+                                    <i class="fas fa-bullseye me-1"></i>Relevance
+                                </button>
+                                <button class="btn btn-sm @(sortBy == "newest" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetSortBy("newest")'>
+                                    <i class="fas fa-clock me-1"></i>Newest
+                                </button>
+                                <button class="btn btn-sm @(sortBy == "price_low" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetSortBy("price_low")'>
+                                    <i class="fas fa-sort-amount-down me-1"></i>Price: Low to High
+                                </button>
+                                <button class="btn btn-sm @(sortBy == "price_high" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetSortBy("price_high")'>
+                                    <i class="fas fa-sort-amount-up me-1"></i>Price: High to Low
+                                </button>
+                                <button class="btn btn-sm @(sortBy == "popular" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetSortBy("popular")'>
+                                    <i class="fas fa-fire me-1"></i>Most Popular
+                                </button>
+                                <button class="btn btn-sm @(sortBy == "rating" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetSortBy("rating")'>
+                                    <i class="fas fa-star me-1"></i>Highest Rated
+                                </button>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <span class="text-muted me-2 align-self-center">Price:</span>
+                                <button class="btn btn-sm @(priceFilter == "all" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetPriceFilter("all")'>
+                                    All Prices
+                                </button>
+                                <button class="btn btn-sm @(priceFilter == "free" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetPriceFilter("free")'>
+                                    <i class="fas fa-gift me-1"></i>Free
+                                </button>
+                                <button class="btn btn-sm @(priceFilter == "paid" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetPriceFilter("paid")'>
+                                    <i class="fas fa-credit-card me-1"></i>Paid
+                                </button>
+                                <button class="btn btn-sm @(priceFilter == "under50" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetPriceFilter("under50")'>
+                                    Under $50
+                                </button>
+                                <button class="btn btn-sm @(priceFilter == "under100" ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3"
+                                        @onclick='() => SetPriceFilter("under100")'>
+                                    Under $100
+                                </button>
+                            </div>
+
+                            <!-- View Toggle and Results Count -->
+                            <div class="d-flex justify-content-between align-items-center mt-4">
+                                <div>
+                                    <span class="text-muted">
+                                        Showing <strong>@displayedItemsCount</strong> of <strong>@totalItems</strong> items
+                                    </span>
+                                </div>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-secondary @(viewMode == "grid" ? "active" : "")"
+                                            @onclick='() => SetViewMode("grid")' title="Grid View">
+                                        <i class="fas fa-th-large"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary @(viewMode == "list" ? "active" : "")"
+                                            @onclick='() => SetViewMode("list")' title="List View">
+                                        <i class="fas fa-list"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loading State -->
+                        @if (isLoading)
+                        {
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-3 text-muted">Loading catalog...</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Results Display -->
+                            <div class="catalog-results">
+                                <!-- Specializations Section -->
+                                @if (activeContentType == "all" || activeContentType == "specializations")
+                                {
+                                    @if (displayedSpecializations.Any())
+                                    {
+                                        <div class="mb-4">
+                                            @if (activeContentType == "all")
+                                            {
+                                                <h5 class="mb-3">
+                                                    <i class="fas fa-layer-group me-2 text-primary"></i>Specializations
+                                                    <small class="text-muted ms-2">(@displayedSpecializations.Count)</small>
+                                                </h5>
+                                            }
+
+                                            @if (viewMode == "grid")
+                                            {
+                                                <div class="row g-4">
+                                                    @foreach (var spec in displayedSpecializations)
+                                                    {
+                                                        <div class="col-md-4">
+                                                            <div class="card h-100 border-0 shadow-sm hover-card" @onclick="() => NavigateToSpecialization(spec.Id)">
+                                                                <div class="card-img-top position-relative" style="height: 140px; overflow: hidden;">
+                                                                    @if (!string.IsNullOrEmpty(spec.ThumbnailUrl))
+                                                                    {
+                                                                        <img src="@ImageUrlService.GetImageUrl(spec.ThumbnailUrl)"
+                                                                             class="w-100 h-100 object-fit-cover"
+                                                                             alt="@spec.Title"
+                                                                             loading="lazy"
+                                                                             onerror="this.src='/placeholder-image.jpg'; this.onerror=null;" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <div class="w-100 h-100 bg-light d-flex align-items-center justify-content-center">
+                                                                            <i class="fas fa-layer-group fa-3x text-muted"></i>
+                                                                        </div>
+                                                                    }
+                                                                    @if (spec.IsFeatured)
+                                                                    {
+                                                                        <div class="position-absolute top-0 end-0 m-2">
+                                                                            <span class="badge bg-warning">
+                                                                                <i class="fas fa-star me-1"></i>Featured
+                                                                            </span>
+                                                                        </div>
+                                                                    }
+                                                                </div>
+                                                                <div class="card-body">
+                                                                    <h6 class="card-title fw-bold mb-2">@spec.Title</h6>
+                                                                    <div class="d-flex align-items-center text-muted small mb-2">
+                                                                        <i class="fas fa-user-md me-1"></i>
+                                                                        <span>@spec.Doctor?.FirstName @spec.Doctor?.LastName</span>
+                                                                    </div>
+                                                                    <p class="card-text text-muted small mb-3">
+                                                                        @GetTruncatedText(spec.Description, 80)
+                                                                    </p>
+                                                                    <div class="d-flex justify-content-between align-items-center">
+                                                                        <div>
+                                                                            <span class="fw-bold text-primary">$@spec.Price.ToString("N0")</span>
+                                                                            <div class="text-warning small">
+                                                                                <i class="fas fa-star"></i> @spec.AverageRating.ToString("0.0")
+                                                                            </div>
+                                                                        </div>
+                                                                        <button class="btn btn-sm btn-outline-primary"
+                                                                                @onclick:stopPropagation="true"
+                                                                                @onclick="() => NavigateToSpecialization(spec.Id)">
+                                                                            View Details <i class="fas fa-arrow-right ms-1"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <!-- List View for Specializations -->
+                                                <div class="list-group">
+                                                    @foreach (var spec in displayedSpecializations)
+                                                    {
+                                                        <div class="list-group-item list-group-item-action border-0 shadow-sm mb-2 rounded p-3 cursor-pointer" @onclick="() => NavigateToSpecialization(spec.Id)">
+                                                            <div class="row align-items-center">
+                                                                <div class="col-3 col-md-2">
+                                                                    <div class="ratio ratio-16x9 rounded overflow-hidden">
+                                                                        <img src="@ImageUrlService.GetImageUrl(spec.ThumbnailUrl)"
+                                                                             class="object-fit-cover"
+                                                                             alt="@spec.Title"
+                                                                             loading="lazy"
+                                                                             onerror="this.src='/placeholder-image.jpg'; this.onerror=null;" />
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-9 col-md-10">
+                                                                    <div class="d-flex flex-column">
+                                                                        <div class="d-flex justify-content-between">
+                                                                            <h6 class="fw-bold mb-1">@spec.Title</h6>
+                                                                            <span class="fw-bold text-primary">$@spec.Price.ToString("N0")</span>
+                                                                        </div>
+                                                                        <p class="text-muted small mb-2 d-none d-md-block">@GetTruncatedText(spec.Description, 120)</p>
+                                                                        <div class="d-flex align-items-center gap-3">
+                                                                            <small class="text-muted">
+                                                                                <i class="fas fa-clock me-1"></i>@spec.EstimatedDurationHours h
+                                                                            </small>
+                                                                            <small class="text-muted">
+                                                                                <i class="fas fa-users me-1"></i>@spec.TotalEnrollments students
+                                                                            </small>
+                                                                            <small class="text-warning">
+                                                                                <i class="fas fa-star"></i> @spec.AverageRating.ToString("0.0")
+                                                                            </small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                }
+
+                                <!-- Courses Section -->
+                                @if (activeContentType == "all" || activeContentType == "courses")
+                                {
+                                    @if (displayedCourses.Any())
+                                    {
+                                        <div class="mb-4">
+                                            @if (activeContentType == "all")
+                                            {
+                                                <h5 class="mb-3">
+                                                    <i class="fas fa-book-open me-2 text-primary"></i>Courses
+                                                    <small class="text-muted ms-2">(@displayedCourses.Count)</small>
+                                                </h5>
+                                            }
+
+                                            @if (viewMode == "grid")
+                                            {
+                                                <div class="row g-4">
+                                                    @foreach (var course in displayedCourses)
+                                                    {
+                                                        <div class="col-md-4">
+                                                            <div class="card h-100 border-0 shadow-sm hover-card" @onclick="() => NavigateToCourse(course.Id)">
+                                                                <div class="card-img-top" style="height: 140px; overflow: hidden;">
+                                                                    @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                                                                    {
+                                                                        <img src="@ImageUrlService.GetImageUrl(course.ThumbnailUrl)"
+                                                                             class="w-100 h-100 object-fit-cover"
+                                                                             alt="@course.Title"
+                                                                             loading="lazy"
+                                                                             onerror="this.src='/placeholder-image.jpg'; this.onerror=null;" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <div class="w-100 h-100 bg-light d-flex align-items-center justify-content-center">
+                                                                            <i class="fas fa-book-open fa-3x text-muted"></i>
+                                                                        </div>
+                                                                    }
+                                                                </div>
+                                                                <div class="card-body">
+                                                                    <h6 class="card-title fw-bold mb-2">@course.Title</h6>
+                                                                    <p class="card-text text-muted small mb-3">
+                                                                        @GetTruncatedText(course.Description, 80)
+                                                                    </p>
+                                                                    <div class="d-flex justify-content-between align-items-center">
+                                                                        <div>
+                                                                            <span class="fw-bold text-primary">$@course.Price.ToString("N0")</span>
+                                                                            @if (course.AverageRating > 0)
+                                                                            {
+                                                                                <div class="text-warning small">
+                                                                                    <i class="fas fa-star"></i> @course.AverageRating.ToString("0.0")
+                                                                                </div>
+                                                                            }
+                                                                        </div>
+                                                                        <button class="btn btn-sm btn-outline-primary"
+                                                                                @onclick:stopPropagation="true"
+                                                                                @onclick="() => NavigateToCourse(course.Id)">
+                                                                            View Details <i class="fas fa-arrow-right ms-1"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <!-- List View for Courses -->
+                                                <div class="list-group">
+                                                    @foreach (var course in displayedCourses)
+                                                    {
+                                                        <div class="list-group-item list-group-item-action border-0 shadow-sm mb-2 rounded p-3 cursor-pointer" @onclick="() => NavigateToCourse(course.Id)">
+                                                            <div class="row align-items-center">
+                                                                <div class="col-3 col-md-2">
+                                                                    <div class="ratio ratio-16x9 rounded overflow-hidden">
+                                                                        <img src="@ImageUrlService.GetImageUrl(course.ThumbnailUrl)"
+                                                                             class="object-fit-cover"
+                                                                             alt="@course.Title"
+                                                                             loading="lazy"
+                                                                             onerror="this.src='/placeholder-image.jpg'; this.onerror=null;" />
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-9 col-md-10">
+                                                                    <div class="d-flex flex-column">
+                                                                        <div class="d-flex justify-content-between">
+                                                                            <h6 class="fw-bold mb-1">@course.Title</h6>
+                                                                            <span class="fw-bold text-primary">$@course.Price.ToString("N0")</span>
+                                                                        </div>
+                                                                        <p class="text-muted small mb-2 d-none d-md-block">@GetTruncatedText(course.Description, 120)</p>
+                                                                        <div class="d-flex align-items-center gap-3">
+                                                                            <small class="text-muted">
+                                                                                <i class="fas fa-book me-1"></i>@(course.Lectures?.Count ?? 0) lectures
+                                                                            </small>
+                                                                            <small class="text-muted">
+                                                                                <i class="fas fa-users me-1"></i>@course.TotalEnrollments students
+                                                                            </small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                }
+
+                                <!-- Lectures Section -->
+                                @if (activeContentType == "all" || activeContentType == "lectures")
+                                {
+                                    @if (displayedLectures.Any())
+                                    {
+                                        <div class="mb-4">
+                                            @if (activeContentType == "all")
+                                            {
+                                                <h5 class="mb-3">
+                                                    <i class="fas fa-play-circle me-2 text-primary"></i>Lectures
+                                                    <small class="text-muted ms-2">(@displayedLectures.Count)</small>
+                                                </h5>
+                                            }
+
+                                            @if (viewMode == "grid")
+                                            {
+                                                <div class="row g-4">
+                                                    @foreach (var lecture in displayedLectures)
+                                                    {
+                                                        <div class="col-md-4">
+                                                            <div class="card h-100 border-0 shadow-sm hover-card" @onclick="() => NavigateToLecture(lecture.Id)">
+                                                                <div class="card-img-top bg-dark" style="height: 140px; overflow: hidden; position: relative;">
+                                                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center">
+                                                                        <i class="fas fa-play-circle fa-4x text-white-50"></i>
+                                                                    </div>
+                                                                    @if (lecture.IsFreePreview)
+                                                                    {
+                                                                        <div class="position-absolute top-0 start-0 m-2">
+                                                                            <span class="badge bg-success">Free Preview</span>
+                                                                        </div>
+                                                                    }
+                                                                </div>
+                                                                <div class="card-body">
+                                                                    <h6 class="card-title fw-bold mb-2">@lecture.Title</h6>
+                                                                    <div class="d-flex align-items-center text-muted small mb-3">
+                                                                        <i class="fas fa-clock me-1"></i>
+                                                                        <span>@lecture.EstimatedDurationMinutes min</span>
+                                                                    </div>
+                                                                    <div class="d-flex justify-content-between align-items-center">
+                                                                        @if (lecture.Price > 0)
+                                                                        {
+                                                                            <span class="fw-bold text-primary">$@lecture.Price.ToString("N0")</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="fw-bold text-success">Free</span>
+                                                                        }
+                                                                        <button class="btn btn-sm btn-outline-primary"
+                                                                                @onclick:stopPropagation="true"
+                                                                                @onclick="() => NavigateToLecture(lecture.Id)">
+                                                                            Preview <i class="fas fa-play ms-1"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <!-- List View for Lectures -->
+                                                <div class="list-group">
+                                                    @foreach (var lecture in displayedLectures)
+                                                    {
+                                                        <div class="list-group-item list-group-item-action border-0 shadow-sm mb-2 rounded p-3 cursor-pointer" @onclick="() => NavigateToLecture(lecture.Id)">
+                                                            <div class="row align-items-center">
+                                                                <div class="col-3 col-md-2">
+                                                                    <div class="ratio ratio-16x9 rounded overflow-hidden bg-dark">
+                                                                        <div class="d-flex align-items-center justify-content-center">
+                                                                            <i class="fas fa-play-circle fa-2x text-white-50"></i>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-9 col-md-10">
+                                                                    <div class="d-flex flex-column">
+                                                                        <div class="d-flex justify-content-between">
+                                                                            <h6 class="fw-bold mb-1">@lecture.Title</h6>
+                                                                            @if (lecture.Price > 0)
+                                                                            {
+                                                                                <span class="fw-bold text-primary">$@lecture.Price.ToString("N0")</span>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <span class="fw-bold text-success">Free</span>
+                                                                            }
+                                                                        </div>
+                                                                        <div class="d-flex align-items-center gap-3">
+                                                                            <small class="text-muted">
+                                                                                <i class="fas fa-clock me-1"></i>@lecture.EstimatedDurationMinutes min
+                                                                            </small>
+                                                                            @if (lecture.IsFreePreview)
+                                                                            {
+                                                                                <span class="badge bg-success">Free Preview</span>
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                }
+
+                                @if (!displayedSpecializations.Any() && !displayedCourses.Any() && !displayedLectures.Any())
+                                {
+                                    <div class="text-center py-5">
+                                        <div class="no-results-illustration mb-4">
+                                            <i class="fas fa-search fa-4x text-muted opacity-25"></i>
+                                        </div>
+                                        <h5 class="text-muted mb-3">No items match your filters</h5>
+                                        <p class="text-muted mb-4">Try adjusting your search criteria</p>
+                                        <button class="btn btn-primary" @onclick="ResetFilters">
+                                            <i class="fas fa-redo me-2"></i>Reset All Filters
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <!-- Load More Button (if applicable) -->
+                        @if (hasMoreItems && !isLoading)
+                        {
+                            <div class="text-center mt-4">
+                                <button class="btn btn-outline-primary" @onclick="LoadMore">
+                                    <i class="fas fa-plus-circle me-2"></i>Load More
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Recently Completed -->
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pt-4">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check-circle me-2 text-success"></i>Recently Completed
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (CompletedEnrollments.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var enrollment in CompletedEnrollments.Take(3))
+                                {
+                                    <div class="list-group-item border-0 px-0 mb-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="fw-bold mb-1">@GetEnrollmentTitle(enrollment)</h6>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar me-1"></i>
+                                                    Completed @(enrollment.CompletedDate?.ToString("MMM dd, yyyy"))
+                                                </small>
+                                            </div>
+                                            @if (enrollment.Review == null)
+                                            {
+                                                <button class="btn btn-sm btn-outline-warning" @onclick="() => OnWriteReview.InvokeAsync(enrollment)">
+                                                    <i class="fas fa-star me-1"></i> Review
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <div class="text-warning">
+                                                    <i class="fas fa-star"></i> @enrollment.Review.Rating/5
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-trophy fa-3x text-muted opacity-25 mb-3"></i>
+                                <p class="text-muted mb-0">No completed courses yet</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommended for You -->
+            <div class="col-lg-6 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pt-4">
+                        <h5 class="mb-0">
+                            <i class="fas fa-star me-2 text-warning"></i>Recommended for You
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (RecommendedSpecializations.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var spec in RecommendedSpecializations.Take(3))
+                                {
+                                    <div class="list-group-item border-0 px-0 mb-2 cursor-pointer" @onclick="() => OnViewSpecialization.InvokeAsync(spec.Id)">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-3">
+                                                <div class="ratio ratio-1x1 rounded overflow-hidden bg-light">
+                                                    <img src="@ImageUrlService.GetImageUrl(spec.ThumbnailUrl)"
+                                                         class="object-fit-cover"
+                                                         alt="@spec.Title"
+                                                         onerror="this.src='/placeholder-image.jpg'; this.onerror=null;" />
+                                                </div>
+                                            </div>
+                                            <div class="col-9">
+                                                <h6 class="fw-bold mb-1">@spec.Title</h6>
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-user-md me-1"></i>@spec.Doctor?.FirstName @spec.Doctor?.LastName
+                                                    </small>
+                                                    <small class="text-warning">
+                                                        <i class="fas fa-star"></i> @spec.AverageRating.ToString("0.0")
+                                                    </small>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                                    <span class="fw-bold text-primary">$@spec.Price.ToString("N0")</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="text-center mt-3">
+                                <a href="/browse" class="btn btn-outline-primary btn-sm">
+                                    View More <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-magic fa-3x text-muted opacity-25 mb-3"></i>
+                                <p class="text-muted mb-0">Browse our catalog to get personalized recommendations</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile View (visible only on small screens) -->
+<div class="student-home-view-mobile d-block d-md-none">
+    <!-- Mobile Header with Gradient -->
+    <div class="mobile-header bg-gradient-primary text-white p-3">
+        <div class="d-flex align-items-center mb-2">
+            <div class="avatar-circle-sm bg-white bg-opacity-20 me-2">
+                <span class="initial-sm">@GetInitials(User?.FirstName, User?.LastName)</span>
+            </div>
+            <div class="flex-grow-1">
+                <h5 class="mb-0">Welcome back, @User?.FirstName!</h5>
+                <small class="opacity-75">Ready to learn something new?</small>
+            </div>
+            <button class="btn btn-light btn-sm rounded-circle p-2" @onclick="ResetFilters">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Quick Stats -->
+        <div class="d-flex justify-content-around mt-2">
+            <div class="text-center">
+                <div class="fw-bold">@InProgressCount</div>
+                <small class="opacity-75">In Progress</small>
+            </div>
+            <div class="text-center">
+                <div class="fw-bold">@CompletedCount</div>
+                <small class="opacity-75">Completed</small>
+            </div>
+            <div class="text-center">
+                <div class="fw-bold">@AverageProgress.ToString("0")%</div>
+                <small class="opacity-75">Avg Progress</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid px-3 py-3">
+        <!-- Mobile Pending Payments Alert -->
+        @if (PendingPayments > 0)
+        {
+            <div class="alert alert-warning alert-dismissible fade show mb-3 py-2" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <small class="flex-grow-1"><strong>@PendingPayments</strong> pending payment(s)</small>
+                    <button class="btn btn-warning btn-sm" @onclick="OnViewPayments">
+                        View
+                    </button>
+                </div>
+            </div>
+        }
+
+        <!-- Mobile Search Bar -->
+        <div class="mb-3">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0">
+                    <i class="fas fa-search text-primary"></i>
+                </span>
+                <input type="text"
+                       class="form-control border-start-0"
+                       placeholder="Search courses..."
+                       @bind="searchQuery"
+                       @bind:event="oninput"
+                       @onkeyup="HandleKeyUp"
+                       autocomplete="off" />
+                @if (!string.IsNullOrEmpty(searchQuery))
+                {
+                    <button class="btn btn-light" @onclick="ClearSearch">
+                        <i class="fas fa-times"></i>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Mobile Filter Chips - Scrollable Horizontal -->
+        <div class="mobile-filter-section mb-3">
+            <div class="d-flex overflow-auto pb-2" style="scrollbar-width: none; -ms-overflow-style: none;">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm @(activeContentType == "all" ? "btn-primary" : "btn-outline-primary") rounded-pill px-3"
+                            @onclick='() => SetContentType("all")'>
+                        <i class="fas fa-th-large me-1"></i>All
+                    </button>
+                    <button class="btn btn-sm @(activeContentType == "specializations" ? "btn-primary" : "btn-outline-primary") rounded-pill px-3"
+                            @onclick='() => SetContentType("specializations")'>
+                        <i class="fas fa-layer-group me-1"></i>Spec
+                    </button>
+                    <button class="btn btn-sm @(activeContentType == "courses" ? "btn-primary" : "btn-outline-primary") rounded-pill px-3"
+                            @onclick='() => SetContentType("courses")'>
+                        <i class="fas fa-book-open me-1"></i>Courses
+                    </button>
+                    <button class="btn btn-sm @(activeContentType == "lectures" ? "btn-primary" : "btn-outline-primary") rounded-pill px-3"
+                            @onclick='() => SetContentType("lectures")'>
+                        <i class="fas fa-play-circle me-1"></i>Lectures
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                            @onclick="ToggleMobileSort">
+                        <i class="fas fa-sort me-1"></i>Sort
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                            @onclick="ToggleMobilePriceFilter">
+                        <i class="fas fa-filter me-1"></i>Price
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Sort Panel (hidden by default) -->
+            @if (showMobileSort)
+            {
+                <div class="mobile-filter-panel mt-2 p-3 bg-light rounded">
+                    <div class="d-flex justify-content-between mb-2">
+                        <h6 class="mb-0">Sort by</h6>
+                        <button class="btn-close btn-sm" @onclick="ToggleMobileSort"></button>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm @(sortBy == "relevance" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetSortBy("relevance")'>
+                            Relevance
+                        </button>
+                        <button class="btn btn-sm @(sortBy == "newest" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetSortBy("newest")'>
+                            Newest
+                        </button>
+                        <button class="btn btn-sm @(sortBy == "price_low" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetSortBy("price_low")'>
+                            Price: Low
+                        </button>
+                        <button class="btn btn-sm @(sortBy == "price_high" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetSortBy("price_high")'>
+                            Price: High
+                        </button>
+                        <button class="btn btn-sm @(sortBy == "popular" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetSortBy("popular")'>
+                            Popular
+                        </button>
+                        <button class="btn btn-sm @(sortBy == "rating" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetSortBy("rating")'>
+                            Rating
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <!-- Mobile Price Filter Panel -->
+            @if (showMobilePriceFilter)
+            {
+                <div class="mobile-filter-panel mt-2 p-3 bg-light rounded">
+                    <div class="d-flex justify-content-between mb-2">
+                        <h6 class="mb-0">Price</h6>
+                        <button class="btn-close btn-sm" @onclick="ToggleMobilePriceFilter"></button>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm @(priceFilter == "all" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetPriceFilter("all")'>
+                            All
+                        </button>
+                        <button class="btn btn-sm @(priceFilter == "free" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetPriceFilter("free")'>
+                            Free
+                        </button>
+                        <button class="btn btn-sm @(priceFilter == "paid" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetPriceFilter("paid")'>
+                            Paid
+                        </button>
+                        <button class="btn btn-sm @(priceFilter == "under50" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetPriceFilter("under50")'>
+                            Under $50
+                        </button>
+                        <button class="btn btn-sm @(priceFilter == "under100" ? "btn-primary" : "btn-outline-secondary") rounded-pill"
+                                @onclick='() => SetPriceFilter("under100")'>
+                            Under $100
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Results Count -->
+        <div class="mb-2">
+            <small class="text-muted">
+                <i class="fas fa-layer-group me-1"></i>@displayedItemsCount of @totalItems items
+            </small>
+        </div>
+
+        <!-- Mobile Loading State -->
+        @if (isLoading)
+        {
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Mobile Results - Card View (always card view on mobile) -->
+            <div class="mobile-results">
+                <!-- Specializations -->
+                @if (activeContentType == "all" || activeContentType == "specializations")
+                {
+                    @foreach (var spec in displayedSpecializations)
+                    {
+                        <div class="mobile-card mb-3" @onclick="() => NavigateToSpecialization(spec.Id)">
+                            <div class="row g-0">
+                                <div class="col-4">
+                                    <div class="mobile-card-image rounded-start" style="background-image: url('@ImageUrlService.GetImageUrl(spec.ThumbnailUrl)')">
+                                        @if (string.IsNullOrEmpty(spec.ThumbnailUrl))
+                                        {
+                                            <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                                                <i class="fas fa-layer-group fa-2x text-muted"></i>
+                                            </div>
+                                        }
+                                        @if (spec.IsFeatured)
+                                        {
+                                            <span class="badge bg-warning position-absolute top-0 start-0 m-1">
+                                                <i class="fas fa-star fa-xs"></i>
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-8">
+                                    <div class="mobile-card-content p-2">
+                                        <h6 class="fw-bold mb-1">@spec.Title</h6>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="fas fa-user-md me-1"></i>@spec.Doctor?.FirstName @spec.Doctor?.LastName
+                                        </small>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold text-primary">$@spec.Price.ToString("N0")</span>
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-star text-warning fa-xs me-1"></i>
+                                                <small class="text-warning">@spec.AverageRating.ToString("0.0")</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <!-- Courses -->
+                @if (activeContentType == "all" || activeContentType == "courses")
+                {
+                    @foreach (var course in displayedCourses)
+                    {
+                        <div class="mobile-card mb-3" @onclick="() => NavigateToCourse(course.Id)">
+                            <div class="row g-0">
+                                <div class="col-4">
+                                    <div class="mobile-card-image rounded-start" style="background-image: url('@ImageUrlService.GetImageUrl(course.ThumbnailUrl)')">
+                                        @if (string.IsNullOrEmpty(course.ThumbnailUrl))
+                                        {
+                                            <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                                                <i class="fas fa-book-open fa-2x text-muted"></i>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-8">
+                                    <div class="mobile-card-content p-2">
+                                        <h6 class="fw-bold mb-1">@course.Title</h6>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="fas fa-book me-1"></i>@(course.Lectures?.Count ?? 0) lectures
+                                        </small>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold text-primary">$@course.Price.ToString("N0")</span>
+                                            @if (course.AverageRating > 0)
+                                            {
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-star text-warning fa-xs me-1"></i>
+                                                    <small class="text-warning">@course.AverageRating.ToString("0.0")</small>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <!-- Lectures -->
+                @if (activeContentType == "all" || activeContentType == "lectures")
+                {
+                    @foreach (var lecture in displayedLectures)
+                    {
+                        <div class="mobile-card mb-3" @onclick="() => NavigateToLecture(lecture.Id)">
+                            <div class="row g-0">
+                                <div class="col-4">
+                                    <div class="mobile-card-image rounded-start bg-dark d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-play-circle fa-2x text-white-50"></i>
+                                        @if (lecture.IsFreePreview)
+                                        {
+                                            <span class="badge bg-success position-absolute top-0 start-0 m-1">FREE</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="col-8">
+                                    <div class="mobile-card-content p-2">
+                                        <h6 class="fw-bold mb-1">@lecture.Title</h6>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="fas fa-clock me-1"></i>@lecture.EstimatedDurationMinutes min
+                                        </small>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            @if (lecture.Price > 0)
+                                            {
+                                                <span class="fw-bold text-primary">$@lecture.Price.ToString("N0")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="fw-bold text-success">Free</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (!displayedSpecializations.Any() && !displayedCourses.Any() && !displayedLectures.Any())
+                {
+                    <div class="text-center py-4">
+                        <i class="fas fa-search fa-3x text-muted opacity-25 mb-3"></i>
+                        <p class="text-muted">No items found</p>
+                        <button class="btn btn-primary btn-sm" @onclick="ResetFilters">
+                            Reset Filters
+                        </button>
+                    </div>
+                }
+
+                <!-- Load More -->
+                @if (hasMoreItems && !isLoading)
+                {
+                    <div class="text-center mt-3">
+                        <button class="btn btn-outline-primary btn-sm" @onclick="LoadMore">
+                            <i class="fas fa-plus-circle me-2"></i>Load More
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <!-- Mobile Bottom Sections -->
+            <div class="mt-4">
+                <!-- Recently Completed Mobile -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-white border-0">
+                        <h6 class="mb-0">
+                            <i class="fas fa-check-circle me-2 text-success"></i>Recently Completed
+                        </h6>
+                    </div>
+                    <div class="card-body p-2">
+                        @if (CompletedEnrollments.Any())
+                        {
+                            @foreach (var enrollment in CompletedEnrollments.Take(2))
+                            {
+                                <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                                    <div>
+                                        <small class="fw-bold d-block">@GetEnrollmentTitle(enrollment)</small>
+                                        <small class="text-muted">@(enrollment.CompletedDate?.ToString("MMM dd"))</small>
+                                    </div>
+                                    @if (enrollment.Review == null)
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning" @onclick="() => OnWriteReview.InvokeAsync(enrollment)">
+                                            <i class="fas fa-star"></i>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted small text-center py-2 mb-0">No completed items yet</p>
+                        }
+                    </div>
+                </div>
+
+                <!-- Recommended Mobile -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0">
+                        <h6 class="mb-0">
+                            <i class="fas fa-star me-2 text-warning"></i>Recommended
+                        </h6>
+                    </div>
+                    <div class="card-body p-2">
+                        @if (RecommendedSpecializations.Any())
+                        {
+                            @foreach (var spec in RecommendedSpecializations.Take(2))
+                            {
+                                <div class="d-flex align-items-center gap-2 p-2 border-bottom cursor-pointer" @onclick="() => OnViewSpecialization.InvokeAsync(spec.Id)">
+                                    <div class="flex-shrink-0">
+                                        <div class="rounded-circle bg-light" style="width: 40px; height: 40px; overflow: hidden;">
+                                            <img src="@ImageUrlService.GetImageUrl(spec.ThumbnailUrl)"
+                                                 class="w-100 h-100 object-fit-cover"
+                                                 alt=""
+                                                 onerror="this.src='/placeholder-image.jpg'" />
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <small class="fw-bold d-block">@spec.Title</small>
+                                        <small class="text-warning">
+                                            <i class="fas fa-star"></i> @spec.AverageRating.ToString("0.0")
+                                        </small>
+                                    </div>
+                                    <small class="fw-bold text-primary">$@spec.Price.ToString("N0")</small>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted small text-center py-2 mb-0">No recommendations yet</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* Desktop Styles (keeping your existing styles) */
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .avatar-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        background-color: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(5px);
+    }
+
+    .initial {
+        color: white;
+        text-transform: uppercase;
+    }
+
+    .stat-pill {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(5px);
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-size: 0.9rem;
+    }
+
+    .search-box {
+        border-radius: 50px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .search-box .input-group-text,
+    .search-box .form-control,
+    .search-box .btn {
+        border: none;
+    }
+
+    .search-box .form-control:focus {
+        box-shadow: none;
+    }
+
+    .hover-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+    }
+
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    }
+
+    .object-fit-cover {
+        object-fit: cover;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .alert-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: rgba(255, 193, 7, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .no-results-illustration {
+        opacity: 0.5;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @@keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+    }
+
+    /* Mobile Specific Styles */
+    .mobile-header {
+        border-radius: 0 0 20px 20px;
+    }
+
+    .avatar-circle-sm {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(5px);
+    }
+
+    .initial-sm {
+        color: white;
+        font-weight: bold;
+        font-size: 1rem;
+        text-transform: uppercase;
+    }
+
+    .mobile-filter-section {
+        position: relative;
+    }
+
+    .mobile-filter-section::-webkit-scrollbar {
+        display: none;
+    }
+
+    .mobile-filter-panel {
+        position: relative;
+        z-index: 100;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .mobile-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        overflow: hidden;
+        transition: transform 0.2s ease;
+        cursor: pointer;
+    }
+
+    .mobile-card:active {
+        transform: scale(0.98);
+    }
+
+    .mobile-card-image {
+        height: 100px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+
+    .mobile-card-content {
+        padding: 8px;
+    }
+
+    /* Fix for button clicks on mobile */
+    .mobile-card button {
+        pointer-events: auto;
+        z-index: 10;
+    }
+
+    /* Improved touch targets for mobile */
+    .btn-sm {
+        padding: 8px 12px;
+        font-size: 0.875rem;
+    }
+
+    /* Prevent text overflow on small screens */
+    .mobile-card h6 {
+        font-size: 0.9rem;
+        line-height: 1.2;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Responsive adjustments */
+    @@media (max-width: 576px) {
+        .container-fluid {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+        
+        .mobile-card-image {
+            height: 90px;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public UserDto? User { get; set; }
+    [Parameter] public List<EnrollmentDto> RecentEnrollments { get; set; } = new();
+    [Parameter] public List<EnrollmentDto> CompletedEnrollments { get; set; } = new();
+    [Parameter] public List<SpecializationDto> RecommendedSpecializations { get; set; } = new();
+    [Parameter] public int InProgressCount { get; set; }
+    [Parameter] public int CompletedCount { get; set; }
+    [Parameter] public decimal AverageProgress { get; set; }
+    [Parameter] public int PendingPayments { get; set; }
+
+    [Parameter] public EventCallback<EnrollmentDto> OnContinueLearning { get; set; }
+    [Parameter] public EventCallback OnBrowseAll { get; set; }
+    [Parameter] public EventCallback<int> OnViewSpecialization { get; set; }
+    [Parameter] public EventCallback<EnrollmentDto> OnWriteReview { get; set; }
+    [Parameter] public EventCallback OnViewPayments { get; set; }
+
+    // Catalog data
+    private List<SpecializationDto> allSpecializations = new();
+    private List<CourseDto> allCourses = new();
+    private List<LectureDto> allLectures = new();
+
+    // Displayed data (filtered)
+    private List<SpecializationDto> displayedSpecializations = new();
+    private List<CourseDto> displayedCourses = new();
+    private List<LectureDto> displayedLectures = new();
+
+    // Filter properties
+    private string searchQuery = "";
+    private string activeContentType = "all";
+    private string sortBy = "relevance";
+    private string priceFilter = "all";
+    private string viewMode = "grid";
+
+    // Mobile UI state
+    private bool showMobileSort = false;
+    private bool showMobilePriceFilter = false;
+
+    // Pagination
+    private int currentPage = 1;
+    private int pageSize = 12;
+    private bool hasMoreItems = false;
+    private bool isLoading = true;
+
+    // Stats
+    private int totalItems => allSpecializations.Count + allCourses.Count + allLectures.Count;
+    private int displayedItemsCount => displayedSpecializations.Count + displayedCourses.Count + displayedLectures.Count;
+
+    private Timer? debounceTimer;
+
+    // Mobile toggle methods
+    private void ToggleMobileSort()
+    {
+        showMobileSort = !showMobileSort;
+        if (showMobileSort) showMobilePriceFilter = false;
+    }
+
+    private void ToggleMobilePriceFilter()
+    {
+        showMobilePriceFilter = !showMobilePriceFilter;
+        if (showMobilePriceFilter) showMobileSort = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCatalogData();
+    }
+
+    private async Task LoadCatalogData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load all specializations (active only)
+            var specializations = await SpecializationService.GetSpecializationsAsync(
+                search: null,
+                featured: null,
+                doctorId: null,
+                minPrice: null,
+                maxPrice: null,
+                page: 1,
+                pageSize: 50
+            );
+
+            if (specializations != null)
+            {
+                allSpecializations = specializations.ToList();
+
+                // Load courses for each specialization
+                foreach (var spec in allSpecializations.Take(5)) // Limit to avoid too many calls
+                {
+                    var courses = await CourseService.GetCoursesBySpecializationAsync(spec.Id);
+                    if (courses != null)
+                    {
+                        allCourses.AddRange(courses.Where(c => c.IsActive));
+
+                        // Load lectures for each course
+                        foreach (var course in courses.Take(3))
+                        {
+                            var lectures = await LectureService.GetLecturesByCourseAsync(course.Id);
+                            if (lectures != null)
+                            {
+                                allLectures.AddRange(lectures.Where(l => l.IsActive));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply initial filters
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading catalog: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        // Close mobile panels when applying filters
+        showMobileSort = false;
+        showMobilePriceFilter = false;
+
+        // Filter specializations
+        var filteredSpecs = allSpecializations.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var query = searchQuery.ToLower();
+            filteredSpecs = filteredSpecs.Where(s =>
+                (s.Title?.ToLower().Contains(query) ?? false) ||
+                (s.Description?.ToLower().Contains(query) ?? false) ||
+                (s.Doctor?.FirstName?.ToLower().Contains(query) ?? false) ||
+                (s.Doctor?.LastName?.ToLower().Contains(query) ?? false)
+            );
+        }
+
+        // Apply price filter
+        filteredSpecs = ApplyPriceFilter(filteredSpecs, priceFilter);
+
+        // Apply sorting and assign
+        filteredSpecs = ApplySorting(filteredSpecs, sortBy);
+        displayedSpecializations = filteredSpecs.ToList();
+
+        // Filter courses
+        var filteredCourses = allCourses.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var query = searchQuery.ToLower();
+            filteredCourses = filteredCourses.Where(c =>
+                (c.Title?.ToLower().Contains(query) ?? false) ||
+                (c.Description?.ToLower().Contains(query) ?? false)
+            );
+        }
+
+        // Apply price filter and sorting
+        filteredCourses = ApplyPriceFilter(filteredCourses, priceFilter);
+        filteredCourses = ApplySorting(filteredCourses, sortBy);
+        displayedCourses = filteredCourses.ToList();
+
+        // Filter lectures
+        var filteredLectures = allLectures.AsEnumerable();
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var query = searchQuery.ToLower();
+            filteredLectures = filteredLectures.Where(l =>
+                (l.Title?.ToLower().Contains(query) ?? false) ||
+                (l.Description?.ToLower().Contains(query) ?? false)
+            );
+        }
+
+        // Apply price filter and sorting
+        filteredLectures = ApplyPriceFilter(filteredLectures, priceFilter);
+        filteredLectures = ApplySorting(filteredLectures, sortBy);
+        displayedLectures = filteredLectures.ToList();
+
+        // Update pagination
+        hasMoreItems = displayedItemsCount > currentPage * pageSize;
+    }
+
+    private IEnumerable<T> ApplyPriceFilter<T>(IEnumerable<T> items, string filter) where T : class
+    {
+        if (filter == "all") return items;
+
+        return items.Where(item =>
+        {
+            decimal price = GetPrice(item);
+            return filter switch
+            {
+                "free" => price == 0,
+                "paid" => price > 0,
+                "under50" => price > 0 && price < 50,
+                "under100" => price > 0 && price < 100,
+                _ => true
+            };
+        });
+    }
+
+    private IEnumerable<T> ApplySorting<T>(IEnumerable<T> items, string sort) where T : class
+    {
+        var itemList = items.ToList();
+
+        if (sort == "newest")
+        {
+            return itemList.OrderByDescending(item => GetCreatedAt(item)).ToList();
+        }
+        else if (sort == "price_low")
+        {
+            return itemList.OrderBy(item => GetPrice(item)).ToList();
+        }
+        else if (sort == "price_high")
+        {
+            return itemList.OrderByDescending(item => GetPrice(item)).ToList();
+        }
+        else if (sort == "popular")
+        {
+            return itemList.OrderByDescending(item => GetEnrollments(item)).ToList();
+        }
+        else if (sort == "rating")
+        {
+            return itemList.OrderByDescending(item => GetRating(item)).ToList();
+        }
+
+        // Default: relevance (keep original order)
+        return itemList;
+    }
+
+    private DateTime GetCreatedAt(object item)
+    {
+        return item switch
+        {
+            SpecializationDto s => s.CreatedAt,
+            CourseDto c => c.CreatedAt,
+            LectureDto l => l.CreatedAt,
+            _ => DateTime.MinValue
+        };
+    }
+
+    private decimal GetPrice(object item)
+    {
+        return item switch
+        {
+            SpecializationDto s => s.Price,
+            CourseDto c => c.Price,
+            LectureDto l => l.Price,
+            _ => 0
+        };
+    }
+
+    private int GetEnrollments(object item)
+    {
+        return item switch
+        {
+            SpecializationDto s => s.TotalEnrollments,
+            CourseDto c => c.TotalEnrollments,
+            LectureDto l => l.TotalEnrollments,
+            _ => 0
+        };
+    }
+
+    private decimal GetRating(object item)
+    {
+        return item switch
+        {
+            SpecializationDto s => s.AverageRating,
+            CourseDto c => c.AverageRating,
+            LectureDto l => l.AverageRating,
+            _ => 0
+        };
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            ApplySearch();
+        }
+        else if (e.Key == "Escape")
+        {
+            ClearSearch();
+        }
+        else
+        {
+            // Debounce search
+            debounceTimer?.Dispose();
+            debounceTimer = new Timer(async _ =>
+            {
+                await InvokeAsync(() =>
+                {
+                    if (searchQuery.Length >= 2 || searchQuery.Length == 0)
+                    {
+                        ApplySearch();
+                    }
+                });
+            }, null, 300, Timeout.Infinite);
+        }
+    }
+
+    private void ApplySearch()
+    {
+        currentPage = 1;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = "";
+        currentPage = 1;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void SetContentType(string type)
+    {
+        activeContentType = type;
+        currentPage = 1;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void SetSortBy(string sort)
+    {
+        sortBy = sort;
+        currentPage = 1;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void SetPriceFilter(string filter)
+    {
+        priceFilter = filter;
+        currentPage = 1;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void SetViewMode(string mode)
+    {
+        viewMode = mode;
+        StateHasChanged();
+    }
+
+    private void ResetFilters()
+    {
+        searchQuery = "";
+        activeContentType = "all";
+        sortBy = "relevance";
+        priceFilter = "all";
+        currentPage = 1;
+        showMobileSort = false;
+        showMobilePriceFilter = false;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void LoadMore()
+    {
+        currentPage++;
+        StateHasChanged();
+    }
+
+    private string GetInitials(string? firstName, string? lastName)
+    {
+        if (string.IsNullOrEmpty(firstName) && string.IsNullOrEmpty(lastName))
+            return "?";
+
+        var initials = "";
+        if (!string.IsNullOrEmpty(firstName))
+            initials += firstName[0];
+        if (!string.IsNullOrEmpty(lastName))
+            initials += lastName[0];
+
+        return initials.ToUpper();
+    }
+
+    private string GetEnrollmentTitle(EnrollmentDto enrollment)
+    {
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization => enrollment.Specialization?.Title ?? "Specialization",
+            EnrollmentType.Course => enrollment.Course?.Title ?? "Course",
+            EnrollmentType.Lecture => enrollment.Lecture?.Title ?? "Lecture",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetTruncatedText(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        if (text.Length <= maxLength) return text;
+        return text.Substring(0, maxLength).TrimEnd() + "...";
+    }
+
+    private void NavigateToSpecialization(int id)
+    {
+        Navigation.NavigateTo($"/specializations/{id}");
+    }
+
+    private void NavigateToCourse(int id)
+    {
+        Navigation.NavigateTo($"/courses/{id}");
+    }
+
+    private void NavigateToLecture(int id)
+    {
+        Navigation.NavigateTo($"/lectures/{id}");
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
+    }
+}

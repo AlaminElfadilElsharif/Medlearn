@@ -1,0 +1,1504 @@
+﻿@page "/doctor/enrollments"
+
+
+<PageTitle>Doctor Enrollments</PageTitle>
+
+<div class="doctor-enrollments">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Mobile Header -->
+        <div class="d-block d-md-none mb-3">
+            <div class="bg-primary text-white p-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                        <i class="fas fa-arrow-left fa-lg"></i>
+                    </button>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-0">Student Enrollments</h5>
+                        <small>@filteredEnrollments.Count of @totalEnrollments enrollments</small>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-link text-white p-0" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <button class="dropdown-item" @onclick="ExportEnrollments">
+                                    <i class="fas fa-download me-2"></i>Export CSV
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" @onclick="RefreshData">
+                                    <i class="fas fa-sync-alt me-2"></i>Refresh
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>Student Enrollments</h1>
+                <p class="text-muted">Manage and track all student enrollments in your content</p>
+                <small class="text-muted">Showing @filteredEnrollments.Count of @totalEnrollments enrollments</small>
+            </div>
+            <div>
+                <button class="btn btn-primary" @onclick="ExportEnrollments">
+                    <i class="fas fa-download me-2"></i> Export CSV
+                </button>
+                <button class="btn btn-outline-secondary ms-2" @onclick="RefreshData">
+                    <i class="fas fa-sync-alt me-2"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading enrollments...</p>
+            </div>
+        }
+        else if (hasError)
+        {
+            <div class="alert alert-danger m-3 m-md-0">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                @errorMessage
+                <button class="btn btn-sm btn-outline-danger ms-3" @onclick="LoadEnrollments">
+                    <i class="fas fa-redo me-1"></i> Retry
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Mobile Filter Bar -->
+            <div class="d-block d-md-none mb-3 px-3">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary flex-grow-1" @onclick="ToggleMobileFilters">
+                        <i class="fas fa-filter me-2"></i>Filters
+                        @if (HasActiveFilters())
+                        {
+                            <span class="badge bg-primary ms-2">!</span>
+                        }
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="ToggleSearch">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+
+                <!-- Mobile Filters Panel -->
+                @if (showMobileFilters)
+                {
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label small">Enrollment Type</label>
+                                <select class="form-select form-select-sm" @onchange="(e) => FilterTypeChanged(e)">
+                                    <option value="">All Types</option>
+                                    <option value="1">Lecture</option>
+                                    <option value="2">Course</option>
+                                    <option value="3">Specialization</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small">Status</label>
+                                <select class="form-select form-select-sm" @onchange="(e) => FilterStatusChanged(e)">
+                                    <option value="">All Status</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="in-progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small">Date Range</label>
+                                <select class="form-select form-select-sm" @onchange="(e) => FilterDateRangeChanged(e)">
+                                    <option value="30">Last 30 Days</option>
+                                    <option value="90">Last 90 Days</option>
+                                    <option value="365">Last Year</option>
+                                    <option value="all">All Time</option>
+                                </select>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary flex-grow-1" @onclick="ApplyFilters">
+                                    Apply Filters
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="ClearFilters">
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Mobile Search Panel -->
+                @if (showMobileSearch)
+                {
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Search students or content..."
+                                       @bind="searchQuery" @bind:event="oninput" />
+                                <button class="btn btn-primary" type="button" @onclick="ApplyFilters">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Desktop Filters -->
+            <div class="d-none d-md-block card mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Enrollment Type</label>
+                            <select class="form-select" @onchange="(e) => FilterTypeChanged(e)">
+                                <option value="">All Types</option>
+                                <option value="1">Lecture</option>
+                                <option value="2">Course</option>
+                                <option value="3">Specialization</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" @onchange="(e) => FilterStatusChanged(e)">
+                                <option value="">All Status</option>
+                                <option value="completed">Completed</option>
+                                <option value="in-progress">In Progress</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Date Range</label>
+                            <select class="form-select" @onchange="(e) => FilterDateRangeChanged(e)">
+                                <option value="30">Last 30 Days</option>
+                                <option value="90">Last 90 Days</option>
+                                <option value="365">Last Year</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Search</label>
+                            <div class="input-group">
+                                 <input type="text" class="form-control" placeholder="Search students or content..." 
+               @bind="searchQuery" @bind:event="oninput" />
+
+                                <button class="btn btn-outline-secondary" type="button" @onclick="ApplyFilters">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button class="btn btn-primary me-2" @onclick="ApplyFilters">
+                                <i class="fas fa-filter me-2"></i>Apply Filters
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick="ClearFilters">
+                                <i class="fas fa-times me-2"></i>Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards - Responsive -->
+            <div class="row g-2 g-md-3 mb-4 px-2 px-md-0">
+                <div class="col-6 col-md-3">
+                    <div class="card stat-card h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <h6 class="text-muted small mb-1">Total Enrollments</h6>
+                            <h3 class="mb-0 mb-md-2">@totalEnrollments</h3>
+                            <small class="@GetChangeClass(enrollmentChange) d-none d-md-inline">
+                                <i class="fas @(enrollmentChange >= 0 ? "fa-arrow-up" : "fa-arrow-down") me-1"></i> 
+                                @(enrollmentChange >= 0 ? "+" : "")@enrollmentChange%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card stat-card h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <h6 class="text-muted small mb-1">Active Students</h6>
+                            <h3 class="mb-0 mb-md-2">@activeStudents</h3>
+                            <small class="text-success d-none d-md-inline">
+                                <i class="fas fa-user-check me-1"></i> Currently learning
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card stat-card h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <h6 class="text-muted small mb-1">Completion Rate</h6>
+                            <h3 class="mb-0 mb-md-2">@completionRate.ToString("0")%</h3>
+                            <small class="text-warning d-none d-md-inline">
+                                <i class="fas fa-trophy me-1"></i> @completedEnrollments completed
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card stat-card h-100">
+                        <div class="card-body p-2 p-md-3">
+                            <h6 class="text-muted small mb-1">Total Revenue</h6>
+                            <h3 class="mb-0 mb-md-2">$@totalRevenue.ToString("N0")</h3>
+                            <small class="text-success d-none d-md-inline">
+                                <i class="fas fa-dollar-sign me-1"></i> From enrollments
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Stats Footer -->
+            <div class="d-block d-md-none px-3 mb-3">
+                <div class="d-flex justify-content-between small">
+                    <span class="@GetChangeClass(enrollmentChange)">
+                        <i class="fas @(enrollmentChange >= 0 ? "fa-arrow-up" : "fa-arrow-down") me-1"></i>
+                        @(enrollmentChange >= 0 ? "+" : "")@enrollmentChange% from last period
+                    </span>
+                    <span class="text-success">
+                        <i class="fas fa-dollar-sign me-1"></i> $@totalRevenue.ToString("N0") revenue
+                    </span>
+                </div>
+            </div>
+
+            <!-- Enrollments List - Mobile View -->
+            <div class="d-block d-md-none">
+                @if (filteredEnrollments.Any())
+                {
+                    <div class="px-3">
+                        @foreach (var enrollment in GetCurrentPageItems())
+                        {
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <!-- Student Info -->
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="avatar-sm me-2">
+                                            @if (!string.IsNullOrEmpty(enrollment.User?.ProfileImageUrl))
+                                            {
+                                                <img src="@enrollment.User.ProfileImageUrl" 
+                                                     class="rounded-circle" width="40" height="40" 
+                                                     alt="Student" 
+                                                     onerror="this.onerror=null;this.src='/images/default-avatar.png';" />
+                                            }
+                                            else
+                                            {
+                                                <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                                     style="width: 40px; height: 40px;">
+                                                    @GetInitials(enrollment.User?.FirstName, enrollment.User?.LastName)
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <strong>@enrollment.User?.FirstName @enrollment.User?.LastName</strong>
+                                            <br/>
+                                            <small class="text-muted">@enrollment.User?.Email</small>
+                                        </div>
+                                        <span class="badge bg-success">$@enrollment.PricePaid.ToString("N2")</span>
+                                    </div>
+
+                                    <!-- Content Info -->
+                                    <div class="mb-2">
+                                        <span class="badge @GetEnrollmentTypeBadge(enrollment.EnrollmentType) mb-1">
+                                            <i class="fas @GetEnrollmentIcon(enrollment.EnrollmentType) me-1"></i>
+                                            @enrollment.EnrollmentType
+                                        </span>
+                                        <div class="fw-bold">@GetEnrollmentTitle(enrollment)</div>
+                                    </div>
+
+                                    <!-- Date -->
+                                    <div class="small text-muted mb-2">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        @enrollment.EnrollmentDate.ToString("MMM dd, yyyy • hh:mm tt")
+                                    </div>
+
+                                    <!-- Progress -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="small">Progress</span>
+                                            <span class="small fw-bold">@enrollment.ProgressPercentage.ToString("0")%</span>
+                                        </div>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar @(enrollment.IsCompleted ? "bg-success" : "bg-primary")" 
+                                                 role="progressbar" 
+                                                 style="width: @enrollment.ProgressPercentage%"></div>
+                                        </div>
+                                        @if (!enrollment.IsCompleted && enrollment.ProgressPercentage > 0)
+                                        {
+                                            <small class="text-muted d-block mt-1">
+                                                Last active: @GetLastActiveTime(enrollment)
+                                            </small>
+                                        }
+                                    </div>
+
+                                    <!-- Status and Actions -->
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            @if (enrollment.IsCompleted)
+                                            {
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i> Completed
+                                                    <small class="ms-1">@enrollment.CompletedDate?.ToString("MMM dd")</small>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge @(enrollment.ProgressPercentage > 0 ? "bg-warning" : "bg-secondary")">
+                                                    <i class="fas @(enrollment.ProgressPercentage > 0 ? "fa-spinner" : "fa-clock") me-1"></i> 
+                                                    @(enrollment.ProgressPercentage > 0 ? "In Progress" : "Not Started")
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" 
+                                                    @onclick="() => ViewStudentDetails(enrollment.UserId)"
+                                                    title="View Student">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info" 
+                                                    @onclick="() => SendMessageToStudent(enrollment.UserId)"
+                                                    title="Send Message">
+                                                <i class="fas fa-envelope"></i>
+                                            </button>
+                                            @if (enrollment.ProgressPercentage > 0)
+                                            {
+                                                <button class="btn btn-outline-success" 
+                                                        @onclick="() => ViewProgressDetails(enrollment.Id)"
+                                                        title="View Progress">
+                                                    <i class="fas fa-chart-line"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Mobile Pagination -->
+                    @if (totalPages > 1)
+                    {
+                        <div class="d-flex justify-content-center align-items-center gap-2 mt-3 mb-4">
+                            <button class="btn btn-sm btn-outline-secondary @(currentPage == 1 ? "disabled" : "")" 
+                                    @onclick="() => ChangePage(currentPage - 1)">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <span class="mx-2">Page @currentPage of @totalPages</span>
+                            <button class="btn btn-sm btn-outline-secondary @(currentPage == totalPages ? "disabled" : "")" 
+                                    @onclick="() => ChangePage(currentPage + 1)">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    }
+
+                    <!-- Mobile Page Size -->
+                    <div class="d-flex justify-content-center gap-2 mb-4">
+                        <span class="text-muted small me-2">Show:</span>
+                        <button class="btn btn-sm @(pageSize == 10 ? "btn-primary" : "btn-outline-secondary")" 
+                                @onclick="() => ChangePageSize(10)">10</button>
+                        <button class="btn btn-sm @(pageSize == 25 ? "btn-primary" : "btn-outline-secondary")" 
+                                @onclick="() => ChangePageSize(25)">25</button>
+                        <button class="btn btn-sm @(pageSize == 50 ? "btn-primary" : "btn-outline-secondary")" 
+                                @onclick="() => ChangePageSize(50)">50</button>
+                    </div>
+                }
+                else
+                {
+                    <!-- Empty State Mobile -->
+                    <div class="text-center py-5 px-3">
+                        @if (enrollments.Any() && !filteredEnrollments.Any())
+                        {
+                            <i class="fas fa-filter fa-3x text-muted mb-3"></i>
+                            <h5>No Matching Enrollments</h5>
+                            <p class="text-muted">No enrollments match your current filters.</p>
+                            <button class="btn btn-outline-primary" @onclick="ClearFilters">
+                                <i class="fas fa-times me-2"></i> Clear Filters
+                            </button>
+                        }
+                        else
+                        {
+                            <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
+                            <h5>No Enrollments Yet</h5>
+                            <p class="text-muted">You don't have any student enrollments yet.</p>
+                            <button class="btn btn-primary" @onclick="CreateContent">
+                                <i class="fas fa-plus me-2"></i> Create Content
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Desktop Table View -->
+            <div class="d-none d-md-block card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Enrollment Details</h5>
+                    <div>
+                        <span class="text-muted me-3">
+                            @((currentPage - 1) * pageSize + 1)-@Math.Min(currentPage * pageSize, filteredEnrollments.Count) of @filteredEnrollments.Count
+                        </span>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary @(pageSize == 10 ? "active" : "")" @onclick="() => ChangePageSize(10)">
+                                10
+                            </button>
+                            <button class="btn btn-outline-secondary @(pageSize == 25 ? "active" : "")" @onclick="() => ChangePageSize(25)">
+                                25
+                            </button>
+                            <button class="btn btn-outline-secondary @(pageSize == 50 ? "active" : "")" @onclick="() => ChangePageSize(50)">
+                                50
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    @if (filteredEnrollments.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Content</th>
+                                        <th>Type</th>
+                                        <th>Enrollment Date</th>
+                                        <th>Progress</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var enrollment in GetCurrentPageItems())
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-sm me-2">
+                                                        @if (!string.IsNullOrEmpty(enrollment.User?.ProfileImageUrl))
+                                                        {
+                                                            <img src="@enrollment.User.ProfileImageUrl" 
+                                                                 class="rounded-circle" width="32" height="32" 
+                                                                 alt="Student" 
+                                                                 onerror="this.onerror=null;this.src='/images/default-avatar.png';" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                                                 style="width: 32px; height: 32px;">
+                                                                @GetInitials(enrollment.User?.FirstName, enrollment.User?.LastName)
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <strong>@enrollment.User?.FirstName @enrollment.User?.LastName</strong>
+                                                        <br/>
+                                                        <small class="text-muted">@enrollment.User?.Email</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <strong>@GetEnrollmentTitle(enrollment)</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetEnrollmentTypeBadge(enrollment.EnrollmentType)">
+                                                    <i class="fas @GetEnrollmentIcon(enrollment.EnrollmentType) me-1"></i>
+                                                    @enrollment.EnrollmentType
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @enrollment.EnrollmentDate.ToString("MMM dd, yyyy")
+                                                <br/>
+                                                <small class="text-muted">@enrollment.EnrollmentDate.ToString("hh:mm tt")</small>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                                        <div class="progress-bar @(enrollment.IsCompleted ? "bg-success" : "bg-primary")" 
+                                                             role="progressbar" 
+                                                             style="width: @enrollment.ProgressPercentage%"></div>
+                                                    </div>
+                                                    <span>@enrollment.ProgressPercentage.ToString("0")%</span>
+                                                </div>
+                                                @if (!enrollment.IsCompleted && enrollment.ProgressPercentage > 0)
+                                                {
+                                                    <small class="text-muted">
+                                                        Last active: @GetLastActiveTime(enrollment)
+                                                    </small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">$@enrollment.PricePaid.ToString("N2")</span>
+                                            </td>
+                                            <td>
+                                                @if (enrollment.IsCompleted)
+                                                {
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check me-1"></i> Completed
+                                                    </span>
+                                                    <br/>
+                                                    <small>@enrollment.CompletedDate?.ToString("MMM dd, yyyy")</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge @(enrollment.ProgressPercentage > 0 ? "bg-warning" : "bg-secondary")">
+                                                        <i class="fas @(enrollment.ProgressPercentage > 0 ? "fa-spinner" : "fa-clock") me-1"></i> 
+                                                        @(enrollment.ProgressPercentage > 0 ? "In Progress" : "Not Started")
+                                                    </span>
+                                                    <br/>
+                                                    @if (enrollment.ProgressPercentage > 0)
+                                                    {
+                                                        <small>@enrollment.ProgressPercentage.ToString("0")% complete</small>
+                                                    }
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <button class="btn btn-sm btn-outline-primary" 
+                                                            @onclick="() => ViewStudentDetails(enrollment.UserId)"
+                                                            title="View Student">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-info" 
+                                                            @onclick="() => SendMessageToStudent(enrollment.UserId)"
+                                                            title="Send Message">
+                                                        <i class="fas fa-envelope"></i>
+                                                    </button>
+                                                    @if (enrollment.ProgressPercentage >= 0)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-success" 
+                                                                @onclick="() => ViewProgressDetails(enrollment.Id)"
+                                                                title="View Progress">
+                                                            <i class="fas fa-chart-line"></i>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Desktop Pagination -->
+                        @if (totalPages > 1)
+                        {
+                            <div class="card-footer">
+                                <nav aria-label="Enrollment pagination">
+                                    <ul class="pagination justify-content-center mb-0">
+                                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">
+                                                <i class="fas fa-chevron-left"></i>
+                                            </button>
+                                        </li>
+                                        
+                                        @for (int i = 1; i <= totalPages; i++)
+                                        {
+                                            @if (i == 1 || i == totalPages || (i >= currentPage - 2 && i <= currentPage + 2))
+                                            {
+                                                <li class="page-item @(i == currentPage ? "active" : "")">
+                                                    <button class="page-link" @onclick="() => ChangePage(i)">
+                                                        @i
+                                                    </button>
+                                                </li>
+                                            }
+                                            else if (i == currentPage - 3 || i == currentPage + 3)
+                                            {
+                                                <li class="page-item disabled">
+                                                    <span class="page-link">...</span>
+                                                </li>
+                                            }
+                                        }
+                                        
+                                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <!-- Desktop Empty State -->
+                        <div class="text-center py-5">
+                            @if (enrollments.Any() && !filteredEnrollments.Any())
+                            {
+                                <i class="fas fa-filter fa-3x text-muted mb-3"></i>
+                                <h5>No Matching Enrollments</h5>
+                                <p class="text-muted">No enrollments match your current filters.</p>
+                                <button class="btn btn-outline-primary" @onclick="ClearFilters">
+                                    <i class="fas fa-times me-2"></i> Clear Filters
+                                </button>
+                            }
+                            else
+                            {
+                                <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
+                                <h5>No Enrollments Yet</h5>
+                                <p class="text-muted">You don't have any student enrollments yet.</p>
+                                <button class="btn btn-primary" @onclick="CreateContent">
+                                    <i class="fas fa-plus me-2"></i> Create Content
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Mobile Analytics Section -->
+            <div class="d-block d-md-none mt-4 px-3">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-chart-pie me-2"></i> Enrollment by Type
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        @if (enrollmentByType.Any())
+                        {
+                            @foreach (var item in enrollmentByType.OrderByDescending(x => x.Value))
+                            {
+                                var percentage = totalEnrollments > 0 ? (item.Value * 100.0 / totalEnrollments) : 0;
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span>
+                                            <i class="fas @GetEnrollmentIcon(item.Key) me-2"></i>
+                                            @item.Key.ToString()
+                                        </span>
+                                        <span>@percentage.ToString("0")%</span>
+                                    </div>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar @GetProgressBarClass(item.Key)" 
+                                             style="width: @percentage%"></div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i> Monthly Enrollments
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        @if (monthlyEnrollments.Any())
+                        {
+                            @foreach (var item in monthlyEnrollments.TakeLast(3))
+                            {
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between small mb-1">
+                                        <span>@item.Month @item.Year</span>
+                                        <span>@item.Count enrollments</span>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Analytics Section -->
+            <div class="d-none d-md-block row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-pie me-2"></i> Enrollment by Type
+                            </h5>
+                            <small class="text-muted">Total: @totalEnrollments</small>
+                        </div>
+                        <div class="card-body">
+                            @if (enrollmentByType.Any())
+                            {
+                                <div class="chart-container">
+                                    <div class="d-flex flex-column">
+                                        @foreach (var item in enrollmentByType.OrderByDescending(x => x.Value))
+                                        {
+                                            var percentage = totalEnrollments > 0 ? (item.Value * 100.0 / totalEnrollments) : 0;
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span>
+                                                        <i class="fas @GetEnrollmentIcon(item.Key) me-2"></i>
+                                                        <strong>@item.Key.ToString()</strong>
+                                                    </span>
+                                                    <span class="fw-bold">
+                                                        @item.Value (@percentage.ToString("0")%)
+                                                    </span>
+                                                </div>
+                                                <div class="progress" style="height: 12px;">
+                                                    <div class="progress-bar @GetProgressBarClass(item.Key)" 
+                                                         role="progressbar" 
+                                                         style="width: @percentage%"
+                                                         aria-valuenow="@percentage" 
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="100">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i> Monthly Enrollments
+                            </h5>
+                            <small class="text-muted">Last 6 months</small>
+                        </div>
+                        <div class="card-body">
+                            @if (monthlyEnrollments.Any())
+                            {
+                                var maxCount = monthlyEnrollments.Any() ? monthlyEnrollments.Max(m => m.Count) : 1;
+                                <div class="chart-container">
+                                    <div class="d-flex flex-column">
+                                        @foreach (var item in monthlyEnrollments.TakeLast(6))
+                                        {
+                                            var percentage = maxCount > 0 ? (item.Count * 100.0 / maxCount) : 0;
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span>
+                                                        <i class="fas fa-calendar me-2"></i>
+                                                        <strong>@item.Month @item.Year</strong>
+                                                    </span>
+                                                    <span class="fw-bold">
+                                                        @item.Count enrollments
+                                                        @if (item.Revenue > 0)
+                                                        {
+                                                            <br/>
+                                                            <small class="text-success">$@item.Revenue.ToString("N0")</small>
+                                                        }
+                                                    </span>
+                                                </div>
+                                                <div class="progress" style="height: 12px;">
+                                                    <div class="progress-bar bg-info" 
+                                                         role="progressbar" 
+                                                         style="width: @percentage%"
+                                                         aria-valuenow="@percentage" 
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="100">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Performance - Responsive -->
+            @if (contentPerformance.Any())
+            {
+                <div class="card mt-4 mx-2 mx-md-0">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-trophy me-2"></i> Top Performing Content
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Mobile View -->
+                        <div class="d-block d-md-none">
+                            @foreach (var content in contentPerformance.Take(3))
+                            {
+                                <div class="card mb-2">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1 small">@content.Title</h6>
+                                                <span class="badge @GetEnrollmentTypeBadge(content.Type) small">
+                                                    <i class="fas @GetEnrollmentIcon(content.Type) me-1"></i>
+                                                    @content.Type
+                                                </span>
+                                            </div>
+                                            <span class="badge bg-primary">@content.TotalEnrollments</span>
+                                        </div>
+                                        <div class="mt-2">
+                                            <div class="d-flex justify-content-between mb-1 small">
+                                                <span>Completion Rate</span>
+                                                <span>@content.CompletionRate.ToString("0")%</span>
+                                            </div>
+                                            <div class="progress" style="height: 4px;">
+                                                <div class="progress-bar bg-success" 
+                                                     style="width: @content.CompletionRate%"></div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-1 text-end small text-success">
+                                            $@content.TotalRevenue.ToString("N0") Revenue
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Desktop View -->
+                        <div class="d-none d-md-block row">
+                            @foreach (var content in contentPerformance.Take(3))
+                            {
+                                <div class="col-md-4">
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6 class="mb-1">@content.Title</h6>
+                                                    <small class="text-muted">
+                                                        <i class="fas @GetEnrollmentIcon(content.Type) me-1"></i>
+                                                        @content.Type
+                                                    </small>
+                                                </div>
+                                                <span class="badge bg-primary">
+                                                    @content.TotalEnrollments
+                                                </span>
+                                            </div>
+                                            <div class="mt-3">
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <small>Completion Rate</small>
+                                                    <small><strong>@content.CompletionRate.ToString("0")%</strong></small>
+                                                </div>
+                                                <div class="progress" style="height: 6px;">
+                                                    <div class="progress-bar bg-success" 
+                                                         style="width: @content.CompletionRate%"></div>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 text-center">
+                                                <small class="text-success">
+                                                    <i class="fas fa-dollar-sign me-1"></i>
+                                                    $@content.TotalRevenue.ToString("N0") Revenue
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    // Mobile UI state
+    private bool showMobileFilters = false;
+    private bool showMobileSearch = false;
+
+    // Data collections
+    private List<EnrollmentDto> enrollments = new();
+    private List<EnrollmentDto> filteredEnrollments = new();
+    private List<ContentPerformance> contentPerformance = new();
+    
+    // UI state
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = "";
+    
+    // Filter properties
+    private string searchQuery = "";
+    private string? filterType = "";
+    private string? filterStatus = "";
+    private string filterDateRange = "30";
+    
+    // Pagination
+    private int currentPage = 1;
+    private int pageSize = 10;
+    
+    // Statistics
+    private int totalEnrollments = 0;
+    private int activeStudents = 0;
+    private int completedEnrollments = 0;
+    private double completionRate = 0;
+    private decimal totalRevenue = 0;
+    private int enrollmentChange = 0;
+    private Dictionary<EnrollmentType, int> enrollmentByType = new();
+    private List<MonthlyEnrollment> monthlyEnrollments = new();
+    
+    // Computed property for total pages
+    private int totalPages => (int)Math.Ceiling(filteredEnrollments.Count / (double)pageSize);
+
+    // Mobile helper methods
+    private void ToggleMobileFilters()
+    {
+        showMobileFilters = !showMobileFilters;
+        showMobileSearch = false;
+    }
+
+    private void ToggleSearch()
+    {
+        showMobileSearch = !showMobileSearch;
+        showMobileFilters = false;
+    }
+
+    private bool HasActiveFilters()
+    {
+        return !string.IsNullOrEmpty(searchQuery) || 
+               !string.IsNullOrEmpty(filterType) || 
+               !string.IsNullOrEmpty(filterStatus) || 
+               filterDateRange != "30";
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/doctor/dashboard");
+    }
+
+    // Filter change handlers
+    private void FilterTypeChanged(ChangeEventArgs e)
+    {
+        filterType = e.Value?.ToString();
+        ApplyFilters();
+    }
+
+    private void FilterStatusChanged(ChangeEventArgs e)
+    {
+        filterStatus = e.Value?.ToString();
+        ApplyFilters();
+    }
+
+    private void FilterDateRangeChanged(ChangeEventArgs e)
+    {
+        filterDateRange = e.Value?.ToString() ?? "30";
+        ApplyFilters();
+    }
+
+    private void SearchChanged(ChangeEventArgs e)
+    {
+        searchQuery = e.Value?.ToString() ?? "";
+        ApplyFilters();
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEnrollments();
+    }
+
+    private async Task LoadEnrollments()
+    {
+        isLoading = true;
+        hasError = false;
+        errorMessage = "";
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            Console.WriteLine("Loading enrollments...");
+
+            // Check authentication
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                errorMessage = "Please log in to view enrollments.";
+                hasError = true;
+                return;
+            }
+
+            // Get current user to verify doctor role
+            var currentUser = await AuthService.GetCurrentUserAsync();
+            if (currentUser?.UserType != UserType.Doctor)
+            {
+                errorMessage = "Access denied. Only doctors can view enrollments.";
+                hasError = true;
+                return;
+            }
+
+            Console.WriteLine($"Doctor ID: {currentUser.Id}, Loading enrollments...");
+
+            // Load detailed enrollment data using the correct endpoint
+            var enrollmentsResponse = await EnrollmentService.GetDoctorContentEnrollmentsAsync();
+            
+            if (enrollmentsResponse != null)
+            {
+                Console.WriteLine($"Loaded {enrollmentsResponse.Count} enrollments");
+                enrollments = enrollmentsResponse;
+                
+                if (enrollments.Any())
+                {
+                    Console.WriteLine($"Sample enrollment: {enrollments[0].Id}, Type: {enrollments[0].EnrollmentType}, Price: {enrollments[0].PricePaid}");
+                }
+
+                // Load aggregated statistics for content performance
+                await LoadContentPerformance();
+                
+                // Calculate statistics
+                CalculateStatistics();
+                
+                // Apply initial filters
+                ApplyFilters();
+                
+                await JS.InvokeVoidAsync("showToast", "success", $"Loaded {enrollments.Count} enrollments");
+            }
+            else
+            {
+                Console.WriteLine("No enrollments response received");
+                enrollments = new List<EnrollmentDto>();
+                ApplyFilters();
+                await JS.InvokeVoidAsync("showToast", "info", "No enrollments found");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading enrollments: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            errorMessage = $"Error loading enrollments: {ex.Message}";
+            hasError = true;
+            enrollments = new List<EnrollmentDto>();
+            ApplyFilters();
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadContentPerformance()
+    {
+        try
+        {
+            Console.WriteLine("Loading content performance data...");
+            
+            // Get aggregated statistics for content performance
+            var performanceResponse = await EnrollmentService.GetDoctorEnrollmentsAsync();
+            
+            if (performanceResponse != null)
+            {
+                contentPerformance = new List<ContentPerformance>();
+                
+                foreach (var item in performanceResponse)
+                {
+                    try
+                    {
+                        // Parse the JSON response
+                        var json = JsonSerializer.Serialize(item);
+                        var jsonDoc = JsonDocument.Parse(json);
+                        
+                        var type = (EnrollmentType)jsonDoc.RootElement.GetProperty("Type").GetInt32();
+                        var entityId = jsonDoc.RootElement.GetProperty("EntityId").GetInt32();
+                        var title = jsonDoc.RootElement.GetProperty("Title").GetString() ?? "Unknown";
+                        var totalEnrollments = jsonDoc.RootElement.GetProperty("TotalEnrollments").GetInt32();
+                        var completedEnrollments = jsonDoc.RootElement.GetProperty("CompletedEnrollments").GetInt32();
+                        var averageProgress = jsonDoc.RootElement.GetProperty("AverageProgress").GetDouble();
+                        var totalRevenue = jsonDoc.RootElement.GetProperty("TotalRevenue").GetDecimal();
+                        
+                        var completionRate = totalEnrollments > 0 
+                            ? (completedEnrollments * 100.0 / totalEnrollments)
+                            : 0;
+                        
+                        contentPerformance.Add(new ContentPerformance
+                        {
+                            Type = type,
+                            EntityId = entityId,
+                            Title = title,
+                            TotalEnrollments = totalEnrollments,
+                            CompletedEnrollments = completedEnrollments,
+                            AverageProgress = averageProgress,
+                            CompletionRate = completionRate,
+                            TotalRevenue = totalRevenue
+                        });
+                        
+                        Console.WriteLine($"Content Performance: {title} - {totalEnrollments} enrollments, ${totalRevenue}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error parsing content performance item: {ex.Message}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading content performance: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadEnrollments();
+    }
+
+    private void CalculateStatistics()
+    {
+        try
+        {
+            Console.WriteLine("Calculating statistics...");
+            
+            totalEnrollments = enrollments.Count;
+            Console.WriteLine($"Total enrollments: {totalEnrollments}");
+
+            // Active students: unique users with enrollments not completed and progress > 0
+            activeStudents = enrollments
+                .Where(e => !e.IsCompleted && e.ProgressPercentage > 0)
+                .Select(e => e.UserId)
+                .Distinct()
+                .Count();
+            Console.WriteLine($"Active students: {activeStudents}");
+            
+            completedEnrollments = enrollments.Count(e => e.IsCompleted);
+            Console.WriteLine($"Completed enrollments: {completedEnrollments}");
+            
+            completionRate = totalEnrollments > 0 ? 
+                (completedEnrollments * 100.0 / totalEnrollments) : 0;
+            Console.WriteLine($"Completion rate: {completionRate}%");
+            
+            totalRevenue = enrollments.Sum(e => e.PricePaid);
+            Console.WriteLine($"Total revenue: {totalRevenue}");
+
+            // Calculate enrollment by type
+            enrollmentByType = enrollments
+                .GroupBy(e => e.EnrollmentType)
+                .ToDictionary(g => g.Key, g => g.Count());
+            
+            Console.WriteLine("Enrollment by type:");
+            foreach (var item in enrollmentByType)
+            {
+                Console.WriteLine($"  {item.Key}: {item.Value}");
+            }
+
+            // Calculate monthly enrollments
+            monthlyEnrollments = enrollments
+                .GroupBy(e => new { e.EnrollmentDate.Year, e.EnrollmentDate.Month })
+                .Select(g => new MonthlyEnrollment
+                {
+                    Year = g.Key.Year,
+                    Month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(g.Key.Month),
+                    Count = g.Count(),
+                    Revenue = g.Sum(e => e.PricePaid)
+                })
+                .OrderBy(m => m.Year).ThenBy(m => m.Month)
+                .ToList();
+
+            Console.WriteLine($"Monthly enrollments: {monthlyEnrollments.Count} months");
+
+            // Calculate enrollment change (last 30 days vs previous 30 days)
+            var thirtyDaysAgo = DateTime.Now.AddDays(-30);
+            var sixtyDaysAgo = DateTime.Now.AddDays(-60);
+            
+            var recentEnrollments = enrollments
+                .Where(e => e.EnrollmentDate >= thirtyDaysAgo)
+                .Count();
+            
+            var previousEnrollments = enrollments
+                .Where(e => e.EnrollmentDate >= sixtyDaysAgo && e.EnrollmentDate < thirtyDaysAgo)
+                .Count();
+
+            if (previousEnrollments > 0)
+            {
+                enrollmentChange = (int)((recentEnrollments - previousEnrollments) * 100.0 / previousEnrollments);
+            }
+            else if (recentEnrollments > 0)
+            {
+                enrollmentChange = 100;
+            }
+            else
+            {
+                enrollmentChange = 0;
+            }
+
+            Console.WriteLine($"Enrollment change: {enrollmentChange}% (Recent: {recentEnrollments}, Previous: {previousEnrollments})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error calculating statistics: {ex.Message}");
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        try
+        {
+            Console.WriteLine("Applying filters...");
+            Console.WriteLine($"Search: '{searchQuery}', Type: '{filterType}', Status: '{filterStatus}', DateRange: '{filterDateRange}'");
+
+            var query = enrollments.AsQueryable();
+
+            // Apply search query
+            if (!string.IsNullOrEmpty(searchQuery))
+            {
+                var search = searchQuery.ToLower();
+                query = query.Where(e =>
+                    (e.User != null && (
+                        (e.User.FirstName != null && e.User.FirstName.ToLower().Contains(search)) ||
+                        (e.User.LastName != null && e.User.LastName.ToLower().Contains(search)) ||
+                        (e.User.Email != null && e.User.Email.ToLower().Contains(search))
+                    )) ||
+                    (e.Lecture != null && e.Lecture.Title != null && e.Lecture.Title.ToLower().Contains(search)) ||
+                    (e.Course != null && e.Course.Title != null && e.Course.Title.ToLower().Contains(search)) ||
+                    (e.Specialization != null && e.Specialization.Title != null && e.Specialization.Title.ToLower().Contains(search))
+                );
+            }
+
+            // Apply type filter
+            if (!string.IsNullOrEmpty(filterType) && int.TryParse(filterType, out int typeValue))
+            {
+                var enumValue = (EnrollmentType)typeValue;
+                query = query.Where(e => e.EnrollmentType == enumValue);
+                Console.WriteLine($"Filtered by type: {enumValue}");
+            }
+
+            // Apply status filter
+            if (!string.IsNullOrEmpty(filterStatus))
+            {
+                if (filterStatus == "completed")
+                {
+                    query = query.Where(e => e.IsCompleted);
+                    Console.WriteLine("Filtered by status: Completed");
+                }
+                else if (filterStatus == "in-progress")
+                {
+                    query = query.Where(e => !e.IsCompleted && e.ProgressPercentage > 0);
+                    Console.WriteLine("Filtered by status: In Progress");
+                }
+            }
+
+            // Apply date range filter
+            if (filterDateRange != "all" && int.TryParse(filterDateRange, out int days))
+            {
+                var startDate = DateTime.Now.AddDays(-days);
+                query = query.Where(e => e.EnrollmentDate >= startDate);
+                Console.WriteLine($"Filtered by date range: Last {days} days");
+            }
+
+            // Order by enrollment date descending
+            filteredEnrollments = query
+                .OrderByDescending(e => e.EnrollmentDate)
+                .ToList();
+            
+            Console.WriteLine($"Filtered enrollments count: {filteredEnrollments.Count}");
+            
+            // Reset to first page when filters change
+            currentPage = 1;
+            
+            // Close mobile panels after applying filters
+            showMobileFilters = false;
+            showMobileSearch = false;
+            
+            // Force UI update
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error applying filters: {ex.Message}");
+            filteredEnrollments = enrollments.ToList();
+        }
+    }
+
+    private void ClearFilters()
+    {
+        searchQuery = "";
+        filterType = "";
+        filterStatus = "";
+        filterDateRange = "30";
+        ApplyFilters();
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            StateHasChanged();
+        }
+    }
+
+    private void ChangePageSize(int size)
+    {
+        pageSize = size;
+        currentPage = 1;
+        StateHasChanged();
+    }
+
+    private IEnumerable<EnrollmentDto> GetCurrentPageItems()
+    {
+        return filteredEnrollments
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize);
+    }
+
+    private string GetEnrollmentTitle(EnrollmentDto enrollment)
+    {
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Specialization => enrollment.Specialization?.Title ?? "Specialization",
+            EnrollmentType.Course => enrollment.Course?.Title ?? "Course",
+            EnrollmentType.Lecture => enrollment.Lecture?.Title ?? "Lecture",
+            _ => "Unknown Content"
+        };
+    }
+
+    private string GetEnrollmentIcon(EnrollmentType type)
+    {
+        return type switch
+        {
+            EnrollmentType.Lecture => "fa-video",
+            EnrollmentType.Course => "fa-graduation-cap",
+            EnrollmentType.Specialization => "fa-book",
+            _ => "fa-file"
+        };
+    }
+
+    private string GetEnrollmentTypeBadge(EnrollmentType type)
+    {
+        return type switch
+        {
+            EnrollmentType.Lecture => "bg-info",
+            EnrollmentType.Course => "bg-primary",
+            EnrollmentType.Specialization => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetProgressBarClass(EnrollmentType type)
+    {
+        return type switch
+        {
+            EnrollmentType.Lecture => "bg-info",
+            EnrollmentType.Course => "bg-primary",
+            EnrollmentType.Specialization => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetChangeClass(int change)
+    {
+        return change >= 0 ? "text-success" : "text-danger";
+    }
+
+    private string GetInitials(string? firstName, string? lastName)
+    {
+        var firstInitial = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString() : "S";
+        var lastInitial = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString() : "T";
+        return firstInitial + lastInitial;
+    }
+
+    private string GetLastActiveTime(EnrollmentDto enrollment)
+    {
+        if (enrollment.IsCompleted && enrollment.CompletedDate.HasValue)
+        {
+            var timeSpan = DateTime.Now - enrollment.CompletedDate.Value;
+            if (timeSpan.TotalDays < 1)
+                return "Completed today";
+            return $"Completed {(int)timeSpan.TotalDays} day{(timeSpan.TotalDays > 1 ? "s" : "")} ago";
+        }
+
+        // For in-progress enrollments
+        if (enrollment.ProgressTrackings != null && enrollment.ProgressTrackings.Any())
+        {
+            var lastProgress = enrollment.ProgressTrackings
+                .Where(p => p.UpdatedAt.HasValue)
+                .OrderByDescending(p => p.UpdatedAt)
+                .FirstOrDefault();
+            
+            if (lastProgress != null && lastProgress.UpdatedAt.HasValue)
+            {
+                var timeSpan = DateTime.Now - lastProgress.UpdatedAt.Value;
+                
+                if (timeSpan.TotalDays < 1)
+                {
+                    if (timeSpan.TotalHours < 1)
+                        return "Active recently";
+                    return $"Active {(int)timeSpan.TotalHours} hour{(timeSpan.TotalHours > 1 ? "s" : "")} ago";
+                }
+                return $"Active {(int)timeSpan.TotalDays} day{(timeSpan.TotalDays > 1 ? "s" : "")} ago";
+            }
+        }
+
+        // Fallback to enrollment date
+        var enrollmentTimeSpan = DateTime.Now - enrollment.EnrollmentDate;
+        if (enrollmentTimeSpan.TotalDays < 1)
+            return "Enrolled today";
+        return $"Enrolled {(int)enrollmentTimeSpan.TotalDays} day{(enrollmentTimeSpan.TotalDays > 1 ? "s" : "")} ago";
+    }
+
+    private async Task ExportEnrollments()
+    {
+        try
+        {
+            var csvContent = "Student Name,Student Email,Content Type,Content Title,Enrollment Date,Progress,Amount,Status,Completion Date\n";
+
+            foreach (var enrollment in enrollments)
+            {
+                csvContent += $"\"{enrollment.User?.FirstName} {enrollment.User?.LastName}\",";
+                csvContent += $"{enrollment.User?.Email},";
+                csvContent += $"{enrollment.EnrollmentType},";
+                csvContent += $"\"{GetEnrollmentTitle(enrollment)}\",";
+                csvContent += $"{enrollment.EnrollmentDate:yyyy-MM-dd},";
+                csvContent += $"{enrollment.ProgressPercentage}%,";
+                csvContent += $"${enrollment.PricePaid.ToString("N2")},";
+                csvContent += $"{(enrollment.IsCompleted ? "Completed" : "In Progress")},";
+                csvContent += $"{(enrollment.CompletedDate?.ToString("yyyy-MM-dd") ?? "N/A")}\n";
+            }
+
+            var fileName = $"enrollments-export-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+
+            // Convert string to bytes and then to base64
+            var bytes = System.Text.Encoding.UTF8.GetBytes(csvContent);
+            var base64String = Convert.ToBase64String(bytes);
+
+            // Call the JS function with all three parameters
+            await JS.InvokeVoidAsync("downloadFile", base64String, fileName, "text/csv");
+
+            await JS.InvokeVoidAsync("showToast", "success", "Enrollments exported successfully!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Export error: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", $"Export failed: {ex.Message}");
+        }
+    }
+
+    private void ViewStudentDetails(int userId)
+    {
+        Navigation.NavigateTo($"/doctor/students/{userId}/details");
+    }
+
+    private void SendMessageToStudent(int userId)
+    {
+        Navigation.NavigateTo($"/messages/compose");
+    }
+
+    private void ViewProgressDetails(int enrollmentId)
+    {
+        Navigation.NavigateTo($"/doctor/students/{enrollmentId}/progress");
+    }
+
+    private void CreateContent()
+    {
+        Navigation.NavigateTo("/createspecialization");
+    }
+
+    // Supporting classes
+    private class MonthlyEnrollment
+    {
+        public int Year { get; set; }
+        public string Month { get; set; } = "";
+        public int Count { get; set; }
+        public decimal Revenue { get; set; }
+    }
+
+    private class ContentPerformance
+    {
+        public EnrollmentType Type { get; set; }
+        public int EntityId { get; set; }
+        public string Title { get; set; } = "";
+        public int TotalEnrollments { get; set; }
+        public int CompletedEnrollments { get; set; }
+        public double AverageProgress { get; set; }
+        public double CompletionRate { get; set; }
+        public decimal TotalRevenue { get; set; }
+    }
+}

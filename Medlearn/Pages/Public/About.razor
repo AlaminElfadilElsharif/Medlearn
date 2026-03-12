@@ -1,0 +1,1017 @@
+﻿@page "/about"
+
+<PageTitle>About Us - Medical Learning Platform</PageTitle>
+
+<style>
+    /* About Page Specific Styles */
+    .about-hero {
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(102, 16, 242, 0.05) 100%);
+        padding: 3rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .about-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 80%, rgba(13, 110, 253, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(102, 16, 242, 0.1) 0%, transparent 50%);
+        }
+
+        .about-hero h1 {
+            background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: clamp(1.8rem, 5vw, 3.5rem);
+        }
+
+        .about-hero .lead {
+            font-size: clamp(1rem, 3vw, 1.25rem);
+        }
+
+        .about-hero img {
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            transform: perspective(1500px) rotateY(10deg) rotateX(5deg);
+            transition: transform 0.5s ease;
+            max-width: 100%;
+            height: auto;
+        }
+
+            .about-hero img:hover {
+                transform: perspective(1500px) rotateY(0deg) rotateX(0deg);
+            }
+
+    .mission-vision {
+        padding: 2rem 0;
+    }
+
+    @@media (min-width: 768px) {
+        .mission-vision {
+            padding: 3rem 0;
+        }
+    }
+
+    .mission-vision .card {
+        border-radius: 15px;
+        overflow: hidden;
+        border: 2px solid transparent;
+        background: linear-gradient(white, white) padding-box, linear-gradient(135deg, #0d6efd 0%, #6610f2 100%) border-box;
+        transition: transform 0.3s ease;
+        height: 100%;
+    }
+
+        .mission-vision .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(13, 110, 253, 0.2);
+        }
+
+    @@media (min-width: 768px) {
+        .mission-vision .card:hover {
+            transform: translateY(-10px);
+        }
+    }
+
+    .icon-container {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    @@media (min-width: 768px) {
+        .icon-container {
+            width: 80px;
+            height: 80px;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+    }
+
+    .story-section {
+        position: relative;
+        overflow: hidden;
+        padding: 2rem 0;
+    }
+
+    @@media (min-width: 768px) {
+        .story-section {
+            padding: 3rem 0;
+        }
+    }
+
+    .story-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%230d6efd' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+    }
+
+    .story-image {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        margin-bottom: 2rem;
+        transform: none;
+    }
+
+    @@media (min-width: 992px) {
+        .story-image {
+            border-radius: 20px;
+            transform: perspective(1500px) rotateY(-10deg) rotateX(5deg);
+            margin-bottom: 0;
+        }
+
+            .story-image:hover {
+                transform: perspective(1500px) rotateY(0deg) rotateX(0deg);
+            }
+    }
+
+    .stats-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .stat-item {
+        flex: 1;
+        min-width: 100px;
+    }
+
+    @@media (min-width: 768px) {
+        .stats-container {
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .stat-item {
+            min-width: 120px;
+        }
+    }
+
+    .stat-item h3 {
+        font-size: clamp(1.2rem, 4vw, 1.75rem);
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    .value-card {
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        height: 100%;
+    }
+
+    @@media (min-width: 768px) {
+        .value-card {
+            border-radius: 15px;
+        }
+    }
+
+    .value-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+
+    @@media (min-width: 768px) {
+        .value-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+    }
+
+    .value-icon .icon-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+    }
+
+    @@media (min-width: 768px) {
+        .value-icon .icon-circle {
+            width: 80px;
+            height: 80px;
+            font-size: 2rem;
+        }
+    }
+
+    .value-card:hover .value-icon .icon-circle {
+        transform: scale(1.05) rotate(5deg);
+    }
+
+    @@media (min-width: 768px) {
+        .value-card:hover .value-icon .icon-circle {
+            transform: scale(1.1) rotate(10deg);
+        }
+    }
+
+    .team-card {
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        height: 100%;
+    }
+
+    @@media (min-width: 768px) {
+        .team-card {
+            border-radius: 15px;
+        }
+    }
+
+    .team-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+
+    @@media (min-width: 768px) {
+        .team-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            border-color: #0d6efd;
+        }
+    }
+
+    .team-image img {
+        transition: all 0.3s ease;
+        width: 80px;
+        height: 80px;
+    }
+
+    @@media (min-width: 768px) {
+        .team-image img {
+            width: 120px;
+            height: 120px;
+        }
+    }
+
+    .team-card:hover .team-image img {
+        transform: scale(1.05);
+    }
+
+    @@media (min-width: 768px) {
+        .team-card:hover .team-image img {
+            transform: scale(1.1);
+        }
+    }
+
+    .social-links a {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+        font-size: 0.9rem;
+    }
+
+    @@media (min-width: 768px) {
+        .social-links a {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
+    }
+
+    .partner-logo {
+        transition: all 0.3s ease;
+        filter: grayscale(100%);
+        opacity: 0.7;
+        padding: 1rem;
+        cursor: pointer;
+    }
+
+    @@media (min-width: 768px) {
+        .partner-logo {
+            padding: 2rem;
+        }
+    }
+
+    .partner-logo:hover {
+        filter: grayscale(0%);
+        opacity: 1;
+        transform: scale(1.05);
+    }
+
+    .bg-purple {
+        background: linear-gradient(135deg, #6f42c1 0%, #d63384 100%) !important;
+    }
+
+    /* Mobile CTA adjustments */
+    .cta-section {
+        padding: 2rem 0;
+        text-align: center;
+    }
+
+    @@media (min-width: 992px) {
+        .cta-section {
+            padding: 3rem 0;
+            text-align: left;
+        }
+
+            .cta-section .text-lg-end {
+                text-align: right !important;
+            }
+    }
+
+    .cta-section h2 {
+        font-size: clamp(1.5rem, 5vw, 2.5rem);
+    }
+
+    .cta-section .btn {
+        width: 100%;
+        margin-top: 1rem;
+    }
+
+    @@media (min-width: 992px) {
+        .cta-section .btn {
+            width: auto;
+            margin-top: 0;
+        }
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in-up {
+        animation: fadeInUp 0.6s ease forwards;
+    }
+
+    /* Responsive text utilities */
+    .responsive-h1 {
+        font-size: clamp(2rem, 6vw, 3.5rem);
+    }
+
+    .responsive-h2 {
+        font-size: clamp(1.5rem, 5vw, 2.5rem);
+    }
+
+    .responsive-h3 {
+        font-size: clamp(1.2rem, 4vw, 1.75rem);
+    }
+
+    .responsive-lead {
+        font-size: clamp(1rem, 3vw, 1.25rem);
+    }
+
+    /* Improved spacing */
+    .section-padding {
+        padding: 2rem 0;
+    }
+
+    @@media (min-width: 768px) {
+        .section-padding {
+            padding: 3rem 0;
+        }
+    }
+
+    @@media (min-width: 992px) {
+        .section-padding {
+            padding: 4rem 0;
+        }
+    }
+
+    /* Mobile-friendly card adjustments */
+    .card-body {
+        padding: 1.25rem;
+    }
+
+    @@media (min-width: 768px) {
+        .card-body {
+            padding: 2rem;
+        }
+    }
+
+    /* Better mobile touch targets */
+    .btn,
+    .social-links a,
+    .partner-logo {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Swipe indicator for mobile */
+    .mobile-swipe-indicator {
+        display: block;
+        text-align: center;
+        padding: 1rem 0;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+
+    @@media (min-width: 768px) {
+        .mobile-swipe-indicator {
+            display: none;
+        }
+    }
+
+    /* Horizontal scroll for mobile team section */
+    @@media (max-width: 767px) {
+        .team-section .row {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 1rem 0;
+            scroll-snap-type: x mandatory;
+            gap: 1rem;
+        }
+
+        .team-section .col-md-4 {
+            flex: 0 0 85%;
+            scroll-snap-align: start;
+        }
+
+        .team-section::-webkit-scrollbar {
+            display: none;
+        }
+
+        .team-section {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    }
+</style>
+
+<!-- Mobile Header (visible only on mobile) -->
+<div class="d-block d-md-none bg-primary text-white p-3">
+    <h1 class="h4 mb-0 text-center">About Us</h1>
+</div>
+
+<!-- Hero Section -->
+<section class="about-hero">
+    <div class="container position-relative" style="z-index: 1;">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <h1 class="fw-bold mb-3 mb-md-4">
+                    Transforming Medical Education Through Technology
+                </h1>
+                <p class="lead mb-3 mb-md-4">
+                    We're on a mission to make world-class medical education accessible to every healthcare
+                    professional worldwide.
+                </p>
+            </div>
+            <div class="col-lg-6">
+                <img src="/images/about-hero.jpg" class="img-fluid" alt="Medical Education" />
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Mobile Swipe Indicator (visible only on mobile) -->
+<div class="mobile-swipe-indicator d-md-none">
+    <i class="fas fa-chevron-left me-2"></i> Swipe to see more <i class="fas fa-chevron-right ms-2"></i>
+</div>
+
+<!-- Mission & Vision -->
+<section class="mission-vision section-padding">
+    <div class="container">
+        <div class="row g-3 g-md-5">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body p-3 p-md-5">
+                        <div class="icon-container">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <h3 class="card-title fw-bold mb-2 mb-md-3">Our Mission</h3>
+                        <p class="card-text small small-md-normal">
+                            To democratize medical education by providing accessible, high-quality, and
+                            clinically-relevant learning opportunities to healthcare professionals at all
+                            stages of their careers.
+                        </p>
+                        <ul class="list-unstyled mt-3 mt-md-4">
+                            <li class="mb-1 mb-md-2 small">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Bridge knowledge gaps in medical practice
+                            </li>
+                            <li class="mb-1 mb-md-2 small">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Support lifelong learning for healthcare professionals
+                            </li>
+                            <li class="mb-1 mb-md-2 small">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Foster collaboration among medical communities
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body p-3 p-md-5">
+                        <div class="icon-container">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <h3 class="card-title fw-bold mb-2 mb-md-3">Our Vision</h3>
+                        <p class="card-text small small-md-normal">
+                            To become the world's leading platform for medical education, where every
+                            healthcare professional can access the knowledge they need to provide
+                            exceptional patient care.
+                        </p>
+                        <ul class="list-unstyled mt-3 mt-md-4">
+                            <li class="mb-1 mb-md-2 small">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Create a global network of medical experts
+                            </li>
+                            <li class="mb-1 mb-md-2 small">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Innovate medical education delivery
+                            </li>
+                            <li class="mb-1 mb-md-2 small">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Impact healthcare outcomes worldwide
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Story -->
+<section class="story-section section-padding bg-light">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <div class="story-image">
+                    <img src="/images/our-story.jpg" class="img-fluid" alt="Our Story" />
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="ps-lg-5">
+                    <h2 class="fw-bold mb-3 mb-md-4">Our Story</h2>
+                    <p class="lead small small-md-normal mb-3">
+                        Founded in 2020 by a team of physicians and medical educators, our platform
+                        was born from a shared frustration with the limitations of traditional
+                        medical education.
+                    </p>
+                    <p class="mb-3 small">
+                        We noticed that many healthcare professionals struggled to access
+                        up-to-date medical knowledge, especially those in remote areas or with
+                        demanding schedules. The high costs of conferences, limited availability
+                        of specialized training, and rigid scheduling made continuous learning
+                        challenging.
+                    </p>
+                    <p class="mb-3 small">
+                        Our founders came together with a simple idea: create a platform where
+                        medical professionals could learn from the best, at their own pace,
+                        without geographical or financial barriers.
+                    </p>
+                    <div class="stats-container">
+                        <div class="stat-item text-center">
+                            <h3 class="fw-bold text-primary">2020</h3>
+                            <p class="text-muted small mb-0">Founded</p>
+                        </div>
+                        <div class="stat-item text-center">
+                            <h3 class="fw-bold text-primary">50+</h3>
+                            <p class="text-muted small mb-0">Team Members</p>
+                        </div>
+                        <div class="stat-item text-center">
+                            <h3 class="fw-bold text-primary">10K+</h3>
+                            <p class="text-muted small mb-0">Medical Professionals</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Values -->
+<section class="values-section section-padding">
+    <div class="container">
+        <div class="text-center mb-3 mb-md-5">
+            <h2 class="fw-bold">Our Core Values</h2>
+            <p class="text-muted lead small small-md-normal">The principles that guide everything we do</p>
+        </div>
+
+        <div class="row g-3 g-md-4">
+            <div class="col-md-4">
+                <div class="value-card card h-100">
+                    <div class="card-body p-3 p-md-4 text-center">
+                        <div class="value-icon mb-2 mb-md-4">
+                            <div class="icon-circle bg-primary text-white">
+                                <i class="fas fa-stethoscope"></i>
+                            </div>
+                        </div>
+                        <h4 class="card-title fw-bold mb-2 mb-md-3 small small-md-normal">Clinical Excellence</h4>
+                        <p class="card-text text-muted small">
+                            We maintain the highest standards of medical accuracy and clinical
+                            relevance in all our educational content.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="value-card card h-100">
+                    <div class="card-body p-3 p-md-4 text-center">
+                        <div class="value-icon mb-2 mb-md-4">
+                            <div class="icon-circle bg-success text-white">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <h4 class="card-title fw-bold mb-2 mb-md-3 small small-md-normal">Inclusivity</h4>
+                        <p class="card-text text-muted small">
+                            We believe quality medical education should be accessible to all
+                            healthcare professionals, regardless of location or background.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="value-card card h-100">
+                    <div class="card-body p-3 p-md-4 text-center">
+                        <div class="value-icon mb-2 mb-md-4">
+                            <div class="icon-circle bg-info text-white">
+                                <i class="fas fa-lightbulb"></i>
+                            </div>
+                        </div>
+                        <h4 class="card-title fw-bold mb-2 mb-md-3 small small-md-normal">Innovation</h4>
+                        <p class="card-text text-muted small">
+                            We continuously explore new technologies and teaching methods to
+                            enhance the learning experience.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="value-card card h-100">
+                    <div class="card-body p-3 p-md-4 text-center">
+                        <div class="value-icon mb-2 mb-md-4">
+                            <div class="icon-circle bg-warning text-white">
+                                <i class="fas fa-hands-helping"></i>
+                            </div>
+                        </div>
+                        <h4 class="card-title fw-bold mb-2 mb-md-3 small small-md-normal">Collaboration</h4>
+                        <p class="card-text text-muted small">
+                            We foster partnerships between medical experts, institutions, and
+                            learners to create a vibrant educational community.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="value-card card h-100">
+                    <div class="card-body p-3 p-md-4 text-center">
+                        <div class="value-icon mb-2 mb-md-4">
+                            <div class="icon-circle bg-danger text-white">
+                                <i class="fas fa-heartbeat"></i>
+                            </div>
+                        </div>
+                        <h4 class="card-title fw-bold mb-2 mb-md-3 small small-md-normal">Patient-Centered</h4>
+                        <p class="card-text text-muted small">
+                            All our educational content ultimately aims to improve patient
+                            outcomes and healthcare quality.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="value-card card h-100">
+                    <div class="card-body p-3 p-md-4 text-center">
+                        <div class="value-icon mb-2 mb-md-4">
+                            <div class="icon-circle bg-purple text-white">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                        </div>
+                        <h4 class="card-title fw-bold mb-2 mb-md-3 small small-md-normal">Lifelong Learning</h4>
+                        <p class="card-text text-muted small">
+                            We support continuous professional development throughout
+                            healthcare careers.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Team Section -->
+<section class="team-section section-padding bg-light">
+    <div class="container">
+        <div class="text-center mb-3 mb-md-5">
+            <h2 class="fw-bold">Meet Our Leadership</h2>
+            <p class="text-muted lead small small-md-normal">The medical experts and visionaries behind our platform</p>
+        </div>
+
+        <div class="row g-3 g-md-4 flex-nowrap flex-md-wrap overflow-auto overflow-md-visible pb-3 pb-md-0">
+            <div class="col-10 col-md-4 flex-shrink-0">
+                <div class="team-card card border-0 shadow-sm h-100">
+                    <div class="card-body text-center p-3 p-md-4">
+                        <div class="team-image mb-2 mb-md-3">
+                            <img src="/images/team-1.jpg" class="rounded-circle" width="80" height="80" alt="Dr. Sarah Johnson" />
+                        </div>
+                        <h4 class="card-title fw-bold mb-1 small small-md-normal">Dr. Sarah Johnson</h4>
+                        <p class="text-primary mb-2 mb-md-3 small">CEO & Founder</p>
+                        <p class="card-text text-muted small d-none d-md-block">
+                            Former Chief of Cardiology with 20+ years of clinical experience.
+                            Passionate about medical education innovation.
+                        </p>
+                        <!-- Mobile short bio -->
+                        <p class="card-text text-muted small d-block d-md-none">
+                            20+ years cardiology experience
+                        </p>
+                        <div class="social-links mt-2 mt-md-3">
+                            <a href="#" class="text-muted me-2 me-md-3"><i class="fab fa-linkedin"></i></a>
+                            <a href="#" class="text-muted me-2 me-md-3"><i class="fab fa-twitter"></i></a>
+                            <a href="#" class="text-muted"><i class="fas fa-envelope"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-10 col-md-4 flex-shrink-0">
+                <div class="team-card card border-0 shadow-sm h-100">
+                    <div class="card-body text-center p-3 p-md-4">
+                        <div class="team-image mb-2 mb-md-3">
+                            <img src="/images/team-2.jpg" class="rounded-circle" width="80" height="80" alt="Dr. Michael Chen" />
+                        </div>
+                        <h4 class="card-title fw-bold mb-1 small small-md-normal">Dr. Michael Chen</h4>
+                        <p class="text-primary mb-2 mb-md-3 small">Chief Medical Officer</p>
+                        <p class="card-text text-muted small d-none d-md-block">
+                            Renowned medical educator and former dean of medical education.
+                            Expert in curriculum development.
+                        </p>
+                        <!-- Mobile short bio -->
+                        <p class="card-text text-muted small d-block d-md-none">
+                            Former dean of medical education
+                        </p>
+                        <div class="social-links mt-2 mt-md-3">
+                            <a href="#" class="text-muted me-2 me-md-3"><i class="fab fa-linkedin"></i></a>
+                            <a href="#" class="text-muted me-2 me-md-3"><i class="fab fa-twitter"></i></a>
+                            <a href="#" class="text-muted"><i class="fas fa-envelope"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-10 col-md-4 flex-shrink-0">
+                <div class="team-card card border-0 shadow-sm h-100">
+                    <div class="card-body text-center p-3 p-md-4">
+                        <div class="team-image mb-2 mb-md-3">
+                            <img src="/images/team-3.jpg" class="rounded-circle" width="80" height="80" alt="Dr. Maria Rodriguez" />
+                        </div>
+                        <h4 class="card-title fw-bold mb-1 small small-md-normal">Dr. Maria Rodriguez</h4>
+                        <p class="text-primary mb-2 mb-md-3 small">Head of Content</p>
+                        <p class="card-text text-muted small d-none d-md-block">
+                            Emergency medicine specialist and medical writer. Focuses on
+                            creating engaging, practical educational content.
+                        </p>
+                        <!-- Mobile short bio -->
+                        <p class="card-text text-muted small d-block d-md-none">
+                            Emergency medicine specialist
+                        </p>
+                        <div class="social-links mt-2 mt-md-3">
+                            <a href="#" class="text-muted me-2 me-md-3"><i class="fab fa-linkedin"></i></a>
+                            <a href="#" class="text-muted me-2 me-md-3"><i class="fab fa-twitter"></i></a>
+                            <a href="#" class="text-muted"><i class="fas fa-envelope"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Partners -->
+<section class="partners-section section-padding">
+    <div class="container">
+        <div class="text-center mb-3 mb-md-5">
+            <h2 class="fw-bold">Trusted By Leading Institutions</h2>
+            <p class="text-muted small small-md-normal">We partner with medical schools and hospitals worldwide</p>
+        </div>
+
+        <div class="row align-items-center g-2 g-md-4">
+            <div class="col-6 col-md-3">
+                <div class="partner-logo d-flex align-items-center justify-content-center p-2 p-md-4">
+                    <div class="text-center">
+                        <i class="fas fa-university fa-2x fa-md-3x text-primary mb-1 mb-md-2"></i>
+                        <p class="mb-0 fw-bold small small-md-normal">Harvard Medical</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="partner-logo d-flex align-items-center justify-content-center p-2 p-md-4">
+                    <div class="text-center">
+                        <i class="fas fa-hospital fa-2x fa-md-3x text-success mb-1 mb-md-2"></i>
+                        <p class="mb-0 fw-bold small small-md-normal">Johns Hopkins</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="partner-logo d-flex align-items-center justify-content-center p-2 p-md-4">
+                    <div class="text-center">
+                        <i class="fas fa-clinic-medical fa-2x fa-md-3x text-info mb-1 mb-md-2"></i>
+                        <p class="mb-0 fw-bold small small-md-normal">Mayo Clinic</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="partner-logo d-flex align-items-center justify-content-center p-2 p-md-4">
+                    <div class="text-center">
+                        <i class="fas fa-graduation-cap fa-2x fa-md-3x text-warning mb-1 mb-md-2"></i>
+                        <p class="mb-0 fw-bold small small-md-normal">Stanford Medicine</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section bg-primary text-white">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mb-3 mb-lg-0">
+                <h2 class="fw-bold mb-2 mb-lg-3">Join Our Mission</h2>
+                <p class="mb-0 small small-md-normal">
+                    Whether you're a medical professional looking to learn or an expert wanting to teach,
+                    we'd love to have you be part of our community.
+                </p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <a href="/register" class="btn btn-light btn-lg px-3 px-md-4 py-2 py-md-3">
+                    <i class="fas fa-user-plus me-2"></i> Join Now
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("eval", @"
+function initAboutPage() {
+    // Check if mobile
+    const isMobile = window.innerWidth <= 768;
+    
+    // Animate elements on scroll (simplified for mobile)
+    function animateOnScroll() {
+        const elements = document.querySelectorAll('.value-card, .team-card, .mission-vision .card');
+        
+        elements.forEach((element, index) => {
+            const elementTop = element.getBoundingClientRect().top;
+            const elementVisible = isMobile ? 50 : 150;
+            
+            if (elementTop < window.innerHeight - elementVisible) {
+                element.style.opacity = '1';
+                element.style.transform = 'translateY(0)';
+                element.classList.add('animate-fade-in-up');
+                element.style.animationDelay = isMobile ? '0s' : (index * 0.1) + 's';
+            }
+        });
+    }
+    
+    // Initialize animation
+    window.addEventListener('scroll', animateOnScroll);
+    animateOnScroll(); // Run once on load
+    
+    // Counter animation for stats (only on desktop)
+    if (!isMobile) {
+        const stats = document.querySelectorAll('.stat-item h3');
+        stats.forEach(stat => {
+            const originalText = stat.innerText;
+            const target = parseInt(originalText.replace('+', '').replace('K', '000'));
+            let count = 0;
+            const increment = target / 50;
+            
+            const updateCount = () => {
+                if (count < target) {
+                    count = Math.ceil(count + increment);
+                    stat.innerText = formatNumber(count);
+                    setTimeout(updateCount, 30);
+                } else {
+                    stat.innerText = originalText;
+                }
+            };
+            
+            updateCount();
+        });
+    }
+    
+    function formatNumber(num) {
+        if (num >= 1000) {
+            return (num / 1000).toFixed(0) + 'K+';
+        }
+        return num + '+';
+    }
+    
+    // Simplified hover effects for mobile
+    const teamCards = document.querySelectorAll('.team-card');
+    teamCards.forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            if (!isMobile) {
+                const img = card.querySelector('img');
+                if (img) {
+                    img.style.transform = 'scale(1.1)';
+                }
+            }
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            if (!isMobile) {
+                const img = card.querySelector('img');
+                if (img) {
+                    img.style.transform = 'scale(1)';
+                }
+            }
+        });
+    });
+    
+    // Partner logo animation (simplified for mobile)
+    const partnerLogos = document.querySelectorAll('.partner-logo');
+    partnerLogos.forEach(logo => {
+        logo.addEventListener('mouseenter', () => {
+            if (!isMobile) {
+                logo.style.filter = 'grayscale(0%)';
+                logo.style.opacity = '1';
+                logo.style.transform = 'scale(1.1)';
+            }
+        });
+        
+        logo.addEventListener('mouseleave', () => {
+            if (!isMobile) {
+                logo.style.filter = 'grayscale(100%)';
+                logo.style.opacity = '0.7';
+                logo.style.transform = 'scale(1)';
+            }
+        });
+    });
+    
+    // Parallax effect for hero image (disabled on mobile)
+    const heroImage = document.querySelector('.about-hero img');
+    if (heroImage && !isMobile) {
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const rate = scrolled * -0.3;
+            heroImage.style.transform = 'translateY(' + rate + 'px) perspective(1500px) rotateY(10deg) rotateX(5deg)';
+        });
+    }
+    
+    // Add CSS for animations
+    const style = document.createElement('style');
+    style.textContent = '.value-card, .team-card, .mission-vision .card { opacity: 0; transform: translateY(30px); transition: opacity 0.6s ease, transform 0.6s ease; } .animate-fade-in-up { animation: fadeInUp 0.6s ease forwards; } @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }';
+    document.head.appendChild(style);
+    
+    // Handle team section horizontal scroll for mobile
+    if (isMobile) {
+        const teamRow = document.querySelector('.team-section .row');
+        if (teamRow) {
+            let isScrolling = false;
+            
+            teamRow.addEventListener('scroll', () => {
+                if (!isScrolling) {
+                    isScrolling = true;
+                    requestAnimationFrame(() => {
+                        isScrolling = false;
+                    });
+                }
+            });
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initAboutPage);
+window.addEventListener('resize', function() {
+    // Re-initialize on resize to handle orientation changes
+    initAboutPage();
+});");
+        }
+    }
+}

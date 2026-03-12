@@ -1,0 +1,1532 @@
+﻿@page "/doctor/earnings/history"
+
+
+<PageTitle>Payment History</PageTitle>
+
+@if (!isAuthenticated)
+{
+    <div class="container py-5">
+        <div class="text-center">
+            <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+            <h4>Authentication Required</h4>
+            <p class="text-muted">Please log in to view your payment history.</p>
+            <a href="/account/login" class="btn btn-primary mt-2">
+                <i class="fas fa-sign-in-alt me-2"></i> Login
+            </a>
+        </div>
+    </div>
+}
+else if (!isDoctor)
+{
+    <div class="container py-5">
+        <div class="text-center">
+            <i class="fas fa-user-md-slash fa-3x text-muted mb-3"></i>
+            <h4>Access Denied</h4>
+            <p class="text-muted">This page is only accessible to doctors.</p>
+            <a href="/" class="btn btn-primary mt-2">
+                <i class="fas fa-home me-2"></i> Go Home
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="payment-history">
+        <div class="container-fluid px-0 px-md-3">
+            <!-- Header - Responsive -->
+            <div class="row g-0 mb-3 mb-md-4">
+                <div class="col-12">
+                    <!-- Mobile Header -->
+                    <div class="d-block d-md-none">
+                        <div class="bg-primary text-white p-3">
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                                    <i class="fas fa-arrow-left fa-lg"></i>
+                                </button>
+                                <h5 class="mb-0 flex-grow-1">Payment History</h5>
+                                <button class="btn btn-link text-white p-0 me-2" @onclick="RefreshData" disabled="@isLoading">
+                                    <i class="fas fa-sync-alt @(isLoading ? "fa-spin" : "")"></i>
+                                </button>
+                                <button class="btn btn-link text-white p-0" @onclick="ExportHistory" disabled="@(!filteredPayments.Any())">
+                                    <i class="fas fa-file-export"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Mobile Breadcrumb -->
+                        <div class="bg-light p-2 small">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb mb-0">
+                                    <li class="breadcrumb-item">
+                                        <a href="/doctor" class="text-decoration-none">Doctor</a>
+                                    </li>
+                                    <li class="breadcrumb-item">
+                                        <a href="/doctor/earnings" class="text-decoration-none">Earnings</a>
+                                    </li>
+                                    <li class="breadcrumb-item active" aria-current="page">History</li>
+                                </ol>
+                            </nav>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Header -->
+                    <div class="d-none d-md-block">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h1>Payment History</h1>
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb">
+                                        <li class="breadcrumb-item">
+                                            <a href="/doctor">Doctor</a>
+                                        </li>
+                                        <li class="breadcrumb-item">
+                                            <a href="/doctor/earnings">Earnings</a>
+                                        </li>
+                                        <li class="breadcrumb-item active" aria-current="page">Payment History</li>
+                                    </ol>
+                                </nav>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-secondary" @onclick="RefreshData" disabled="@isLoading">
+                                    <i class="fas fa-sync-alt me-2 @(isLoading ? "fa-spin" : "")"></i> Refresh
+                                </button>
+                                <button class="btn btn-outline-primary" @onclick="ExportHistory" disabled="@(!filteredPayments.Any())">
+                                    <i class="fas fa-file-export me-2"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Stats Cards (Horizontal Scroll) -->
+            <div class="d-block d-md-none mb-3">
+                <div class="stats-scroll horizontal-scroll">
+                    <div class="d-flex gap-2 px-3">
+                        <div class="stat-card-mini flex-shrink-0">
+                            <div class="card">
+                                <div class="card-body p-3">
+                                    <small class="text-muted d-block">Total</small>
+                                    <h5 class="mb-0">@totalPayments</h5>
+                                    <small class="text-success">$@totalAmount.ToString("N0")</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card-mini flex-shrink-0">
+                            <div class="card">
+                                <div class="card-body p-3">
+                                    <small class="text-muted d-block">Your Share</small>
+                                    <h5 class="mb-0">$@doctorShare.ToString("N0")</h5>
+                                    <small class="text-success">80%</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card-mini flex-shrink-0">
+                            <div class="card">
+                                <div class="card-body p-3">
+                                    <small class="text-muted d-block">Approved</small>
+                                    <h5 class="mb-0 text-success">$@approvedAmount.ToString("N0")</h5>
+                                    <small>@approvedCount payments</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card-mini flex-shrink-0">
+                            <div class="card">
+                                <div class="card-body p-3">
+                                    <small class="text-muted d-block">Pending</small>
+                                    <h5 class="mb-0 text-warning">$@pendingAmount.ToString("N0")</h5>
+                                    <small>@pendingCount payments</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Stats Cards -->
+            <div class="d-none d-md-block">
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Total Payments</h6>
+                                        <h3>@totalPayments</h3>
+                                        <small class="text-muted">Showing @pagedPayments.Count</small>
+                                    </div>
+                                    <i class="fas fa-receipt fa-2x text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Total Amount</h6>
+                                        <h3>$@totalAmount.ToString("N2")</h3>
+                                        <small class="text-muted">Doctor's share: $@doctorShare.ToString("N2")</small>
+                                    </div>
+                                    <i class="fas fa-dollar-sign fa-2x text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Approved</h6>
+                                        <h3 class="text-success">$@approvedAmount.ToString("N2")</h3>
+                                        <small class="text-success">@approvedCount payments</small>
+                                    </div>
+                                    <i class="fas fa-check-circle fa-2x text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Pending</h6>
+                                        <h3 class="text-warning">$@pendingAmount.ToString("N2")</h3>
+                                        <small class="text-warning">@pendingCount payments</small>
+                                    </div>
+                                    <i class="fas fa-clock fa-2x text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters - Mobile (Collapsible) -->
+            <div class="d-block d-md-none mb-3">
+                <div class="card">
+                    <div class="card-header p-3" @onclick="ToggleMobileFilters">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-filter me-2 text-primary"></i>Filters
+                                @if (HasActiveFilters)
+                                {
+                                    <span class="badge bg-primary ms-2">@GetActiveFilterCount()</span>
+                                }
+                            </h6>
+                            <i class="fas fa-chevron-down @(showMobileFilters ? "rotate-180" : "")"></i>
+                        </div>
+                    </div>
+                    @if (showMobileFilters)
+                    {
+                        <div class="card-body">
+                            <!-- Mobile Search -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Search</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" placeholder="Search payments..." 
+                                           @bind="searchTerm" @bind:event="oninput" />
+                                    <button class="btn btn-primary" @onclick="SearchPayments" disabled="@isLoading">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Status Filter -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Status</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button class="btn btn-sm @(string.IsNullOrEmpty(statusFilter) ? "btn-primary" : "btn-outline-secondary")" 
+                                            @onclick='() => SetStatusFilter("")'>
+                                        All
+                                    </button>
+                                    <button class="btn btn-sm @(statusFilter == "0" ? "btn-warning" : "btn-outline-warning")" 
+                                            @onclick='() => SetStatusFilter(" 0")'>
+                                        Pending
+                                    </button>
+                                    <button class="btn btn-sm @(statusFilter == "1" ? "btn-success" : "btn-outline-success")" 
+                                            @onclick='() => SetStatusFilter("1")'>
+                                        Approved
+                                    </button>
+                                    <button class="btn btn-sm @(statusFilter == "2" ? "btn-danger" : "btn-outline-danger")" 
+                                            @onclick='() => SetStatusFilter(" 2")'>
+                                        Rejected
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Content Type Filter -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Content Type</label>
+                                <select class="form-select" @bind="contentTypeFilter" @bind:event="onchange" disabled="@isLoading">
+                                    <option value="">All Content</option>
+                                    <option value="0">Lecture</option>
+                                    <option value="1">Course</option>
+                                    <option value="2">Specialization</option>
+                                </select>
+                            </div>
+
+                            <!-- Mobile Date Range -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Date Range</label>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input type="date" class="form-control" placeholder="From" 
+                                               @bind="dateFromFilter" @bind:format="yyyy-MM-dd" />
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="date" class="form-control" placeholder="To" 
+                                               @bind="dateToFilter" @bind:format="yyyy-MM-dd" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Filter Actions -->
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-secondary flex-fill" @onclick="ClearAllFilters">
+                                    Clear All
+                                </button>
+                                <button class="btn btn-primary flex-fill" @onclick="SearchPayments">
+                                    Apply Filters
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Desktop Filters -->
+            <div class="d-none d-md-block card mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" class="form-control" placeholder="Search invoice, student, content..." 
+                                       @bind="searchTerm" @bind:event="oninput" />
+                                <button class="btn btn-outline-secondary" type="button" @onclick="SearchPayments" 
+                                        disabled="@isLoading">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" @bind="statusFilter" @bind:event="onchange" disabled="@isLoading">
+                                <option value="">All Status</option>
+                                <option value="0">Pending</option>
+                                <option value="1">Approved</option>
+                                <option value="2">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" @bind="contentTypeFilter" @bind:event="onchange" disabled="@isLoading">
+                                <option value="">All Content</option>
+                                <option value="0">Lecture</option>
+                                <option value="1">Course</option>
+                                <option value="2">Specialization</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="input-group">
+                                <input type="date" class="form-control" @bind="dateFromFilter" 
+                                       @bind:format="yyyy-MM-dd" @bind:event="onchange" />
+                                <span class="input-group-text">to</span>
+                                <input type="date" class="form-control" @bind="dateToFilter" 
+                                       @bind:format="yyyy-MM-dd" @bind:event="onchange" />
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" @bind="pageSize" @bind:event="onchange">
+                                <option value="10">10 per page</option>
+                                <option value="20">20 per page</option>
+                                <option value="50">50 per page</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Active Filters (Desktop) -->
+                    @if (HasActiveFilters)
+                    {
+                        <div class="mt-3">
+                            <div class="d-flex flex-wrap gap-2">
+                                @if (!string.IsNullOrEmpty(searchTerm))
+                                {
+                                    <span class="badge bg-light text-dark">
+                                        Search: "@searchTerm"
+                                        <button type="button" class="btn-close ms-1" style="font-size: 0.75rem;" 
+                                                @onclick="ClearSearchTerm"></button>
+                                    </span>
+                                }
+                                @if (!string.IsNullOrEmpty(statusFilter))
+                                {
+                                    <span class="badge bg-light text-dark">
+                                        Status: @GetStatusDisplayText()
+                                        <button type="button" class="btn-close ms-1" style="font-size: 0.75rem;"
+                                                @onclick="ClearStatusFilter"></button>
+                                    </span>
+                                }
+                                @if (!string.IsNullOrEmpty(contentTypeFilter))
+                                {
+                                    <span class="badge bg-light text-dark">
+                                        Type: @GetContentTypeDisplayText()
+                                        <button type="button" class="btn-close ms-1" style="font-size: 0.75rem;"
+                                                @onclick="ClearContentTypeFilter"></button>
+                                    </span>
+                                }
+                                @if (dateFromFilter.HasValue || dateToFilter.HasValue)
+                                {
+                                    <span class="badge bg-light text-dark">
+                                        Date: @(dateFromFilter?.ToString("MMM d, yyyy") ?? "Start") - @(dateToFilter?.ToString("MMM d, yyyy") ?? "End")
+                                        <button type="button" class="btn-close ms-1" style="font-size: 0.75rem;"
+                                                @onclick="ClearDateFilters"></button>
+                                    </span>
+                                }
+                                @if (HasActiveFilters)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="ClearAllFilters">
+                                        <i class="fas fa-times me-1"></i> Clear All
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Mobile Sort & Info Bar -->
+            <div class="d-block d-md-none mb-3">
+                <div class="d-flex justify-content-between align-items-center px-3">
+                    <small class="text-muted">@filteredPayments.Count payments found</small>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small">Sort by:</span>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                @GetSortDisplayText()
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                                            <li>
+                                    <a class="dropdown-item @(sortField == "CreatedAt" ? "active" : "")" href="#" @onclick='() => SetSortField("CreatedAt")'>Date</a>
+                                </li>
+                                <li><a class="dropdown-item @(sortField == "Amount" ? "active" : "")" href="#" @onclick='() => SetSortField(" Amount")'>Amount</a></li>
+                                <li><a class="dropdown-item @(sortField == "InvoiceNumber" ? "active" : "")" href="#" @onclick='() => SetSortField(" InvoiceNumber")'>Invoice #</a></li>
+                                <li><a class="dropdown-item @(sortField == "Status" ? "active" : "")" href="#" @onclick='() => SetSortField(" Status")'>Status</a></li>
+                            </ul>
+                            <button class="btn btn-outline-secondary" @onclick="ToggleSortDirection">
+                                <i class="fas @(sortDescending ? "fa-sort-amount-down" : "fa-sort-amount-up")"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Sort Bar -->
+            <div class="d-none d-md-block">
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">Payment History</h5>
+                            <small class="text-muted">@filteredPayments.Count payments found</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="input-group input-group-sm" style="width: 200px;">
+                                <span class="input-group-text">
+                                    <i class="fas fa-filter"></i>
+                                </span>
+                                <select class="form-select form-select-sm" @bind="sortField" @bind:event="onchange">
+                                    <option value="CreatedAt">Date</option>
+                                    <option value="Amount">Amount</option>
+                                    <option value="InvoiceNumber">Invoice #</option>
+                                    <option value="Status">Status</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" @onclick="ToggleSortDirection">
+                                    <i class="fas @(sortDescending ? "fa-sort-amount-down" : "fa-sort-amount-up")"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment List/Cards -->
+            <div class="card">
+                <div class="card-body p-0">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading payment history...</p>
+                        </div>
+                    }
+                    else if (!filteredPayments.Any())
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                            <h5>No payment history found</h5>
+                            <p class="text-muted">@(HasActiveFilters ? "Try adjusting your filters" : "You haven't received any payments yet")</p>
+                            @if (!HasActiveFilters)
+                            {
+                                <a href="/doctor/specializations" class="btn btn-primary mt-2">
+                                    <i class="fas fa-plus me-2"></i> Create Content
+                                </a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Mobile Cards View -->
+                        <div class="d-block d-md-none">
+                            <div class="payment-cards p-3">
+                                @foreach (var payment in pagedPayments)
+                                {
+                                    <div class="card mb-3 payment-card">
+                                        <div class="card-body">
+                                            <!-- Header with Status and Amount -->
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <span class="badge @GetPaymentStatusBadge(payment.Status) mb-2">
+                                                        @payment.Status
+                                                    </span>
+                                                    <div class="small text-muted">
+                                                        <i class="fas fa-calendar me-1"></i>@payment.CreatedAt.ToString("MMM dd, yyyy")
+                                                    </div>
+                                                </div>
+                                                <div class="text-end">
+                                                    <h5 class="mb-0 @(payment.Status == PaymentStatus.Approved ? "text-success" : "text-muted")">
+                                                        $@payment.Amount.ToString("N2")
+                                                    </h5>
+                                                    @if (payment.Status == PaymentStatus.Approved)
+                                                    {
+                                                        <small class="text-success d-block">
+                                                            Your share: $@((payment.Amount * 0.8m).ToString("N2"))
+                                                        </small>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <!-- Invoice Number -->
+                                            <div class="mb-2">
+                                                <small class="text-muted">Invoice:</small>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="font-monospace small">@payment.InvoiceNumber</span>
+                                                    @if (!string.IsNullOrEmpty(payment.InvoicePdfUrl))
+                                                    {
+                                                        <button class="btn btn-link btn-sm p-0 text-decoration-none" 
+                                                                @onclick="async () => await DownloadInvoice(payment.InvoicePdfUrl)">
+                                                            <i class="fas fa-file-pdf text-danger me-1"></i>PDF
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <!-- Student Info -->
+                                            <div class="mb-2">
+                                                <small class="text-muted">Student:</small>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-sm me-2">
+                                                        @if (!string.IsNullOrEmpty(payment.User?.ProfileImageUrl))
+                                                        {
+                                                            <img src="@payment.User.ProfileImageUrl" 
+                                                                 class="rounded-circle" 
+                                                                 width="32" height="32" 
+                                                                 alt="Student" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                                                 style="width: 32px; height: 32px; font-size: 12px;">
+                                                                @payment.User?.FirstName?[0]@payment.User?.LastName?[0]
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="fw-medium">@($"{payment.User?.FirstName} {payment.User?.LastName}")</div>
+                                                        <small class="text-muted">@payment.User?.Email</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Content Info -->
+                                            <div class="mb-2">
+                                                <small class="text-muted">Content:</small>
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <div class="fw-medium">
+                                                            @if (payment.Specialization != null)
+                                                            {
+                                                                @payment.Specialization.Title
+                                                            }
+                                                            else if (payment.Course != null)
+                                                            {
+                                                                @payment.Course.Title
+                                                            }
+                                                            else if (payment.Lecture != null)
+                                                            {
+                                                                @payment.Lecture.Title
+                                                            }
+                                                        </div>
+                                                        <span class="badge @GetEnrollmentTypeBadge(payment.EnrollmentType)">
+                                                            @payment.EnrollmentType
+                                                        </span>
+                                                    </div>
+                                                    @if (payment.Status == PaymentStatus.Approved)
+                                                    {
+                                                        <button class="btn btn-outline-success btn-sm" 
+                                                                @onclick="() => ViewContent(payment)">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <!-- Rejection Reason (if any) -->
+                                            @if (payment.Status == PaymentStatus.Rejected && !string.IsNullOrEmpty(payment.RejectionReason))
+                                            {
+                                                <div class="alert alert-danger p-2 small mt-2 mb-0">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    @payment.RejectionReason
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Desktop Table View -->
+                        <div class="d-none d-md-block table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr class="table-light">
+                                        <th>Date</th>
+                                        <th>Invoice #</th>
+                                        <th>Student</th>
+                                        <th>Content</th>
+                                        <th>Type</th>
+                                        <th class="text-end">Amount</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in pagedPayments)
+                                    {
+                                        var studentFullName = $"{payment.User?.FirstName} {payment.User?.LastName}";
+                                        <tr>
+                                            <td>
+                                                <div class="fw-medium">@payment.CreatedAt.ToString("MMM dd, yyyy")</div>
+                                                <small class="text-muted">@payment.CreatedAt.ToString("hh:mm tt")</small>
+                                                @if (payment.ApprovedDate.HasValue && payment.Status == PaymentStatus.Approved)
+                                                {
+                                                    <div class="mt-1">
+                                                        <small class="text-success">
+                                                            <i class="fas fa-check-circle me-1"></i>
+                                                            Approved: @payment.ApprovedDate.Value.ToString("MMM dd")
+                                                        </small>
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="fw-medium font-monospace small">@payment.InvoiceNumber</div>
+                                                @if (!string.IsNullOrEmpty(payment.InvoicePdfUrl))
+                                                {
+                                                    <div class="mt-1">
+                                                        <a href="@payment.InvoicePdfUrl" target="_blank" 
+                                                           class="small text-decoration-none" @onclick:preventDefault
+                                                           @onclick="async () => await DownloadInvoice(payment.InvoicePdfUrl)">
+                                                            <i class="fas fa-file-pdf text-danger me-1"></i>Invoice
+                                                        </a>
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-sm me-2">
+                                                        @if (!string.IsNullOrEmpty(payment.User?.ProfileImageUrl))
+                                                        {
+                                                            <img src="@payment.User.ProfileImageUrl" 
+                                                                 class="rounded-circle" 
+                                                                 width="32" height="32" 
+                                                                 alt="@studentFullName"
+                                                                 loading="lazy" />
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                                                 style="width: 32px; height: 32px; font-size: 12px;">
+                                                                @payment.User?.FirstName?[0]@payment.User?.LastName?[0]
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-medium">@studentFullName</div>
+                                                        <small class="text-muted">@payment.User?.Email</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @if (payment.Specialization != null)
+                                                {
+                                                    <div>
+                                                        <div class="fw-medium">@payment.Specialization.Title</div>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-book me-1"></i>Specialization
+                                                        </small>
+                                                    </div>
+                                                }
+                                                else if (payment.Course != null)
+                                                {
+                                                    <div>
+                                                        <div class="fw-medium">@payment.Course.Title</div>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-graduation-cap me-1"></i>Course
+                                                        </small>
+                                                    </div>
+                                                }
+                                                else if (payment.Lecture != null)
+                                                {
+                                                    <div>
+                                                        <div class="fw-medium">@payment.Lecture.Title</div>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-chalkboard-teacher me-1"></i>Lecture
+                                                        </small>
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetEnrollmentTypeBadge(payment.EnrollmentType)">
+                                                    @payment.EnrollmentType.ToString()
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="fw-bold @(payment.Status == PaymentStatus.Approved ? "text-success" : "text-muted")">
+                                                    $@payment.Amount.ToString("N2")
+                                                </div>
+                                                @if (payment.Status == PaymentStatus.Approved)
+                                                {
+                                                    <div class="mt-1">
+                                                        <small class="text-success">
+                                                            <i class="fas fa-user-md me-1"></i>
+                                                            Your share: $@((payment.Amount * 0.8m).ToString("N2"))
+                                                        </small>
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetPaymentStatusBadge(payment.Status)">
+                                                    @payment.Status.ToString()
+                                                </span>
+                                                @if (payment.Status == PaymentStatus.Rejected && !string.IsNullOrEmpty(payment.RejectionReason))
+                                                {
+                                                    <div class="mt-1">
+                                                        <small class="text-danger">
+                                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                                            @payment.RejectionReason
+                                                        </small>
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    @if (!string.IsNullOrEmpty(payment.InvoicePdfUrl))
+                                                    {
+                                                        <button class="btn btn-outline-info" 
+                                                                title="Download Invoice"
+                                                                @onclick="async () => await DownloadInvoice(payment.InvoicePdfUrl)">
+                                                            <i class="fas fa-download"></i>
+                                                        </button>
+                                                    }
+                                                    @if (payment.Status == PaymentStatus.Approved)
+                                                    {
+                                                        <button class="btn btn-outline-success" 
+                                                                title="View Content"
+                                                                @onclick="() => ViewContent(payment)">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination - Mobile (Simplified) -->
+                        @if (totalPages > 1)
+                        {
+                            <div class="d-block d-md-none">
+                                <div class="p-3 d-flex justify-content-between align-items-center">
+                                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => ChangePage(currentPage - 1)" 
+                                            disabled="@(currentPage == 1)">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <span class="small">
+                                        Page @currentPage of @totalPages
+                                    </span>
+                                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => ChangePage(currentPage + 1)" 
+                                            disabled="@(currentPage == totalPages)">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                                <div class="px-3 pb-3">
+                                    <select class="form-select form-select-sm" @bind="pageSize" @bind:event="onchange">
+                                        <option value="5">5 per page</option>
+                                        <option value="10">10 per page</option>
+                                        <option value="20">20 per page</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Pagination - Desktop -->
+                            <div class="d-none d-md-block card-footer d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted">
+                                        Showing @((currentPage - 1) * pageSize + 1) to 
+                                        @Math.Min(currentPage * pageSize, filteredPayments.Count) of @filteredPayments.Count payments
+                                    </small>
+                                </div>
+                                <nav>
+                                    <ul class="pagination mb-0">
+                                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(1)" title="First">
+                                                <i class="fas fa-angle-double-left"></i>
+                                            </button>
+                                        </li>
+                                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(currentPage - 1)" title="Previous">
+                                                <i class="fas fa-chevron-left"></i>
+                                            </button>
+                                        </li>
+                                        
+                                        @for (int i = startPage; i <= endPage; i++)
+                                        {
+                                            <li class="page-item @(currentPage == i ? "active" : "")">
+                                                <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                                            </li>
+                                        }
+                                        
+                                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(currentPage + 1)" title="Next">
+                                                <i class="fas fa-chevron-right"></i>
+                                            </button>
+                                        </li>
+                                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(totalPages)" title="Last">
+                                                <i class="fas fa-angle-double-right"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
+                                <div>
+                                    <small class="text-muted">Page @currentPage of @totalPages</small>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add this CSS in your main stylesheet or component -->
+<style>
+    /* Mobile Styles */
+    @@media (max-width: 767.98px) {
+        .horizontal-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .horizontal-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .stat-card-mini {
+            min-width: 150px;
+        }
+        
+        .stat-card-mini .card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .stat-card-mini .card .text-muted {
+            color: rgba(255,255,255,0.8) !important;
+        }
+        
+        .rotate-180 {
+            transform: rotate(180deg);
+            transition: transform 0.3s;
+        }
+        
+        .payment-card {
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .payment-card:active {
+            background-color: #f8f9fa;
+        }
+        
+        .payment-card .badge {
+            font-size: 0.75rem;
+        }
+        
+        /* Filter buttons active states */
+        .btn-sm.btn-primary, .btn-sm.btn-warning, .btn-sm.btn-success, .btn-sm.btn-danger {
+            color: white;
+        }
+        
+        .btn-sm.btn-outline-warning {
+            color: #856404;
+        }
+        
+        .btn-sm.btn-outline-success {
+            color: #155724;
+        }
+        
+        .btn-sm.btn-outline-danger {
+            color: #721c24;
+        }
+    }
+    
+    /* Desktop Styles */
+    @@media (min-width: 768px) {
+        .stat-card {
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .table th {
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        .avatar-placeholder {
+            font-weight: 600;
+        }
+        
+        .btn-group-sm .btn {
+            padding: 0.25rem 0.5rem;
+        }
+    }
+    
+    /* Common Styles */
+    .avatar-sm {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    
+    .avatar-placeholder {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .font-monospace {
+        font-family: 'Courier New', monospace;
+    }
+    
+    .payment-history {
+        min-height: 100vh;
+        background-color: #f8f9fa;
+    }
+    
+    .bg-primary.text-white .btn-link {
+        opacity: 0.9;
+    }
+    
+    .bg-primary.text-white .btn-link:hover {
+        opacity: 1;
+    }
+    
+    /* Loading spinner */
+    .fa-spin {
+        animation: fa-spin 2s infinite linear;
+    }
+    
+    @@keyframes fa-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(359deg); }
+    }
+</style>
+
+@code {
+    // ... (keep all your existing code in the @code block exactly as is from your original file)
+    private List<PaymentRequestDto> allPayments = new();
+    private List<PaymentRequestDto> filteredPayments = new();
+    private List<PaymentRequestDto> pagedPayments = new();
+    private string searchTerm = "";
+    private string statusFilter = "";
+    private string contentTypeFilter = "";
+    private DateTime? dateFromFilter;
+    private DateTime? dateToFilter;
+    private int totalPayments = 0;
+    private decimal totalAmount = 0;
+    private decimal approvedAmount = 0;
+    private decimal pendingAmount = 0;
+    private decimal doctorShare = 0;
+    private int approvedCount = 0;
+    private int pendingCount = 0;
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int startPage = 1;
+    private int endPage = 1;
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private bool isDoctor = false;
+    private int doctorId = 0;
+    private string sortField = "CreatedAt";
+    private bool sortDescending = true;
+    private Timer? refreshTimer;
+    private UserDto? currentUser = null;
+    private bool showMobileFilters = false;
+
+    private bool HasActiveFilters => 
+        !string.IsNullOrEmpty(searchTerm) || 
+        !string.IsNullOrEmpty(statusFilter) || 
+        !string.IsNullOrEmpty(contentTypeFilter) || 
+        dateFromFilter.HasValue || 
+        dateToFilter.HasValue;
+
+    private int GetActiveFilterCount()
+    {
+        int count = 0;
+        if (!string.IsNullOrEmpty(searchTerm)) count++;
+        if (!string.IsNullOrEmpty(statusFilter)) count++;
+        if (!string.IsNullOrEmpty(contentTypeFilter)) count++;
+        if (dateFromFilter.HasValue || dateToFilter.HasValue) count++;
+        return count;
+    }
+
+    private string GetSortDisplayText()
+    {
+        return sortField switch
+        {
+            "Amount" => "Amount",
+            "InvoiceNumber" => "Invoice #",
+            "Status" => "Status",
+            _ => "Date"
+        };
+    }
+
+    private void SetSortField(string field)
+    {
+        sortField = field;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void ToggleMobileFilters()
+    {
+        showMobileFilters = !showMobileFilters;
+    }
+
+    private void SetStatusFilter(string status)
+    {
+        statusFilter = status;
+        SearchPayments();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/doctor/earnings");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+        
+        if (isAuthenticated && isDoctor)
+        {
+            await LoadPaymentHistory();
+            
+            // Start auto-refresh every 30 seconds
+            refreshTimer = new Timer(async _ => await RefreshData(), null, 30000, 30000);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && isAuthenticated && isDoctor)
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                setTimeout(function() {
+                    const searchInput = document.querySelector('input[placeholder*=""Search invoice""]');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }, 100);
+            ");
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+            
+            if (isAuthenticated)
+            {
+                currentUser = await AuthService.GetCurrentUserAsync();
+                isDoctor = currentUser?.UserType == UserType.Doctor;
+                
+                if (isDoctor)
+                {
+                    doctorId = currentUser.Id;
+                }
+                else
+                {
+                    await Task.Delay(1000);
+                    Navigation.NavigateTo("/");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+            isDoctor = false;
+            currentUser = null;
+        }
+    }
+
+    private async Task LoadPaymentHistory()
+    {
+        if (!isAuthenticated || !isDoctor)
+            return;
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var token = await TokenService.GetTokenAsync();
+            if (string.IsNullOrEmpty(token))
+            {
+                isAuthenticated = false;
+                Navigation.NavigateTo("/account/login", true);
+                return;
+            }
+
+            var payments = await PaymentService.GetMyPaymentRequestsAsync();
+            if (payments != null)
+            {
+                allPayments = payments;
+                await FilterDoctorContent();
+                ApplyFilters();
+                CalculateStats();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading payment history: {ex.Message}");
+            await ShowErrorToast("Failed to load payment history");
+            
+            if (ex.Message.Contains("401") || ex.Message.Contains("Unauthorized"))
+            {
+                isAuthenticated = false;
+                Navigation.NavigateTo("/account/login", true);
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task FilterDoctorContent()
+    {
+        var doctorContentPayments = new List<PaymentRequestDto>();
+        
+        foreach (var payment in allPayments)
+        {
+            try
+            {
+                bool isDoctorContent = false;
+                
+                if (payment.SpecializationId.HasValue)
+                {
+                    var specialization = await SpecializationService.GetSpecializationAsync(payment.SpecializationId.Value);
+                    isDoctorContent = specialization?.DoctorId == doctorId;
+                }
+                else if (payment.CourseId.HasValue)
+                {
+                    var course = await CourseService.GetCourseAsync(payment.CourseId.Value);
+                    isDoctorContent = course?.DoctorId == doctorId;
+                }
+                else if (payment.LectureId.HasValue)
+                {
+                    var lecture = await LectureService.GetLectureAsync(payment.LectureId.Value);
+                    isDoctorContent = lecture?.DoctorId == doctorId;
+                }
+                
+                if (isDoctorContent)
+                {
+                    doctorContentPayments.Add(payment);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking payment {payment.Id}: {ex.Message}");
+            }
+        }
+        
+        allPayments = doctorContentPayments;
+    }
+
+    private void CalculateStats()
+    {
+        totalPayments = allPayments.Count;
+        totalAmount = allPayments.Sum(p => p.Amount);
+        doctorShare = totalAmount * 0.8m;
+        
+        approvedCount = allPayments.Count(p => p.Status == PaymentStatus.Approved);
+        approvedAmount = allPayments.Where(p => p.Status == PaymentStatus.Approved).Sum(p => p.Amount);
+        
+        pendingCount = allPayments.Count(p => p.Status == PaymentStatus.Pending);
+        pendingAmount = allPayments.Where(p => p.Status == PaymentStatus.Pending).Sum(p => p.Amount);
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = allPayments.AsEnumerable();
+
+        // Apply search filter
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            var search = searchTerm.ToLower();
+            filtered = filtered.Where(p =>
+                (!string.IsNullOrEmpty(p.InvoiceNumber) && p.InvoiceNumber.ToLower().Contains(search)) ||
+                (p.User != null && 
+                 ((!string.IsNullOrEmpty(p.User.FirstName) && !string.IsNullOrEmpty(p.User.LastName) && 
+                   (p.User.FirstName + " " + p.User.LastName).ToLower().Contains(search)) ||
+                  (!string.IsNullOrEmpty(p.User.Email) && p.User.Email.ToLower().Contains(search)))) ||
+                (p.Specialization != null && !string.IsNullOrEmpty(p.Specialization.Title) && 
+                 p.Specialization.Title.ToLower().Contains(search)) ||
+                (p.Course != null && !string.IsNullOrEmpty(p.Course.Title) && 
+                 p.Course.Title.ToLower().Contains(search)) ||
+                (p.Lecture != null && !string.IsNullOrEmpty(p.Lecture.Title) && 
+                 p.Lecture.Title.ToLower().Contains(search))
+            );
+        }
+
+        // Apply status filter
+        if (!string.IsNullOrEmpty(statusFilter) && int.TryParse(statusFilter, out int statusValue))
+        {
+            filtered = filtered.Where(p => (int)p.Status == statusValue);
+        }
+
+        // Apply content type filter
+        if (!string.IsNullOrEmpty(contentTypeFilter) && int.TryParse(contentTypeFilter, out int contentTypeValue))
+        {
+            filtered = filtered.Where(p => (int)p.EnrollmentType == contentTypeValue);
+        }
+
+        // Apply date filters
+        if (dateFromFilter.HasValue)
+        {
+            filtered = filtered.Where(p => p.CreatedAt.Date >= dateFromFilter.Value.Date);
+        }
+        
+        if (dateToFilter.HasValue)
+        {
+            filtered = filtered.Where(p => p.CreatedAt.Date <= dateToFilter.Value.Date);
+        }
+
+        // Apply sorting
+        filtered = sortField switch
+        {
+            "Amount" => sortDescending ? 
+                filtered.OrderByDescending(p => p.Amount) : 
+                filtered.OrderBy(p => p.Amount),
+            "InvoiceNumber" => sortDescending ? 
+                filtered.OrderByDescending(p => p.InvoiceNumber) : 
+                filtered.OrderBy(p => p.InvoiceNumber),
+            "Status" => sortDescending ? 
+                filtered.OrderByDescending(p => p.Status) : 
+                filtered.OrderBy(p => p.Status),
+            _ => sortDescending ? 
+                filtered.OrderByDescending(p => p.CreatedAt) : 
+                filtered.OrderBy(p => p.CreatedAt)
+        };
+
+        filteredPayments = filtered.ToList();
+        
+        // Calculate pagination
+        totalPages = (int)Math.Ceiling((double)filteredPayments.Count / pageSize);
+        currentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+        
+        // Calculate page range for pagination display
+        const int maxPagesToShow = 5;
+        startPage = Math.Max(1, currentPage - maxPagesToShow / 2);
+        endPage = Math.Min(totalPages, startPage + maxPagesToShow - 1);
+        
+        if (endPage - startPage + 1 < maxPagesToShow)
+        {
+            startPage = Math.Max(1, endPage - maxPagesToShow + 1);
+        }
+
+        // Get paged data
+        pagedPayments = filteredPayments
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private async Task SearchPayments()
+    {
+        if (isLoading) return;
+        
+        currentPage = 1;
+        ApplyFilters();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages && page != currentPage)
+        {
+            currentPage = page;
+            ApplyFilters();
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleSortDirection()
+    {
+        sortDescending = !sortDescending;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void ClearAllFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+        contentTypeFilter = "";
+        dateFromFilter = null;
+        dateToFilter = null;
+        currentPage = 1;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private void ClearSearchTerm()
+    {
+        searchTerm = "";
+        SearchPayments();
+    }
+
+    private void ClearStatusFilter()
+    {
+        statusFilter = "";
+        SearchPayments();
+    }
+
+    private void ClearContentTypeFilter()
+    {
+        contentTypeFilter = "";
+        SearchPayments();
+    }
+
+    private void ClearDateFilters()
+    {
+        dateFromFilter = null;
+        dateToFilter = null;
+        SearchPayments();
+    }
+
+    private string GetStatusDisplayText()
+    {
+        if (Enum.TryParse<PaymentStatus>(statusFilter, out var status))
+        {
+            return status.ToString();
+        }
+        return "Unknown";
+    }
+
+    private string GetContentTypeDisplayText()
+    {
+        if (Enum.TryParse<EnrollmentType>(contentTypeFilter, out var contentType))
+        {
+            return contentType.ToString();
+        }
+        return "Unknown";
+    }
+
+    private string GetPaymentStatusBadge(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Approved => "bg-success",
+            PaymentStatus.Pending => "bg-warning",
+            PaymentStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetEnrollmentTypeBadge(EnrollmentType type)
+    {
+        return type switch
+        {
+            EnrollmentType.Lecture => "bg-info",
+            EnrollmentType.Course => "bg-primary",
+            EnrollmentType.Specialization => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private async Task ExportHistory()
+    {
+        try
+        {
+            if (!isAuthenticated || !isDoctor)
+            {
+                await ShowErrorToast("Authentication required");
+                return;
+            }
+
+            var csvContent = new System.Text.StringBuilder();
+            
+            // Add headers
+            csvContent.AppendLine("Date,Invoice Number,Student Name,Student Email,Content Type,Content Title,Amount,Status,Doctor's Share,Platform Fee");
+            
+            // Add data rows
+            foreach (var payment in filteredPayments)
+            {
+                var studentName = $"{payment.User?.FirstName} {payment.User?.LastName}";
+                var studentEmail = payment.User?.Email ?? "";
+                var contentType = payment.EnrollmentType.ToString();
+                var contentTitle = payment.Specialization?.Title ?? payment.Course?.Title ?? payment.Lecture?.Title ?? "";
+                var doctorShareAmount = payment.Status == PaymentStatus.Approved ? payment.Amount * 0.8m : 0;
+                var platformFee = payment.Status == PaymentStatus.Approved ? payment.Amount * 0.2m : 0;
+                
+                csvContent.AppendLine($"\"{payment.CreatedAt:yyyy-MM-dd HH:mm}\",\"{payment.InvoiceNumber}\",\"{studentName}\",\"{studentEmail}\",\"{contentType}\",\"{contentTitle}\",\"{payment.Amount:N2}\",\"{payment.Status}\",\"{doctorShareAmount:N2}\",\"{platformFee:N2}\"");
+            }
+            
+            var fileName = $"payment_history_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            
+            await JS.InvokeVoidAsync("downloadFile", csvContent.ToString(), fileName, "text/csv");
+            
+            await ShowSuccessToast("Payment history exported successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting payment history: {ex.Message}");
+            await ShowErrorToast("Failed to export payment history");
+        }
+    }
+
+    private async Task DownloadInvoice(string invoiceUrl)
+    {
+        try
+        {
+            if (!isAuthenticated)
+            {
+                await ShowErrorToast("Authentication required");
+                return;
+            }
+
+            await JS.InvokeVoidAsync("open", invoiceUrl, "_blank");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error downloading invoice: {ex.Message}");
+            await ShowErrorToast("Failed to download invoice");
+        }
+    }
+
+    private void ViewContent(PaymentRequestDto payment)
+    {
+        if (payment.Specialization != null)
+        {
+            Navigation.NavigateTo($"/content/specializations/{payment.Specialization.Id}");
+        }
+        else if (payment.Course != null)
+        {
+            Navigation.NavigateTo($"/content/courses/{payment.Course.Id}");
+        }
+        else if (payment.Lecture != null)
+        {
+            Navigation.NavigateTo($"/content/lectures/{payment.Lecture.Id}");
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        if (!isAuthenticated || !isDoctor || isLoading) return;
+        
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadPaymentHistory();
+                await ShowSuccessToast("Payment history refreshed");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error refreshing data: {ex.Message}");
+            }
+        });
+    }
+
+    private async Task ShowSuccessToast(string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", message, "success");
+        }
+        catch
+        {
+            Console.WriteLine($"SUCCESS: {message}");
+        }
+    }
+
+    private async Task ShowErrorToast(string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", message, "error");
+        }
+        catch
+        {
+            Console.WriteLine($"ERROR: {message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

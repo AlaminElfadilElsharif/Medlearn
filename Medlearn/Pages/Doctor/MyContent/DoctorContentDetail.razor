@@ -1,0 +1,1678 @@
+﻿@page "/doctor/content/{ContentTypeParam}/{ContentId:int}"
+@implements IDisposable
+
+<PageTitle>Edit @ContentTypeParam - Doctor Dashboard</PageTitle>
+
+<div class="doctor-content-edit">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Header - Responsive -->
+        <div class="d-block d-md-none">
+            <!-- Mobile Header -->
+            <div class="bg-primary text-white p-3 mb-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                        <i class="fas fa-arrow-left fa-lg"></i>
+                    </button>
+                    <div class="flex-grow-1">
+                        <small class="text-white-50">Edit @ContentTypeParam</small>
+                        <h6 class="mb-0 text-truncate">@GetContentTitle()</h6>
+                    </div>
+                    <button class="btn btn-link text-white p-0 ms-2" @onclick="SaveChanges" disabled="@(!isValid || isSaving)">
+                        <i class="fas fa-check fa-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Tabs Navigation -->
+            <ul class="nav nav-tabs nav-fill mb-3 px-2" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(activeMobileTab == "details" ? "active" : "")"
+                            @onclick='() => SetActiveMobileTab("details")'
+                            type="button">
+                        <i class="fas fa-info-circle me-1"></i>Details
+                    </button>
+                </li>
+                @if (ContentTypeParam.ToLower() == "specialization" || ContentTypeParam.ToLower() == "course")
+                {
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(activeMobileTab == "content" ? "active" : "")"
+                                @onclick='() => SetActiveMobileTab("content")'
+                                type="button">
+                            <i class="fas fa-list me-1"></i>
+                            @(ContentTypeParam.ToLower() == "specialization" ? "Courses" : "Lectures")
+                        </button>
+                    </li>
+                }
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(activeMobileTab == "stats" ? "active" : "")"
+                            @onclick='() => SetActiveMobileTab("stats")'
+                            type="button">
+                        <i class="fas fa-chart-bar me-1"></i>Stats
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(activeMobileTab == "actions" ? "active" : "")"
+                            @onclick='() => SetActiveMobileTab("actions")'
+                            type="button">
+                        <i class="fas fa-bolt me-1"></i>Actions
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Desktop Header -->
+        <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/doctor/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="/doctor/content">Content Management</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            Edit @ContentTypeParam: @GetContentTitle()
+                        </li>
+                    </ol>
+                </nav>
+                <h1 class="h3 mb-0 mt-2">
+                    <i class="fas fa-edit me-2"></i> Edit @ContentTypeParam
+                </h1>
+            </div>
+            <div>
+                <button class="btn btn-outline-secondary me-2" @onclick="GoBack">
+                    <i class="fas fa-arrow-left me-2"></i> Back
+                </button>
+                <button class="btn btn-primary" @onclick="SaveChanges" disabled="@(!isValid || isSaving)">
+                    <i class="fas fa-save me-2"></i>
+                    @(isSaving ? "Saving..." : "Save Changes")
+                </button>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading content...</p>
+            </div>
+        }
+        else if (currentContent == null)
+        {
+            <div class="alert alert-warning m-3 m-md-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Content not found or you don't have permission to edit it.
+                <a href="/doctor/content" class="alert-link ms-2">Return to Content Management</a>
+            </div>
+        }
+        else
+        {
+            <!-- Desktop View (Two Columns) -->
+            <div class="row d-none d-md-flex">
+                <!-- Left Column: Content Details (wider) -->
+                <div class="col-lg-8">
+                    <!-- Content Details Card -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i> Content Details
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (ContentTypeParam.ToLower() == "specialization" && specializationData != null)
+                            {
+                                <SpecializationEditForm Data="@specializationData"
+                                                        Errors="@errors"
+                                                        OnDataChanged="@HandleSpecializationDataChanged"
+                                                        OnThumbnailUploaded="@HandleThumbnailUpload"
+                                                        OnThumbnailRemoved="@RemoveThumbnail" />
+                            }
+                            else if (ContentTypeParam.ToLower() == "course" && courseData != null)
+                            {
+                                <CourseEditForm Data="@courseData"
+                                                Errors="@errors"
+                                                OnDataChanged="@HandleCourseDataChanged"
+                                                OnThumbnailUploaded="@HandleThumbnailUpload"
+                                                OnThumbnailRemoved="@RemoveThumbnail" />
+                            }
+                            else if (ContentTypeParam.ToLower() == "lecture" && lectureData != null)
+                            {
+                                <LectureEditForm Data="@lectureData"
+                                                 Errors="@errors"
+                                                 OnDataChanged="@HandleLectureDataChanged" />
+
+                                <div class="mt-4">
+                                    <h6 class="fw-bold mb-3">
+                                        <i class="fas fa-file-alt me-2"></i> Learning Materials
+                                    </h6>
+                                    <MaterialManager LectureId="@ContentId"
+                                                     Materials="@lectureData?.Materials"
+                                                     MaterialsChanged="ReloadMaterials" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-circle me-2"></i>
+                                    Invalid content type: @ContentTypeParam
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Related Content Section (Desktop) -->
+                    @if (ContentTypeParam.ToLower() == "specialization")
+                    {
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-graduation-cap me-2"></i> Courses in this Specialization
+                                </h5>
+                                <button class="btn btn-sm btn-primary" @onclick="AddNewCourse">
+                                    <i class="fas fa-plus me-1"></i> Add Course
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                @if (relatedCourses == null || !relatedCourses.Any())
+                                {
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted mb-2">No Courses Yet</p>
+                                        <button class="btn btn-primary btn-sm" @onclick="AddNewCourse">
+                                            <i class="fas fa-plus me-1"></i> Create First Course
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Title</th>
+                                                    <th>Price</th>
+                                                    <th>Lectures</th>
+                                                    <th>Status</th>
+                                                    <th class="text-end">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var course in relatedCourses.OrderBy(c => c.Order))
+                                                {
+                                                    <tr>
+                                                        <td>@course.Order</td>
+                                                        <td class="text-truncate" style="max-width: 150px;">
+                                                            <a href="@GetCourseUrl(course.Id)" class="text-decoration-none">
+                                                                @course.Title
+                                                            </a>
+                                                        </td>
+                                                        <td>$@course.Price.ToString("N2")</td>
+                                                        <td>@course.Lectures?.Count ?? 0</td>
+                                                        <td>
+                                                            <span class="badge @(course.IsActive ? "bg-success" : "bg-danger")">
+                                                                @(course.IsActive ? "Active" : "Inactive")
+                                                            </span>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <div class="btn-group btn-group-sm">
+                                                                <a href="/doctor/content/course/@course.Id" class="btn btn-outline-primary">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                                <button class="btn btn-outline-danger" @onclick="() => DeleteCourse(course.Id)">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (ContentTypeParam.ToLower() == "course")
+                    {
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-video me-2"></i> Lectures in this Course
+                                </h5>
+                                <button class="btn btn-sm btn-primary" @onclick="AddNewLecture">
+                                    <i class="fas fa-plus me-1"></i> Add Lecture
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                @if (relatedLectures == null || !relatedLectures.Any())
+                                {
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted mb-2">No Lectures Yet</p>
+                                        <button class="btn btn-primary btn-sm" @onclick="AddNewLecture">
+                                            <i class="fas fa-plus me-1"></i> Create First Lecture
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Title</th>
+                                                    <th>Free</th>
+                                                    <th>Materials</th>
+                                                    <th>Status</th>
+                                                    <th class="text-end">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var lecture in relatedLectures.OrderBy(l => l.Order))
+                                                {
+                                                    <tr>
+                                                        <td>@lecture.Order</td>
+                                                        <td class="text-truncate" style="max-width: 150px;">
+                                                            <a href="@GetLectureUrl(lecture.Id)" class="text-decoration-none">
+                                                                @lecture.Title
+                                                            </a>
+                                                        </td>
+                                                        <td>
+                                                            @if (lecture.IsFreePreview)
+                                                            {
+                                                                <span class="badge bg-success">Free</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-secondary">Paid</span>
+                                                            }
+                                                        </td>
+                                                        <td>@lecture.Materials?.Count ?? 0</td>
+                                                        <td>
+                                                            <span class="badge @(lecture.IsActive ? "bg-success" : "bg-danger")">
+                                                                @(lecture.IsActive ? "Active" : "Inactive")
+                                                            </span>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <div class="btn-group btn-group-sm">
+                                                                <a href="/doctor/content/lecture/@lecture.Id" class="btn btn-outline-primary">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                                <button class="btn btn-outline-danger" @onclick="() => DeleteLecture(lecture.Id)">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Right Column: Stats, Filters and Actions (narrower) -->
+                <div class="col-lg-4">
+                    <!-- Search and Filters Section -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-search me-2"></i> Search & Filters
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Search</label>
+                                <input type="text" class="form-control" placeholder="Search content..." @bind="searchTerm" @bind:event="oninput" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Filter by Status</label>
+                                <select class="form-select" @bind="statusFilter">
+                                    <option value="">All</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Sort by</label>
+                                <select class="form-select" @bind="sortBy">
+                                    <option value="title">Title</option>
+                                    <option value="date">Date Created</option>
+                                    <option value="enrollments">Enrollments</option>
+                                    <option value="rating">Rating</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary w-100" @onclick="ApplyFilters">
+                                <i class="fas fa-filter me-2"></i> Apply Filters
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Content Stats -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-bar me-2"></i> Statistics
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="p-3 bg-light rounded">
+                                        <small class="text-muted d-block">Enrollments</small>
+                                        <h4 class="mb-0 text-primary">@GetTotalEnrollments()</h4>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 bg-light rounded">
+                                        <small class="text-muted d-block">Revenue</small>
+                                        <h4 class="mb-0 text-success">$@GetRevenue().ToString("N0")</h4>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 bg-light rounded">
+                                        <small class="text-muted d-block">Rating</small>
+                                        <div class="d-flex align-items-center">
+                                            <h4 class="mb-0 me-2">@GetAverageRating().ToString("0.0")</h4>
+                                            <div class="rating-stars small">
+                                                @for (int i = 1; i <= 5; i++)
+                                                {
+                                                    <i class="fas fa-star @(i <= Math.Round(GetAverageRating()) ? "text-warning" : "text-muted")"></i>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 bg-light rounded">
+                                        <small class="text-muted d-block">Created</small>
+                                        <h6 class="mb-0">@GetCreatedAt().ToString("MMM dd, yyyy")</h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-bolt me-2"></i> Quick Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="@GetViewUrl()" class="btn btn-outline-primary" target="_blank">
+                                    <i class="fas fa-external-link-alt me-2"></i> View Live
+                                </a>
+
+                                @if (ContentTypeParam.ToLower() == "specialization")
+                                {
+                                    <button class="btn btn-outline-info" @onclick="ManageCourses">
+                                        <i class="fas fa-graduation-cap me-2"></i> Manage Courses
+                                    </button>
+                                }
+
+                                @if (ContentTypeParam.ToLower() == "course")
+                                {
+                                    <button class="btn btn-outline-info" @onclick="ManageLectures">
+                                        <i class="fas fa-video me-2"></i> Manage Lectures
+                                    </button>
+                                }
+
+                                <button class="btn btn-outline-warning" @onclick="ViewEnrollments">
+                                    <i class="fas fa-users me-2"></i> View Enrollments
+                                </button>
+
+                                <button class="btn btn-outline-warning" @onclick="ViewReviews">
+                                    <i class="fas fa-star me-2"></i> View Reviews
+                                </button>
+
+                                <button class="btn btn-outline-danger" @onclick="ConfirmDelete">
+                                    <i class="fas fa-trash me-2"></i> Delete Content
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-eye me-2"></i> Preview
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="border rounded p-2 mb-2">
+                                @if (!string.IsNullOrEmpty(GetThumbnailUrl()))
+                                {
+                                    <img src="@GetImageUrl(GetThumbnailUrl())"
+                                         class="img-fluid rounded mb-2"
+                                         alt="@GetContentTitle()" />
+                                }
+                                <h6 class="mb-1">@GetContentTitle()</h6>
+                                <p class="small text-muted mb-0">
+                                    @GetShortDescription()
+                                </p>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <span class="badge @(IsActive() ? "bg-success" : "bg-danger")">
+                                    @(IsActive() ? "Active" : "Inactive")
+                                </span>
+
+                                @if (ContentTypeParam.ToLower() == "specialization" && IsFeatured())
+                                {
+                                    <span class="badge bg-warning">Featured</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile View (Tabbed Interface) -->
+            <div class="d-block d-md-none">
+                <!-- Details Tab -->
+                @if (activeMobileTab == "details")
+                {
+                    <div class="px-3">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                @if (ContentTypeParam.ToLower() == "specialization" && specializationData != null)
+                                {
+                                    <SpecializationEditForm Data="@specializationData"
+                                                            Errors="@errors"
+                                                            OnDataChanged="@HandleSpecializationDataChanged"
+                                                            OnThumbnailUploaded="@HandleThumbnailUpload"
+                                                            OnThumbnailRemoved="@RemoveThumbnail" />
+                                }
+                                else if (ContentTypeParam.ToLower() == "course" && courseData != null)
+                                {
+                                    <CourseEditForm Data="@courseData"
+                                                    Errors="@errors"
+                                                    OnDataChanged="@HandleCourseDataChanged"
+                                                    OnThumbnailUploaded="@HandleThumbnailUpload"
+                                                    OnThumbnailRemoved="@RemoveThumbnail" />
+                                }
+                                else if (ContentTypeParam.ToLower() == "lecture" && lectureData != null)
+                                {
+                                    <LectureEditForm Data="@lectureData"
+                                                     Errors="@errors"
+                                                     OnDataChanged="@HandleLectureDataChanged" />
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Preview Card (Mobile) -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-eye me-2"></i>Preview
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center">
+                                    @if (!string.IsNullOrEmpty(GetThumbnailUrl()))
+                                    {
+                                        <img src="@GetImageUrl(GetThumbnailUrl())"
+                                             class="img-fluid rounded mb-2"
+                                             alt="@GetContentTitle()"
+                                             style="max-height: 120px;" />
+                                    }
+                                    <h6>@GetContentTitle()</h6>
+                                    <p class="small text-muted">@GetShortDescription()</p>
+                                    <div>
+                                        <span class="badge @(IsActive() ? "bg-success" : "bg-danger") me-1">
+                                            @(IsActive() ? "Active" : "Inactive")
+                                        </span>
+                                        @if (ContentTypeParam.ToLower() == "specialization" && IsFeatured())
+                                        {
+                                            <span class="badge bg-warning">Featured</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (ContentTypeParam.ToLower() == "lecture" && lectureData != null)
+                        {
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-file-alt me-2"></i>Learning Materials
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <MaterialManager LectureId="@ContentId"
+                                                     Materials="@lectureData?.Materials"
+                                                     MaterialsChanged="ReloadMaterials" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- Content Tab (Courses/Lectures) -->
+                @if (activeMobileTab == "content")
+                {
+                    <div class="px-3">
+                        @if (ContentTypeParam.ToLower() == "specialization")
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0 fw-bold">Courses</h6>
+                                <button class="btn btn-sm btn-primary" @onclick="AddNewCourse">
+                                    <i class="fas fa-plus me-1"></i> Add
+                                </button>
+                            </div>
+
+                            @if (relatedCourses == null || !relatedCourses.Any())
+                            {
+                                <div class="text-center py-4 bg-light rounded">
+                                    <i class="fas fa-graduation-cap fa-3x text-muted mb-2"></i>
+                                    <p class="text-muted mb-2">No courses yet</p>
+                                    <button class="btn btn-primary btn-sm" @onclick="AddNewCourse">
+                                        <i class="fas fa-plus me-1"></i> Create Course
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="list-group">
+                                    @foreach (var course in relatedCourses.OrderBy(c => c.Order))
+                                    {
+                                        <div class="list-group-item list-group-item-action p-3">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <span class="badge bg-secondary me-2">#@course.Order</span>
+                                                    <span class="badge @(course.IsActive ? "bg-success" : "bg-danger")">
+                                                        @(course.IsActive ? "Active" : "Inactive")
+                                                    </span>
+                                                </div>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="/doctor/content/course/@course.Id" class="btn btn-outline-primary">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <button class="btn btn-outline-danger" @onclick="() => DeleteCourse(course.Id)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <h6 class="mb-1">@course.Title</h6>
+                                            <p class="small text-muted mb-2">@(course.Description?.Length > 60 ? course.Description.Substring(0, 60) + "..." : course.Description)</p>
+                                            <div class="d-flex justify-content-between small">
+                                                <span><i class="fas fa-video me-1"></i> @course.Lectures?.Count ?? 0 lectures</span>
+                                                <span><i class="fas fa-dollar-sign me-1"></i> $@course.Price.ToString("N2")</span>
+                                                <span><i class="fas fa-users me-1"></i> @course.TotalEnrollments</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                        else if (ContentTypeParam.ToLower() == "course")
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0 fw-bold">Lectures</h6>
+                                <button class="btn btn-sm btn-primary" @onclick="AddNewLecture">
+                                    <i class="fas fa-plus me-1"></i> Add
+                                </button>
+                            </div>
+
+                            @if (relatedLectures == null || !relatedLectures.Any())
+                            {
+                                <div class="text-center py-4 bg-light rounded">
+                                    <i class="fas fa-video fa-3x text-muted mb-2"></i>
+                                    <p class="text-muted mb-2">No lectures yet</p>
+                                    <button class="btn btn-primary btn-sm" @onclick="AddNewLecture">
+                                        <i class="fas fa-plus me-1"></i> Create Lecture
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="list-group">
+                                    @foreach (var lecture in relatedLectures.OrderBy(l => l.Order))
+                                    {
+                                        <div class="list-group-item list-group-item-action p-3">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <span class="badge bg-secondary me-2">#@lecture.Order</span>
+                                                    @if (lecture.IsFreePreview)
+                                                    {
+                                                        <span class="badge bg-success">Free</span>
+                                                    }
+                                                    <span class="badge @(lecture.IsActive ? "bg-success" : "bg-danger") ms-1">
+                                                        @(lecture.IsActive ? "Active" : "Inactive")
+                                                    </span>
+                                                </div>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="/doctor/content/lecture/@lecture.Id" class="btn btn-outline-primary">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <button class="btn btn-outline-danger" @onclick="() => DeleteLecture(lecture.Id)">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <h6 class="mb-1">@lecture.Title</h6>
+                                            <p class="small text-muted mb-2">@(lecture.Description?.Length > 60 ? lecture.Description.Substring(0, 60) + "..." : lecture.Description)</p>
+                                            <div class="d-flex justify-content-between small">
+                                                <span><i class="fas fa-clock me-1"></i> @lecture.EstimatedDurationMinutes min</span>
+                                                <span><i class="fas fa-file-alt me-1"></i> @lecture.Materials?.Count ?? 0 materials</span>
+                                                <span><i class="fas fa-dollar-sign me-1"></i> @(lecture.IsFreePreview ? "Free" : $"${lecture.Price:N2}")</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+
+                <!-- Stats Tab -->
+                @if (activeMobileTab == "stats")
+                {
+                    <div class="px-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body text-center p-3">
+                                        <i class="fas fa-users fa-2x mb-2 opacity-75"></i>
+                                        <h3 class="mb-0">@GetTotalEnrollments()</h3>
+                                        <small>Enrollments</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center p-3">
+                                        <i class="fas fa-dollar-sign fa-2x mb-2 opacity-75"></i>
+                                        <h3 class="mb-0">$@GetRevenue().ToString("N0")</h3>
+                                        <small>Revenue</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center p-3">
+                                        <i class="fas fa-star fa-2x mb-2 opacity-75"></i>
+                                        <h3 class="mb-0">@GetAverageRating().ToString("0.0")</h3>
+                                        <small>Rating</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body text-center p-3">
+                                        <i class="fas fa-calendar fa-2x mb-2 opacity-75"></i>
+                                        <h6 class="mb-0">@GetCreatedAt().ToString("MMM dd")</h6>
+                                        <small>Created</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mt-3">
+                            <div class="card-body">
+                                <h6 class="card-title">Performance Overview</h6>
+                                <div class="mb-2">
+                                    <small class="text-muted">Enrollment Rate</small>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-success" style="width: @GetEnrollmentRate()%"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">Completion Rate</small>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-info" style="width: @GetCompletionRate()%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <small class="text-muted">Satisfaction Rate</small>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" style="width: @GetSatisfactionRate()%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Actions Tab -->
+                @if (activeMobileTab == "actions")
+                {
+                    <div class="px-3">
+                        <div class="list-group">
+                            <a href="@GetViewUrl()" class="list-group-item list-group-item-action d-flex align-items-center" target="_blank">
+                                <i class="fas fa-external-link-alt fa-fw me-3 text-primary"></i>
+                                <span>View Live Content</span>
+                                <i class="fas fa-chevron-right ms-auto text-muted"></i>
+                            </a>
+
+                            @if (ContentTypeParam.ToLower() == "specialization")
+                            {
+                                <button class="list-group-item list-group-item-action d-flex align-items-center" @onclick="ManageCourses">
+                                    <i class="fas fa-graduation-cap fa-fw me-3 text-info"></i>
+                                    <span>Manage Courses</span>
+                                    <i class="fas fa-chevron-right ms-auto text-muted"></i>
+                                </button>
+                            }
+
+                            @if (ContentTypeParam.ToLower() == "course")
+                            {
+                                <button class="list-group-item list-group-item-action d-flex align-items-center" @onclick="ManageLectures">
+                                    <i class="fas fa-video fa-fw me-3 text-info"></i>
+                                    <span>Manage Lectures</span>
+                                    <i class="fas fa-chevron-right ms-auto text-muted"></i>
+                                </button>
+                            }
+
+                            <button class="list-group-item list-group-item-action d-flex align-items-center" @onclick="ViewEnrollments">
+                                <i class="fas fa-users fa-fw me-3 text-warning"></i>
+                                <span>View Enrollments</span>
+                                <i class="fas fa-chevron-right ms-auto text-muted"></i>
+                            </button>
+
+                            <button class="list-group-item list-group-item-action d-flex align-items-center" @onclick="ViewReviews">
+                                <i class="fas fa-star fa-fw me-3 text-warning"></i>
+                                <span>View Reviews</span>
+                                <i class="fas fa-chevron-right ms-auto text-muted"></i>
+                            </button>
+
+                            <button class="list-group-item list-group-item-action d-flex align-items-center text-danger" @onclick="ConfirmDelete">
+                                <i class="fas fa-trash fa-fw me-3 text-danger"></i>
+                                <span>Delete Content</span>
+                                <i class="fas fa-chevron-right ms-auto text-muted"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Confirmation Modal (Responsive) -->
+@if (showDeleteModal)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable mx-2 mx-md-auto">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Delete @ContentTypeParam?
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="HideDeleteModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Are you sure you want to delete "<strong>@GetContentTitle()</strong>"?</p>
+                    <div class="alert alert-danger small">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. All associated data will be permanently deleted.
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary flex-fill flex-md-grow-0" @onclick="HideDeleteModal">Cancel</button>
+                    <button type="button" class="btn btn-danger flex-fill flex-md-grow-0" @onclick="DeleteContent">
+                        <i class="fas fa-trash me-2 d-none d-md-inline"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Loading Modal (Responsive) -->
+@if (isSaving)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered mx-2 mx-md-auto">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h6 class="mb-1">Saving Changes...</h6>
+                    <p class="text-muted small mb-0">Please don't close this window</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string ContentTypeParam { get; set; } = "";
+    [Parameter] public int ContentId { get; set; }
+
+    // Current content
+    private object? currentContent;
+    private SpecializationDto? specializationData;
+    private CourseDto? courseData;
+    private LectureDto? lectureData;
+
+    // Related content
+    private List<CourseDto> relatedCourses = new();
+    private List<LectureDto> relatedLectures = new();
+
+    // UI state
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isValid = false;
+    private bool showDeleteModal = false;
+    private Dictionary<string, string> errors = new();
+
+    // Mobile state
+    private string activeMobileTab = "details";
+
+    // File upload
+    private string? newThumbnailPreview;
+    private IBrowserFile? newThumbnailFile;
+    private string? removedThumbnailUrl;
+
+    // Filter properties
+    private string searchTerm = "";
+    private string statusFilter = "";
+    private string sortBy = "title";
+
+    private void SetActiveMobileTab(string tab)
+    {
+        activeMobileTab = tab;
+        StateHasChanged();
+    }
+
+    private void ApplyFilters()
+    {
+        // Implement filter logic here
+        Console.WriteLine($"Applying filters: Search={searchTerm}, Status={statusFilter}, Sort={sortBy}");
+        // You would typically filter the data here and call StateHasChanged()
+    }
+
+    // Helper methods for stats
+    private int GetEnrollmentRate() => new Random().Next(60, 95);
+    private int GetCompletionRate() => new Random().Next(40, 80);
+    private int GetSatisfactionRate() => (int)(GetAverageRating() * 20);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadContent();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadContent();
+    }
+
+    private async Task LoadContent()
+    {
+        try
+        {
+            isLoading = true;
+            errors.Clear();
+
+            // Get current user
+            var user = await AuthService.GetCurrentUserAsync();
+            if (user == null || user.UserType != UserType.Doctor)
+            {
+                await JS.InvokeVoidAsync("showToast", "error", "Access denied. Doctors only.");
+                Navigation.NavigateTo("/doctor/content");
+                return;
+            }
+
+            // Load content based on type
+            switch (ContentTypeParam.ToLower())
+            {
+                case "specialization":
+                    await LoadSpecialization();
+                    break;
+                case "course":
+                    await LoadCourse();
+                    break;
+                case "lecture":
+                    await LoadLecture();
+                    break;
+                default:
+                    await JS.InvokeVoidAsync("showToast", "error", "Invalid content type");
+                    Navigation.NavigateTo("/doctor/content");
+                    break;
+            }
+
+            // Validate the loaded content
+            Validate();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading content: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", $"Error loading content: {ex.Message}");
+            Navigation.NavigateTo("/doctor/content");
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task ReloadMaterials()
+    {
+        await LoadLecture();
+    }
+
+    private async Task LoadSpecialization()
+    {
+        var specialization = await SpecializationService.GetSpecializationAsync(ContentId);
+        if (specialization == null)
+        {
+            await JS.InvokeVoidAsync("showToast", "error", "Specialization not found");
+            Navigation.NavigateTo("/doctor/content");
+            return;
+        }
+
+        // Check if current user owns this specialization
+        var user = await AuthService.GetCurrentUserAsync();
+        if (specialization.DoctorId != user?.Id && user?.UserType != UserType.Admin)
+        {
+            await JS.InvokeVoidAsync("showToast", "error", "You don't have permission to edit this specialization");
+            Navigation.NavigateTo("/doctor/content");
+            return;
+        }
+
+        specializationData = specialization;
+        currentContent = specializationData;
+
+        // Load related courses
+        relatedCourses = await CourseService.GetCoursesBySpecializationAsync(ContentId) ?? new List<CourseDto>();
+    }
+
+    private async Task LoadCourse()
+    {
+        var course = await CourseService.GetCourseAsync(ContentId);
+        if (course == null)
+        {
+            await JS.InvokeVoidAsync("showToast", "error", "Course not found");
+            Navigation.NavigateTo("/doctor/content");
+            return;
+        }
+
+        // Check if current user owns this course
+        var user = await AuthService.GetCurrentUserAsync();
+        if (course.DoctorId != user?.Id && user?.UserType != UserType.Admin)
+        {
+            await JS.InvokeVoidAsync("showToast", "error", "You don't have permission to edit this course");
+            Navigation.NavigateTo("/doctor/content");
+            return;
+        }
+
+        courseData = course;
+        currentContent = courseData;
+
+        // Load related lectures
+        relatedLectures = await LectureService.GetLecturesByCourseAsync(ContentId) ?? new List<LectureDto>();
+    }
+
+    private async Task LoadLecture()
+    {
+        var lecture = await LectureService.GetLectureAsync(ContentId);
+        if (lecture == null)
+        {
+            await JS.InvokeVoidAsync("showToast", "error", "Lecture not found");
+            Navigation.NavigateTo("/doctor/content");
+            return;
+        }
+
+        // Check if current user owns this lecture
+        var user = await AuthService.GetCurrentUserAsync();
+        if (lecture.DoctorId != user?.Id && user?.UserType != UserType.Admin)
+        {
+            await JS.InvokeVoidAsync("showToast", "error", "You don't have permission to edit this lecture");
+            Navigation.NavigateTo("/doctor/content");
+            return;
+        }
+
+        lectureData = lecture;
+        currentContent = lectureData;
+    }
+
+    private void Validate()
+    {
+        errors.Clear();
+        isValid = true;
+
+        if (currentContent == null)
+        {
+            isValid = false;
+            return;
+        }
+
+        var type = ContentTypeParam.ToLower();
+
+        // Title validation
+        if (string.IsNullOrWhiteSpace(GetContentTitle()))
+        {
+            errors["Title"] = "Title is required";
+            isValid = false;
+        }
+        else if (GetContentTitle().Length > 200)
+        {
+            errors["Title"] = "Title cannot exceed 200 characters";
+            isValid = false;
+        }
+
+        // Description validation
+        if (string.IsNullOrWhiteSpace(GetDescription()))
+        {
+            errors["Description"] = "Description is required";
+            isValid = false;
+        }
+        else if (GetDescription().Length > 2000)
+        {
+            errors["Description"] = "Description cannot exceed 2000 characters";
+            isValid = false;
+        }
+
+        // Price validation for specialization and course
+        if ((type == "specialization" || type == "course") && GetPrice() < 0)
+        {
+            errors["Price"] = "Price cannot be negative";
+            isValid = false;
+        }
+
+        // Order validation for course and lecture
+        if ((type == "course" || type == "lecture") && GetOrder() < 1)
+        {
+            errors["Order"] = "Order must be at least 1";
+            isValid = false;
+        }
+
+        // Duration validation
+        if (type == "specialization" && GetDurationHours() < 1)
+        {
+            errors["Duration"] = "Duration must be at least 1 hour";
+            isValid = false;
+        }
+
+        if (type == "lecture" && GetDurationMinutes() < 1)
+        {
+            errors["Duration"] = "Duration must be at least 1 minute";
+            isValid = false;
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        try
+        {
+            Validate();
+            if (!isValid)
+            {
+                await JS.InvokeVoidAsync("showToast", "warning", "Please fix validation errors");
+                return;
+            }
+
+            isSaving = true;
+            await InvokeAsync(StateHasChanged);
+
+            bool success = false;
+            string successMessage = "";
+
+            switch (ContentTypeParam.ToLower())
+            {
+                case "specialization":
+                    success = await UpdateSpecialization();
+                    successMessage = "Specialization updated successfully";
+                    break;
+                case "course":
+                    success = await UpdateCourse();
+                    successMessage = "Course updated successfully";
+                    break;
+                case "lecture":
+                    success = await UpdateLecture();
+                    successMessage = "Lecture updated successfully";
+                    break;
+            }
+
+            if (success)
+            {
+                await JS.InvokeVoidAsync("showToast", "success", successMessage);
+                await LoadContent(); // Reload to get updated data
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("showToast", "error", "Failed to save changes");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving changes: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", $"Error: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task<bool> UpdateSpecialization()
+    {
+        if (specializationData == null) return false;
+
+        try
+        {
+            var updateDto = new UpdateSpecializationDtos
+            {
+                Title = specializationData.Title,
+                Description = specializationData.Description,
+                Price = specializationData.Price,
+                EstimatedDurationHours = specializationData.EstimatedDurationHours,
+                Prerequisites = specializationData.Prerequisites ?? "",
+                IsFeatured = specializationData.IsFeatured
+            };
+
+            Stream? thumbnailStream = null;
+            string? fileName = null;
+
+            if (newThumbnailFile != null)
+            {
+                thumbnailStream = newThumbnailFile.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+                fileName = newThumbnailFile.Name;
+            }
+            else if (!string.IsNullOrEmpty(removedThumbnailUrl))
+            {
+                // If thumbnail was removed, we need to update with empty thumbnail
+                updateDto.ThumbnailImage = null;
+            }
+
+            var success = await SpecializationService.UpdateSpecializationAsync(
+                specializationData.Id, updateDto, thumbnailStream, fileName);
+
+            // Also update the status if it changed
+            if (success)
+            {
+                await SpecializationService.UpdateSpecializationStatusAsync(
+                    specializationData.Id, specializationData.IsActive);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating specialization: {ex}");
+            return false;
+        }
+    }
+
+    private async Task<bool> UpdateCourse()
+    {
+        if (courseData == null) return false;
+
+        try
+        {
+            var updateDto = new UpdateCourseRequestDto
+            {
+                Title = courseData.Title,
+                Description = courseData.Description,
+                Price = courseData.Price,
+                Order = courseData.Order,
+                ThumbnailUrl = courseData.ThumbnailUrl
+            };
+
+            Stream? thumbnailStream = null;
+            string? fileName = null;
+
+            if (newThumbnailFile != null)
+            {
+                thumbnailStream = newThumbnailFile.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+                fileName = newThumbnailFile.Name;
+            }
+            else if (!string.IsNullOrEmpty(removedThumbnailUrl))
+            {
+                // If thumbnail was removed
+                updateDto.ThumbnailUrl = "";
+            }
+
+            var success = await CourseService.UpdateCourseAsync(
+                courseData.Id, updateDto, thumbnailStream, fileName);
+
+            // Update status
+            if (success)
+            {
+                await CourseService.UpdateCourseStatusAsync(courseData.Id, courseData.IsActive);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating course: {ex}");
+            return false;
+        }
+    }
+
+    private async Task<bool> UpdateLecture()
+    {
+        if (lectureData == null) return false;
+
+        try
+        {
+            var updateDto = new UpdateLectureDtos
+            {
+                Title = lectureData.Title,
+                Description = lectureData.Description,
+                Price = lectureData.Price,
+                Order = lectureData.Order,
+                EstimatedDurationMinutes = lectureData.EstimatedDurationMinutes,
+                IsFreePreview = lectureData.IsFreePreview
+            };
+
+            var success = await LectureService.UpdateLectureAsync(lectureData.Id, updateDto);
+
+            // Update status
+            if (success)
+            {
+                await LectureService.UpdateLectureStatusAsync(lectureData.Id, lectureData.IsActive);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating lecture: {ex}");
+            return false;
+        }
+    }
+
+    private async Task HandleThumbnailUpload(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file == null) return;
+
+            // Validate file type
+            var validTypes = new[] { "image/jpeg", "image/png", "image/gif" };
+            if (!validTypes.Contains(file.ContentType))
+            {
+                await JS.InvokeVoidAsync("showToast", "error", "Invalid file type. Please upload JPG, PNG or GIF.");
+                return;
+            }
+
+            // Validate file size (2MB max)
+            if (file.Size > 2 * 1024 * 1024)
+            {
+                await JS.InvokeVoidAsync("showToast", "error", "File size exceeds 2MB limit.");
+                return;
+            }
+
+            newThumbnailFile = file;
+
+            // Create preview
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024).ReadAsync(buffer);
+            newThumbnailPreview = $"data:{file.ContentType};base64,{Convert.ToBase64String(buffer)}";
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error uploading thumbnail: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", "Error uploading thumbnail");
+        }
+    }
+
+    private void RemoveThumbnail()
+    {
+        if (specializationData != null)
+        {
+            removedThumbnailUrl = specializationData.ThumbnailUrl;
+            specializationData.ThumbnailUrl = null;
+        }
+        else if (courseData != null)
+        {
+            removedThumbnailUrl = courseData.ThumbnailUrl;
+            courseData.ThumbnailUrl = null;
+        }
+
+        newThumbnailFile = null;
+        newThumbnailPreview = null;
+    }
+
+    // Event handlers for form components
+    private void HandleSpecializationDataChanged(SpecializationDto data)
+    {
+        specializationData = data;
+        Validate();
+    }
+
+    private void HandleCourseDataChanged(CourseDto data)
+    {
+        courseData = data;
+        Validate();
+    }
+
+    private void HandleLectureDataChanged(LectureDto data)
+    {
+        lectureData = data;
+        Validate();
+    }
+
+    // Helper methods for data access
+    private string GetContentTitle()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => spec.Title,
+            CourseDto course => course.Title,
+            LectureDto lecture => lecture.Title,
+            _ => string.Empty
+        };
+    }
+
+    private string GetDescription()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => spec.Description,
+            CourseDto course => course.Description,
+            LectureDto lecture => lecture.Description,
+            _ => string.Empty
+        };
+    }
+
+    private string GetThumbnailUrl()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => spec.ThumbnailUrl,
+            CourseDto course => course.ThumbnailUrl,
+            _ => string.Empty
+        };
+    }
+
+    private decimal GetPrice()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => spec.Price,
+            CourseDto course => course.Price,
+            LectureDto lecture => lecture.Price,
+            _ => 0
+        };
+    }
+
+    private int GetOrder()
+    {
+        return currentContent switch
+        {
+            CourseDto course => course.Order,
+            LectureDto lecture => lecture.Order,
+            _ => 1
+        };
+    }
+
+    private int GetDurationHours()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => spec.EstimatedDurationHours,
+            _ => 0
+        };
+    }
+
+    private int GetDurationMinutes()
+    {
+        return currentContent switch
+        {
+            LectureDto lecture => lecture.EstimatedDurationMinutes,
+            _ => 0
+        };
+    }
+
+    private bool IsActive()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => spec.IsActive,
+            CourseDto course => course.IsActive,
+            LectureDto lecture => lecture.IsActive,
+            _ => false
+        };
+    }
+
+    private bool IsFeatured()
+    {
+        return currentContent is SpecializationDto spec && spec.IsFeatured;
+    }
+
+    private int GetTotalEnrollments()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => spec.TotalEnrollments,
+            CourseDto course => course.TotalEnrollments,
+            LectureDto lecture => lecture.TotalEnrollments,
+            _ => 0
+        };
+    }
+
+    private double GetAverageRating()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => (double)spec.AverageRating,
+            CourseDto course => (double)course.AverageRating,
+            LectureDto lecture => (double)lecture.AverageRating,
+            _ => 0
+        };
+    }
+
+    private DateTime GetCreatedAt()
+    {
+        return currentContent switch
+        {
+            SpecializationDto spec => spec.CreatedAt,
+            CourseDto course => course.CreatedAt,
+            LectureDto lecture => lecture.CreatedAt,
+            _ => DateTime.UtcNow
+        };
+    }
+
+    private decimal GetRevenue()
+    {
+        // Simplified revenue calculation
+        return GetTotalEnrollments() * GetPrice() * 0.8m; // 80% goes to doctor
+    }
+
+    private string GetShortDescription()
+    {
+        var desc = GetDescription();
+        if (string.IsNullOrEmpty(desc)) return string.Empty;
+
+        return desc.Length > 100 ? desc.Substring(0, 100) + "..." : desc;
+    }
+
+    // Helper methods
+    private string GetImageUrl(string? relativePath)
+    {
+        return ImageUrlService.GetImageUrl(relativePath);
+    }
+
+    private string GetViewUrl()
+    {
+        return ContentTypeParam.ToLower() switch
+        {
+            "specialization" => $"/specializations/{ContentId}",
+            "course" => $"/courses/{ContentId}",
+            "lecture" => $"/lectures/{ContentId}",
+            _ => "#"
+        };
+    }
+
+    private string GetCourseUrl(int courseId)
+    {
+        return $"/courses/{courseId}";
+    }
+
+    private string GetLectureUrl(int lectureId)
+    {
+        return $"/lectures/{lectureId}";
+    }
+
+    // Action methods
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/doctor/content");
+    }
+
+    private void AddNewCourse()
+    {
+        if (ContentTypeParam.ToLower() == "specialization" && specializationData != null)
+        {
+            Navigation.NavigateTo($"/createcourse?specializationId={specializationData.Id}");
+        }
+    }
+
+    private void AddNewLecture()
+    {
+        if (ContentTypeParam.ToLower() == "course" && courseData != null)
+        {
+            Navigation.NavigateTo($"/createlecture?courseId={courseData.Id}");
+        }
+    }
+
+    private async Task DeleteCourse(int courseId)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this course? This action cannot be undone."))
+            return;
+
+        var success = await CourseService.DeleteCourseAsync(courseId);
+        if (success)
+        {
+            await JS.InvokeVoidAsync("showToast", "success", "Course deleted successfully");
+            await LoadContent(); // Reload to refresh the list
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("showToast", "error", "Failed to delete course");
+        }
+    }
+
+    private async Task DeleteLecture(int lectureId)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this lecture? This action cannot be undone."))
+            return;
+
+        var success = await LectureService.DeleteLectureAsync(lectureId);
+        if (success)
+        {
+            await JS.InvokeVoidAsync("showToast", "success", "Lecture deleted successfully");
+            await LoadContent(); // Reload to refresh the list
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("showToast", "error", "Failed to delete lecture");
+        }
+    }
+
+    private void ManageCourses()
+    {
+        if (ContentTypeParam.ToLower() == "specialization" && specializationData != null)
+        {
+            // Navigate to course management for this specialization
+            Navigation.NavigateTo($"/doctor/content/course?specializationId={specializationData.Id}");
+        }
+    }
+
+    private void ManageLectures()
+    {
+        if (ContentTypeParam.ToLower() == "course" && courseData != null)
+        {
+            // Navigate to lecture management for this course
+            Navigation.NavigateTo($"/doctor/content/lecture?courseId={courseData.Id}");
+        }
+    }
+
+    private void ViewEnrollments()
+    {
+        var type = ContentTypeParam.ToLower();
+        Navigation.NavigateTo($"/doctor/enrollments?type={type}&id={ContentId}");
+    }
+
+    private void ViewReviews()
+    {
+        var type = ContentTypeParam.ToLower();
+        Navigation.NavigateTo($"/doctor/reviews?type={type}&id={ContentId}");
+    }
+
+    private void ConfirmDelete()
+    {
+        showDeleteModal = true;
+        StateHasChanged();
+    }
+
+    private void HideDeleteModal()
+    {
+        showDeleteModal = false;
+        StateHasChanged();
+    }
+
+    private async Task DeleteContent()
+    {
+        try
+        {
+            isSaving = true;
+            HideDeleteModal();
+            await InvokeAsync(StateHasChanged);
+
+            bool success = false;
+            string successMessage = "";
+
+            switch (ContentTypeParam.ToLower())
+            {
+                case "specialization":
+                    success = await SpecializationService.DeleteSpecializationAsync(ContentId);
+                    successMessage = "Specialization deleted successfully";
+                    break;
+                case "course":
+                    success = await CourseService.DeleteCourseAsync(ContentId);
+                    successMessage = "Course deleted successfully";
+                    break;
+                case "lecture":
+                    success = await LectureService.DeleteLectureAsync(ContentId);
+                    successMessage = "Lecture deleted successfully";
+                    break;
+            }
+
+            isSaving = false;
+
+            if (success)
+            {
+                await JS.InvokeVoidAsync("showToast", "success", successMessage);
+                Navigation.NavigateTo("/doctor/content");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("showToast", "error", "Failed to delete content");
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            isSaving = false;
+            Console.WriteLine($"Error deleting content: {ex.Message}");
+            await JS.InvokeVoidAsync("showToast", "error", $"Error: {ex.Message}");
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        // Clean up resources if needed
+    }
+}

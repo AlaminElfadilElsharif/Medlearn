@@ -1,0 +1,567 @@
+﻿@implements IDisposable
+
+<div class="document-container" style="position: relative; width: 100%; height: 100%;">
+    <!-- Document controls -->
+    <div class="document-controls bg-dark p-2 d-flex justify-content-between align-items-center">
+        <div class="text-white">
+            <i class="fas @GetDocumentIcon(Material.ContentUrl) me-2"></i>
+            @GetFileTypeDisplayName(Material.ContentUrl)
+            @if (!string.IsNullOrEmpty(Material.Title))
+            {
+                <span class="ms-2">- @Material.Title</span>
+            }
+        </div>
+        <div class="d-flex align-items-center">
+            <button class="btn btn-sm btn-outline-light me-2" @onclick="IncreaseFont" title="Increase Font" disabled="@isLoading">
+                <i class="fas fa-search-plus"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-light me-2" @onclick="DecreaseFont" title="Decrease Font" disabled="@isLoading">
+                <i class="fas fa-search-minus"></i>
+            </button>
+            <span class="text-white me-3" style="min-width: 80px;">@(fontSize)px</span>
+            
+            <select class="form-select form-select-sm w-auto me-3" @bind="textTheme" disabled="@isLoading">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="sepia">Sepia</option>
+            </select>
+            
+            @if (Material.IsDownloadable)
+            {
+                <button class="btn btn-sm btn-outline-light me-2" @onclick="DownloadFile" title="Download" disabled="@isLoading">
+                    <i class="fas fa-download"></i>
+                </button>
+            }
+            <button class="btn btn-sm btn-outline-light" @onclick="FullScreenDocument" title="Full Screen" disabled="@isLoading">
+                <i class="fas fa-expand-arrows-alt"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Document Display Area -->
+    <div id="document-viewer" 
+         class="document-display-area @($"theme-{textTheme}")" 
+         style="height: calc(100% - 60px); overflow: auto; background: inherit;"
+         @ref="documentContainerRef"
+         @onscroll="OnDocumentScroll">
+        
+        @if (documentHtml != null && !isLoading && !isConvertingDocument)
+        {
+            <!-- Show document content -->
+            <div style="display: block; width: 100%; min-height: 100%;">
+                <div id="mammoth-content" 
+                     style="padding: 2rem; max-width: 1000px; margin: 0 auto; font-size: @(fontSize)px; background: inherit;"
+                     data-loaded="true">
+                    @((MarkupString)documentHtml)
+                </div>
+            </div>
+        }
+        else if (isLoading || isConvertingDocument)
+        {
+            <!-- Loading overlay -->
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+                       background: rgba(0,0,0,0.8); display: flex; flex-direction: column; 
+                       justify-content: center; align-items: center; z-index: 1000;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2 text-white">
+                    @(isConvertingDocument ? "Converting document..." : "Loading document...")
+                </div>
+            </div>
+        }
+        else if (loadError)
+        {
+            <!-- Error state -->
+            <div class="text-center py-5">
+                <i class="fas @GetDocumentIcon(Material.ContentUrl) fa-4x text-danger mb-3"></i>
+                <h5>@Material.Title</h5>
+                <p class="text-danger">@errorMessage</p>
+                @if (Material.IsDownloadable)
+                {
+                    <button class="btn btn-primary mt-3" @onclick="DownloadFile">
+                        <i class="fas fa-download me-2"></i> Download Document
+                    </button>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- Empty state -->
+            <div class="text-center py-5">
+                <i class="fas @GetDocumentIcon(Material.ContentUrl) fa-4x text-muted mb-3"></i>
+                <h5>@Material.Title</h5>
+                <p class="text-muted">No content available to display.</p>
+                @if (Material.IsDownloadable)
+                {
+                    <button class="btn btn-primary mt-3" @onclick="DownloadFile">
+                        <i class="fas fa-download me-2"></i> Download Document
+                    </button>
+                }
+            </div>
+        }
+    </div>
+    
+    <!-- Progress tracking section for document -->
+    @if (CurrentProgress != null && IsAuthenticated && HasAccess)
+    {
+        <ProgressSection Progress="CurrentProgress" 
+                        IsLoading="isLoading"
+                        OnMarkAsCompleted="HandleMarkAsCompleted"
+                        OnSaveProgress="SaveDocumentProgress"
+                        ProgressPercentage="@GetProgressPercentage()" />
+    }
+</div>
+
+<style>
+    /* Document viewer specific styles */
+    .document-container {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .theme-light {
+        background-color: white;
+        color: black;
+    }
+    
+    .theme-dark {
+        background-color: #1a1a1a;
+        color: #f0f0f0;
+    }
+    
+    .theme-sepia {
+        background-color: #f4ecd8;
+        color: #5b4636;
+    }
+    
+    #mammoth-content {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: inherit;
+        background: inherit;
+    }
+    
+    #mammoth-content h1, 
+    #mammoth-content h2, 
+    #mammoth-content h3, 
+    #mammoth-content h4, 
+    #mammoth-content h5, 
+    #mammoth-content h6 {
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+    
+    #mammoth-content p {
+        margin-bottom: 1em;
+        text-align: left;
+    }
+    
+    #mammoth-content ul, 
+    #mammoth-content ol {
+        margin-left: 2em;
+        margin-bottom: 1em;
+    }
+    
+    #mammoth-content table {
+        border-collapse: collapse;
+        margin-bottom: 1em;
+        width: 100%;
+    }
+    
+    #mammoth-content table th,
+    #mammoth-content table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    
+    #mammoth-content img {
+        max-width: 100%;
+        height: auto;
+        margin: 1em 0;
+        display: block;
+    }
+    
+    .theme-dark #mammoth-content table th,
+    .theme-dark #mammoth-content table td {
+        border-color: #555;
+    }
+    
+    .theme-sepia #mammoth-content table th,
+    .theme-sepia #mammoth-content table td {
+        border-color: #d4b483;
+    }
+    
+    .document-display-area::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    .document-display-area::-webkit-scrollbar-track {
+        background: #2a2a2a;
+        border-radius: 4px;
+    }
+    
+    .document-display-area::-webkit-scrollbar-thumb {
+        background: #555;
+        border-radius: 4px;
+    }
+    
+    .document-display-area,
+    #mammoth-content,
+    #mammoth-content * {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        -moz-user-select: text !important;
+        -ms-user-select: text !important;
+    }
+</style>
+
+@code {
+    [Parameter] public LearningMaterialDto Material { get; set; }
+    [Parameter] public ProgressTrackingDto? CurrentProgress { get; set; }
+    [Parameter] public int CurrentEnrollmentId { get; set; }
+    [Parameter] public bool IsAuthenticated { get; set; }
+    [Parameter] public bool HasAccess { get; set; }
+    [Parameter] public EventCallback<ProgressUpdateEventArgs> OnProgressUpdated { get; set; }
+    [Parameter] public EventCallback OnMarkAsCompleted { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+    
+    private ElementReference documentContainerRef;
+    private string documentHtml = string.Empty;
+    private bool isLoading = true;
+    private bool isConvertingDocument = false;
+    private bool loadError = false;
+    private string errorMessage = string.Empty;
+    private int fontSize = 16;
+    private string textTheme = "light";
+    private double lastScrollPercentage = 0;
+    private DateTime lastScrollSave = DateTime.UtcNow;
+    private DateTime lastProgressSave = DateTime.UtcNow;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDocumentContent();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadMammothJs();
+        }
+    }
+    
+    private async Task LoadDocumentContent()
+    {
+        try
+        {
+            isConvertingDocument = true;
+            isLoading = true;
+            loadError = false;
+            errorMessage = string.Empty;
+            
+            StateHasChanged();
+            await Task.Delay(50);
+            
+            Console.WriteLine($"Loading document for Material ID: {Material.Id}");
+            
+            // Get the document bytes
+            var documentBytes = await SecureFileViewerService.GetDocumentBytesAsync(Material.Id);
+            
+            if (documentBytes == null || documentBytes.Length == 0)
+            {
+                throw new Exception("Failed to retrieve document content (empty or null)");
+            }
+            
+            Console.WriteLine($"Retrieved document: {documentBytes.Length} bytes");
+            
+            // Convert to base64 for JavaScript
+            var base64String = Convert.ToBase64String(documentBytes);
+            
+            // Check if file is supported by Mammoth
+            if (!IsWordDocumentSupported(Material.ContentUrl))
+            {
+                throw new Exception($"Document format not supported for preview: {Material.ContentUrl}");
+            }
+            
+            // Convert to HTML using Mammoth.js
+            documentHtml = await ConvertDocumentToHtml(base64String);
+            
+            if (string.IsNullOrEmpty(documentHtml))
+            {
+                throw new Exception("Failed to convert document to HTML (empty result)");
+            }
+            
+            isConvertingDocument = false;
+            isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            loadError = true;
+            errorMessage = $"Error loading document: {ex.Message}";
+            isConvertingDocument = false;
+            isLoading = false;
+            documentHtml = null;
+            await OnError.InvokeAsync($"Error loading document: {ex.Message}");
+        }
+    }
+    
+    private async Task<string> ConvertDocumentToHtml(string base64String)
+    {
+        try
+        {
+            // Ensure Mammoth.js is loaded
+            await LoadMammothJs();
+            
+            // Call JavaScript function to convert DOCX to HTML
+            var result = await JS.InvokeAsync<DocumentConversionResult>("convertDocxToHtml", base64String);
+            
+            if (result == null || string.IsNullOrEmpty(result.Html))
+            {
+                return "<div class='alert alert-info'><i class='fas fa-info-circle'></i> Document appears to be empty or contains no convertible content.</div>";
+            }
+            
+            return SanitizeAndOptimizeHtml(result.Html);
+        }
+        catch (Exception ex)
+        {
+            return $"<div class='alert alert-danger'><i class='fas fa-exclamation-circle'></i> Error displaying document: {EscapeHtml(ex.Message)}</div>";
+        }
+    }
+    
+    private string SanitizeAndOptimizeHtml(string html)
+    {
+        if (string.IsNullOrEmpty(html))
+            return "<div class='alert alert-info'>No content available</div>";
+        
+        try
+        {
+            var cleaned = html;
+            
+            // Remove potentially dangerous elements
+            cleaned = System.Text.RegularExpressions.Regex.Replace(
+                cleaned,
+                @"<(script|iframe|frame|frameset|object|embed|applet)[^>]*>[\s\S]*?</\1>",
+                "",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            
+            // Add Bootstrap classes for better styling
+            cleaned = cleaned.Replace("<table>", "<div class='table-responsive'><table class='table table-bordered'>")
+                             .Replace("</table>", "</table></div>");
+            
+            return $"<div class='document-content'>{cleaned}</div>";
+        }
+        catch
+        {
+            return $"<div class='document-content'>{html}</div>";
+        }
+    }
+    
+    private async Task LoadMammothJs()
+    {
+        try
+        {
+            var isLoaded = await JS.InvokeAsync<bool>("checkMammothLoaded");
+            
+            if (!isLoaded)
+            {
+                await JS.InvokeVoidAsync("loadMammothLibrary");
+                await Task.Delay(500);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Mammoth.js: {ex.Message}");
+        }
+    }
+    
+    private bool IsWordDocumentSupported(string url)
+    {
+        var ext = Path.GetExtension(url)?.ToLower();
+        return ext == ".docx" || ext == ".doc";
+    }
+    
+    private async Task OnDocumentScroll()
+    {
+        if (!IsAuthenticated || !HasAccess) return;
+        
+        // Debounce to avoid too many updates
+        if ((DateTime.UtcNow - lastScrollSave).TotalSeconds < 3) return;
+        
+        try
+        {
+            // Get scroll percentage
+            var scrollPercentage = await GetScrollPercentage();
+            
+            if (scrollPercentage > lastScrollPercentage)
+            {
+                lastScrollPercentage = scrollPercentage;
+                
+                // Auto-save if scrolled significantly
+                if (scrollPercentage > 0.1 && (DateTime.UtcNow - lastProgressSave).TotalSeconds > 15)
+                {
+                    await SaveDocumentProgress();
+                    lastProgressSave = DateTime.UtcNow;
+                }
+                
+                lastScrollSave = DateTime.UtcNow;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error tracking scroll progress: {ex.Message}");
+        }
+    }
+    
+    private async Task<double> GetScrollPercentage()
+    {
+        try
+        {
+            return await JS.InvokeAsync<double>("getScrollPercentage", documentContainerRef);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+    
+    private async Task SaveDocumentProgress()
+    {
+        if (!IsAuthenticated || !HasAccess || CurrentEnrollmentId == 0) return;
+        
+        try
+        {
+            // Calculate time spent reading
+            int readingTime = CalculateReadingTime(lastScrollPercentage);
+            bool isCompleted = lastScrollPercentage >= 0.95;
+            
+            var args = new ProgressUpdateEventArgs
+            {
+                IsCompleted = isCompleted,
+                TimeSpentSeconds = (CurrentProgress?.TimeSpentSeconds ?? 0) + readingTime,
+                LastPositionSeconds = 0
+            };
+            
+            await OnProgressUpdated.InvokeAsync(args);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving scroll progress: {ex.Message}");
+        }
+    }
+    
+    private int CalculateReadingTime(double scrollPercentage)
+    {
+        // Estimate reading time based on scroll progress
+        double progressChange = scrollPercentage - lastScrollPercentage;
+        
+        if (progressChange <= 0) return 0;
+        
+        return (int)(progressChange * 60);
+    }
+    
+    private double GetProgressPercentage()
+    {
+        if (CurrentProgress == null) return 0;
+        
+        if (CurrentProgress.IsCompleted) return 100;
+        
+        return Math.Min(100, Math.Max(0, lastScrollPercentage * 100));
+    }
+    
+    private async Task HandleMarkAsCompleted()
+    {
+        await OnMarkAsCompleted.InvokeAsync();
+    }
+    
+    private void IncreaseFont()
+    {
+        fontSize = Math.Min(fontSize + 2, 32);
+        StateHasChanged();
+    }
+    
+    private void DecreaseFont()
+    {
+        fontSize = Math.Max(fontSize - 2, 10);
+        StateHasChanged();
+    }
+    
+    private async Task FullScreenDocument()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("toggleFullScreen", documentContainerRef);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error entering fullscreen: {ex.Message}");
+        }
+    }
+    
+    private async Task DownloadFile()
+    {
+        try
+        {
+            await SecureFileViewerService.DownloadMaterialAsync(Material.Id, Material.Title);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error downloading file: {ex.Message}");
+            await OnError.InvokeAsync("Download failed");
+        }
+    }
+    
+    private string GetDocumentIcon(string url)
+    {
+        var ext = Path.GetExtension(url)?.ToLower();
+        return ext switch
+        {
+            ".doc" or ".docx" => "fa-file-word",
+            ".xls" or ".xlsx" => "fa-file-excel",
+            ".ppt" or ".pptx" => "fa-file-powerpoint",
+            ".txt" => "fa-file-alt",
+            ".rtf" => "fa-file-alt",
+            _ => "fa-file"
+        };
+    }
+    
+    private string GetFileTypeDisplayName(string url)
+    {
+        var ext = Path.GetExtension(url)?.ToLower();
+        return ext switch
+        {
+            ".doc" => "Microsoft Word Document",
+            ".docx" => "Microsoft Word Document",
+            ".txt" => "Text File",
+            ".rtf" => "Rich Text Format",
+            _ => "Document"
+        };
+    }
+    
+    private string EscapeHtml(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        
+        return text.Replace("&", "&amp;")
+                   .Replace("<", "&lt;")
+                   .Replace(">", "&gt;")
+                   .Replace("\"", "&quot;")
+                   .Replace("'", "&#39;");
+    }
+    
+    private class DocumentConversionResult
+    {
+        public string? Html { get; set; }
+        public string? Error { get; set; }
+    }
+    
+    public void Dispose()
+    {
+        // Clean up if needed
+    }
+}

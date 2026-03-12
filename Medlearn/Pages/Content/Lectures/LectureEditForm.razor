@@ -1,0 +1,331 @@
+﻿
+@if (Data == null)
+{
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Lecture data not available
+    </div>
+}
+else
+{
+    <!-- Desktop View (md and up) -->
+    <div class="d-none d-md-block">
+        <div class="row">
+            <!-- Title -->
+            <div class="col-12 mb-3">
+                <label class="form-label fw-bold">Title *</label>
+                <input type="text" class="form-control @(Errors.ContainsKey("Title") ? "is-invalid" : "")"
+                       value="@Data.Title"
+                       @oninput="@(async (ChangeEventArgs e) => await UpdateTitle(e.Value?.ToString() ?? ""))" />
+                @if (Errors.ContainsKey("Title"))
+                {
+                    <div class="invalid-feedback">@Errors["Title"]</div>
+                }
+            </div>
+
+            <!-- Description -->
+            <div class="col-12 mb-3">
+                <label class="form-label fw-bold">Description *</label>
+                <textarea class="form-control @(Errors.ContainsKey("Description") ? "is-invalid" : "")"
+                          rows="4"
+                          value="@Data.Description"
+                          @oninput="@(async (ChangeEventArgs e) => await UpdateDescription(e.Value?.ToString() ?? ""))"></textarea>
+                @if (Errors.ContainsKey("Description"))
+                {
+                    <div class="invalid-feedback">@Errors["Description"]</div>
+                }
+            </div>
+
+            <!-- Price, Order, Duration - Desktop (side by side) -->
+            <div class="col-md-4 mb-3">
+                <label class="form-label fw-bold">Price ($)</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" step="0.01" min="0" class="form-control"
+                           value="@(Data.Price.ToString("0.00"))"
+                           @oninput="@(async (ChangeEventArgs e) => {
+                           var val = decimal.TryParse(e.Value?.ToString(), out var decVal) ? decVal : 0;
+                           await UpdatePrice(val);
+                       })" />
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label class="form-label fw-bold">Order in Course</label>
+            <input type="number" min="1" class="form-control @(Errors.ContainsKey("Order") ? "is-invalid" : "")"
+                   value="@(Data.Order.ToString())"
+                   @oninput="@(async (ChangeEventArgs e) => {
+                   var val = int.TryParse(e.Value?.ToString(), out var intVal) ? intVal : 1;
+                   await UpdateOrder(val);
+                                          })" />
+            @if (Errors.ContainsKey("Order"))
+            {
+                <div class="invalid-feedback">@Errors["Order"]</div>
+            }
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label class="form-label fw-bold">Duration (minutes)</label>
+            <input type="number" min="1" class="form-control @(Errors.ContainsKey("Duration") ? "is-invalid" : "")"
+                   value="@(Data.EstimatedDurationMinutes.ToString())"
+                   @oninput="@(async (ChangeEventArgs e) => {
+                   var val = int.TryParse(e.Value?.ToString(), out var intVal) ? intVal : 1;
+                   await UpdateDuration(val);
+                                          })" />
+            @if (Errors.ContainsKey("Duration"))
+            {
+                <div class="invalid-feedback">@Errors["Duration"]</div>
+            }
+        </div>
+
+        <!-- Free Preview & Status Switches - Desktop -->
+        <div class="col-6 mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox"
+                       id="desktop-freePreview"
+                       checked="@Data.IsFreePreview"
+                       @onchange="@(async (ChangeEventArgs e) => {
+                       var isChecked = e.Value?.ToString() == "on" || e.Value?.ToString() == "true";
+                       await UpdateIsFreePreview(isChecked);
+                                                  })" />
+                <label class="form-check-label fw-bold" for="desktop-freePreview">
+                    Free Preview
+                </label>
+                <small class="text-muted d-block">
+                    Allow users to preview this lecture without enrolling
+                </small>
+            </div>
+        </div>
+
+        <div class="col-6 mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox"
+                       id="desktop-isActive"
+                       checked="@Data.IsActive"
+                       @onchange="@(async (ChangeEventArgs e) => {
+                                                      var isChecked = e.Value?.ToString() == "on" || e.Value?.ToString() == "true";
+                       await UpdateIsActive(isChecked);
+                                                  })" />
+                <label class="form-check-label fw-bold" for="desktop-isActive">
+                    Active
+                </label>
+                <small class="text-muted d-block">
+                    @(Data.IsActive
+                                        ? "This lecture is visible to users and available for enrollment." 
+                                                        : "This lecture is hidden from users and cannot be enrolled in.")
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile View (below md) -->
+<div class="d-block d-md-none">
+    <!-- Title - Mobile -->
+    <div class="mb-4">
+        <label class="form-label small fw-bold text-uppercase text-muted mb-1">Title *</label>
+        <input type="text" class="form-control form-control-lg @(Errors.ContainsKey("Title") ? "is-invalid" : "")"
+               value="@Data.Title"
+               placeholder="Enter lecture title"
+               @oninput="@(async (ChangeEventArgs e) => await UpdateTitle(e.Value?.ToString() ?? ""))" />
+        @if (Errors.ContainsKey("Title"))
+        {
+            <div class="invalid-feedback small">@Errors["Title"]</div>
+        }
+        <small class="form-text text-muted">@(Data.Title?.Length ?? 0)/200 characters</small>
+    </div>
+
+    <!-- Description - Mobile -->
+    <div class="mb-4">
+        <label class="form-label small fw-bold text-uppercase text-muted mb-1">Description *</label>
+        <textarea class="form-control @(Errors.ContainsKey("Description") ? "is-invalid" : "")"
+                  rows="4"
+                  value="@Data.Description"
+                  placeholder="Describe what this lecture covers"
+                  @oninput="@(async (ChangeEventArgs e) => await UpdateDescription(e.Value?.ToString() ?? ""))"></textarea>
+        @if (Errors.ContainsKey("Description"))
+        {
+            <div class="invalid-feedback small">@Errors["Description"]</div>
+        }
+        <small class="form-text text-muted">@(Data.Description?.Length ?? 0)/1000 characters</small>
+    </div>
+
+    <!-- Price, Order, Duration - Mobile (collapsible section) -->
+    <div class="mb-4">
+        <div class="d-flex align-items-center mb-2">
+            <h6 class="fw-bold mb-0">Lecture Settings</h6>
+            <small class="text-muted ms-2">(optional)</small>
+        </div>
+
+        <div class="card bg-light border-0">
+            <div class="card-body p-3">
+                <!-- Price - Mobile -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Price</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">$</span>
+                        <input type="number" step="0.01" min="0" class="form-control bg-white"
+                               value="@(Data.Price.ToString("0.00"))"
+                               placeholder="0.00"
+                               @oninput="@(async (ChangeEventArgs e) => {
+                               var val = decimal.TryParse(e.Value?.ToString(), out var decVal) ? decVal : 0;
+                               await UpdatePrice(val);
+                                                                  })" />
+                    </div>
+                    <small class="text-muted">Leave as $0.00 for free</small>
+                </div>
+
+                <!-- Order - Mobile -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Order in Course</label>
+                    <input type="number" min="1" class="form-control bg-white @(Errors.ContainsKey("Order") ? "is-invalid" : "")"
+                           value="@(Data.Order.ToString())"
+                           placeholder="1"
+                           @oninput="@(async (ChangeEventArgs e) => {
+                                                              var val = int.TryParse(e.Value?.ToString(), out var intVal) ? intVal : 1;
+                           await UpdateOrder(val);
+                                                          })" />
+                    @if (Errors.ContainsKey("Order"))
+                    {
+                        <div class="invalid-feedback small">@Errors["Order"]</div>
+                    }
+                </div>
+
+                <!-- Duration - Mobile -->
+                <div class="mb-0">
+                    <label class="form-label small fw-bold">Duration (minutes)</label>
+                    <input type="number" min="1" class="form-control bg-white @(Errors.ContainsKey("Duration") ? "is-invalid" : "")"
+                           value="@(Data.EstimatedDurationMinutes.ToString())"
+                           placeholder="30"
+                           @oninput="@(async (ChangeEventArgs e) => {
+                           var val = int.TryParse(e.Value?.ToString(), out var intVal) ? intVal : 1;
+                           await UpdateDuration(val);
+                                                          })" />
+                    @if (Errors.ContainsKey("Duration"))
+                    {
+                        <div class="invalid-feedback small">@Errors["Duration"]</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Free Preview & Status Switches - Mobile (with better touch targets) -->
+    <div class="mb-3">
+        <div class="card border-0 bg-light">
+            <div class="card-body p-3">
+                <!-- Free Preview Switch - Mobile -->
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <label class="fw-bold d-block" for="mobile-freePreview">Free Preview</label>
+                        <small class="text-muted">Allow preview without enrollment</small>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox"
+                               id="mobile-freePreview"
+                               style="width: 3rem; height: 1.5rem;"
+                               checked="@Data.IsFreePreview"
+                               @onchange="@(async (ChangeEventArgs e) => {
+                               var isChecked = e.Value?.ToString() == "on" || e.Value?.ToString() == "true";
+                               await UpdateIsFreePreview(isChecked);
+                                                                  })" />
+                    </div>
+                </div>
+
+                <!-- Status Switch - Mobile -->
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <label class="fw-bold d-block" for="mobile-isActive">Status</label>
+                        <small class="text-muted">@(Data.IsActive ? "Active & visible" : "Inactive & hidden")</small>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox"
+                               id="mobile-isActive"
+                               style="width: 3rem; height: 1.5rem;"
+                               checked="@Data.IsActive"
+                               @onchange="@(async (ChangeEventArgs e) => {
+                                                                      var isChecked = e.Value?.ToString() == "on" || e.Value?.ToString() == "true";
+                               await UpdateIsActive(isChecked);
+                                                                  })" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats - Mobile -->
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-2 text-center">
+                    <small>Order</small>
+                    <h4 class="mb-0">@Data.Order</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="card bg-success text-white">
+                <div class="card-body p-2 text-center">
+                    <small>Duration</small>
+                    <h4 class="mb-0">@Data.EstimatedDurationMinutes min</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+@code {
+    [Parameter] public LectureDto? Data { get; set; }
+    [Parameter] public Dictionary<string, string> Errors { get; set; } = new();
+    [Parameter] public EventCallback<LectureDto> OnDataChanged { get; set; }
+
+    private async Task UpdateTitle(string value)
+    {
+        if (Data == null) return;
+        Data.Title = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdateDescription(string value)
+    {
+        if (Data == null) return;
+        Data.Description = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdatePrice(decimal value)
+    {
+        if (Data == null) return;
+        Data.Price = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdateOrder(int value)
+    {
+        if (Data == null) return;
+        Data.Order = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdateDuration(int value)
+    {
+        if (Data == null) return;
+        Data.EstimatedDurationMinutes = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdateIsFreePreview(bool value)
+    {
+        if (Data == null) return;
+        Data.IsFreePreview = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+
+    private async Task UpdateIsActive(bool value)
+    {
+        if (Data == null) return;
+        Data.IsActive = value;
+        await OnDataChanged.InvokeAsync(Data);
+    }
+}

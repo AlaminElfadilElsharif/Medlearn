@@ -1,0 +1,950 @@
+﻿@page "/admin/contact-messages"
+@attribute [Authorize(Roles = "Admin")]
+
+
+<PageTitle>Contact Messages - Admin</PageTitle>
+
+<!-- Include Bootstrap Icons if not already included -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<style>
+    /* Admin Contact Messages Styles */
+    .admin-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        color: white;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .message-row {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .message-row:hover {
+        background-color: #f8f9fa;
+    }
+
+    .message-row.unread {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+
+    .message-row.unread:hover {
+        background-color: #ffe69c;
+    }
+
+    .message-row.replied {
+        background-color: #d1e7dd;
+        border-left: 4px solid #198754;
+    }
+
+    .message-row.selected {
+        background-color: #cfe2ff;
+        border: 2px solid #0d6efd;
+    }
+
+    .message-detail-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .message-detail-card .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        padding: 1rem 1.5rem;
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .info-value {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .message-content {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        white-space: pre-wrap;
+        font-size: 1rem;
+        line-height: 1.6;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .reply-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .admin-reply {
+        background: #e7f3ff;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        border-left: 4px solid #198754;
+    }
+
+    .badge-status {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+
+    .badge-status.new {
+        background: #dc3545;
+        color: white;
+    }
+
+    .badge-status.in-progress {
+        background: #ffc107;
+        color: #000;
+    }
+
+    .badge-status.replied {
+        background: #198754;
+        color: white;
+    }
+
+    .filter-section {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+
+    .pagination-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    /* Mobile Optimizations */
+    @@media (max-width: 768px) {
+        .admin-header {
+            padding: 1.5rem 0;
+        }
+
+        .stat-card {
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+        }
+
+        .filter-section .row > div {
+            margin-bottom: 0.5rem;
+        }
+
+        .message-detail-card .card-body {
+            padding: 1rem;
+        }
+
+        .message-content {
+            padding: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .reply-section {
+            padding: 1rem;
+        }
+    }
+
+    /* Loading Spinner */
+    .loading-spinner {
+        display: inline-block;
+        width: 2rem;
+        height: 2rem;
+        border: 0.25rem solid #f3f3f3;
+        border-top: 0.25rem solid #0d6efd;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Reply Modal */
+    .reply-modal .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .reply-modal .btn-close {
+        filter: brightness(0) invert(1);
+    }
+
+    /* Table Responsive */
+    @@media (max-width: 576px) {
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+        
+        .table td, .table th {
+            padding: 0.5rem;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.4rem;
+            font-size: 0.75rem;
+        }
+    }
+</style>
+
+<!-- Admin Header -->
+<div class="admin-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 mb-2">
+                    <i class="bi bi-envelope-paper me-2"></i>
+                    Contact Messages
+                </h1>
+                <p class="mb-0 opacity-75">Manage and respond to user inquiries</p>
+            </div>
+            <button class="btn btn-light" @onclick="RefreshData">
+                <i class="bi bi-arrow-repeat me-2"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="container mb-5">
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
+                        <i class="bi bi-envelope"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 text-muted">Total</h6>
+                        <h3 class="mb-0">@totalCount</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                        <i class="bi bi-envelope-exclamation"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 text-muted">Unread</h6>
+                        <h3 class="mb-0">@unreadCount</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 text-muted">Replied</h6>
+                        <h3 class="mb-0">@repliedCount</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon bg-info bg-opacity-10 text-info me-3">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1 text-muted">Avg Response</h6>
+                        <h3 class="mb-0">@averageResponseTime</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-white">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Search messages..." 
+                           @bind="searchTerm"
+                           @bind:event="oninput"
+                           @onkeyup="() => DebounceSearch()" />
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <select class="form-select" @bind="statusFilter">
+                    <option value="">All Status</option>
+                    <option value="New">New</option>
+                    <option value="InProgress">In Progress</option>
+                    <option value="Replied">Replied</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <select class="form-select" @bind="unreadFilter">
+                    <option value="">All Messages</option>
+                    <option value="unread">Unread Only</option>
+                    <option value="read">Read Only</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <select class="form-select" @bind="pageSize">
+                    <option value="10">10 per page</option>
+                    <option value="20">20 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages List and Detail View -->
+    <div class="row g-4">
+        <!-- Messages List (Left Column) -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ul me-2"></i>
+                            Messages
+                        </h5>
+                        <span class="badge bg-primary">@messages?.Count() of @totalCount</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="loading-spinner mb-3"></div>
+                            <p class="text-muted">Loading messages...</p>
+                        </div>
+                    }
+                    else if (messages == null || !messages.Any())
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-envelope-open display-1 text-muted mb-3"></i>
+                            <h5>No messages found</h5>
+                            <p class="text-muted">There are no contact messages to display.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var message in messages)
+                            {
+                                <div class="list-group-item message-row @GetMessageRowClass(message) @(selectedMessage?.Id == message.Id ? "selected" : "")"
+                                     @onclick="() => SelectMessage(message.Id)">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1">@message.Name</h6>
+                                            <small class="text-muted">@message.Email</small>
+                                        </div>
+                                        <span class="badge @GetStatusBadgeClass(message.Status)">@message.Status</span>
+                                    </div>
+                                    <p class="mb-2 small text-truncate">@message.Subject</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock me-1"></i>
+                                            @message.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                                        </small>
+                                        <div>
+                                            @if (!message.IsRead)
+                                            {
+                                                <span class="badge bg-warning text-dark me-1">New</span>
+                                            }
+                                            @if (message.IsReplied)
+                                            {
+                                                <span class="badge bg-success">Replied</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                
+                <!-- Pagination -->
+                <div class="card-footer bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div class="pagination-info mb-2 mb-sm-0">
+                            Showing @(((currentPage - 1) * pageSize) + 1) - @Math.Min(currentPage * pageSize, totalCount) of @totalCount
+                        </div>
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </button>
+                                </li>
+                                @for (int i = 1; i <= totalPages; i++)
+                                {
+                                    <li class="page-item @(currentPage == i ? "active" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                                    </li>
+                                }
+                                <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Detail View (Right Column) -->
+        <div class="col-lg-7">
+            @if (selectedMessage == null)
+            {
+                <div class="message-detail-card card">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-envelope-paper display-1 text-muted mb-3"></i>
+                        <h4>Select a message</h4>
+                        <p class="text-muted">Choose a message from the list to view details</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="message-detail-card card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-envelope me-2"></i>
+                            Message Details
+                        </h5>
+                        <div>
+                            <button class="btn btn-sm btn-light me-2" @onclick="() => ToggleReadStatus(selectedMessage.Id)">
+                                <i class="bi @(selectedMessage.IsRead ? "bi-envelope" : "bi-envelope-open") me-1"></i>
+                                @(selectedMessage.IsRead ? "Mark Unread" : "Mark Read")
+                            </button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(selectedMessage.Id)">
+                                <i class="bi bi-trash me-1"></i>
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Sender Info -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="info-label">From</div>
+                                <div class="info-value">
+                                    <strong>@selectedMessage.Name</strong><br />
+                                    <a href="mailto:@selectedMessage.Email">@selectedMessage.Email</a>
+                                    @if (!string.IsNullOrEmpty(selectedMessage.Phone))
+                                    {
+                                        <br /><a href="tel:@selectedMessage.Phone">@selectedMessage.Phone</a>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-label">Received</div>
+                                <div class="info-value">
+                                    @selectedMessage.CreatedAt.ToString("MMMM dd, yyyy")<br />
+                                    <small class="text-muted">@selectedMessage.CreatedAt.ToString("hh:mm tt")</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- User Info (if authenticated) -->
+                        @if (selectedMessage.IsAuthenticatedUser && selectedMessage.UserId.HasValue)
+                        {
+                            <div class="alert alert-info mb-4">
+                                <i class="bi bi-person-check me-2"></i>
+                                <strong>Registered User:</strong> 
+                                <a href="/admin/users/@selectedMessage.UserId" target="_blank">
+                                    View Profile <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                </a>
+                            </div>
+                        }
+
+                        <!-- Subject -->
+                        <div class="mb-3">
+                            <div class="info-label">Subject</div>
+                            <div class="info-value fw-bold">@selectedMessage.Subject</div>
+                        </div>
+
+                        <!-- Message -->
+                        <div class="mb-4">
+                            <div class="info-label mb-2">Message</div>
+                            <div class="message-content">
+                                @selectedMessage.Message
+                            </div>
+                        </div>
+
+                        <!-- IP & User Agent (for admins) -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <small class="text-muted">
+                                    <i class="bi bi-geo-alt me-1"></i> IP: @(selectedMessage.IPAddress ?? "Unknown")
+                                </small><br />
+                                <small class="text-muted">
+                                    <i class="bi bi-browser-chrome me-1"></i> User Agent: @(selectedMessage.UserAgent ?? "Unknown")
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Existing Reply (if any) -->
+                        @if (!string.IsNullOrEmpty(selectedMessage.AdminReply))
+                        {
+                            <div class="admin-reply">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-reply-fill text-success me-2"></i>
+                                    <h6 class="mb-0">Admin Reply</h6>
+                                    <small class="text-muted ms-auto">
+                                        @(selectedMessage.RepliedAt?.ToString("MMM dd, yyyy HH:mm"))
+                                    </small>
+                                </div>
+                                <p class="mb-0">@selectedMessage.AdminReply</p>
+                                @if (!string.IsNullOrEmpty(selectedMessage.RepliedBy))
+                                {
+                                    <small class="text-muted mt-2 d-block">
+                                        Replied by: @selectedMessage.RepliedBy
+                                    </small>
+                                }
+                            </div>
+                        }
+
+                        <!-- Reply Section -->
+                        <div class="reply-section">
+                            <h6 class="mb-3">
+                                <i class="bi bi-reply me-2"></i>
+                                Reply to @selectedMessage.Name
+                            </h6>
+                            <textarea class="form-control mb-3" 
+                                      rows="4" 
+                                      placeholder="Type your reply here..."
+                                      @bind="replyText"></textarea>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary" 
+                                        @onclick="() => SendReply(selectedMessage.Id)"
+                                        disabled="@(string.IsNullOrWhiteSpace(replyText) || isSendingReply)">
+                                    @if (isSendingReply)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Sending...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            <i class="bi bi-send me-2"></i>
+                                            Send Reply
+                                        </span>
+                                    }
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="ClearReply">
+                                    <i class="bi bi-x-circle me-2"></i>
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade @(showDeleteModal ? "show d-block" : "")" 
+     id="deleteModal" 
+     tabindex="-1"
+     style="@(showDeleteModal ? "display: block; background-color: rgba(0,0,0,0.5);" : "display: none;")">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Confirm Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="CancelDelete"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this message from <strong>@deleteMessageName</strong>?</p>
+                <p class="text-muted small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                <button type="button" class="btn btn-danger" @onclick="DeleteMessage" disabled="@isDeleting">
+                    @if (isDeleting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        <span>Deleting...</span>
+                    }
+                    else
+                    {
+                        <span>Delete Message</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ContactMessageDto>? messages;
+    private ContactMessageDto? selectedMessage;
+    private int totalCount;
+    private int unreadCount;
+    private int repliedCount;
+    private string averageResponseTime = "N/A";
+    
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalPages => (int)Math.Ceiling((double)totalCount / pageSize);
+    
+    private string searchTerm = "";
+    private string statusFilter = "";
+    private string unreadFilter = "";
+    
+    private bool isLoading = true;
+    private bool isSendingReply = false;
+    private bool isDeleting = false;
+    
+    private string replyText = "";
+    
+    // Delete modal properties
+    private bool showDeleteModal = false;
+    private int deleteMessageId;
+    private string deleteMessageName = "";
+    
+    private Timer? searchDebounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        await LoadStatistics();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ContactService.GetContactMessagesAsync(currentPage, pageSize,
+                unreadFilter == "unread" ? true : 
+                unreadFilter == "read" ? false : null, 
+                searchTerm);
+            
+            if (result != null)
+            {
+                // Apply status filter client-side if needed
+                if (!string.IsNullOrEmpty(statusFilter))
+                {
+                    messages = result.Where(m => m.Status == statusFilter).ToList();
+                    totalCount = messages.Count;
+                }
+                else
+                {
+                    messages = result;
+                    // Get total count from headers - you'll need to implement this
+                    totalCount = messages.Count; // This should come from headers
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading messages: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadStatistics()
+    {
+        try
+        {
+            unreadCount = await ContactService.GetUnreadCountAsync();
+            
+            // Load all messages to calculate replied count and average response time
+            var allMessages = await ContactService.GetContactMessagesAsync(1, 1000);
+            if (allMessages != null)
+            {
+                repliedCount = allMessages.Count(m => m.IsReplied);
+                
+                // Calculate average response time (in hours)
+                var repliedMessages = allMessages.Where(m => m.IsReplied && m.RepliedAt.HasValue);
+                if (repliedMessages.Any())
+                {
+                    var avgHours = repliedMessages
+                        .Select(m => (m.RepliedAt!.Value - m.CreatedAt).TotalHours)
+                        .Average();
+                    
+                    if (avgHours < 24)
+                        averageResponseTime = $"{avgHours:F1}h";
+                    else
+                        averageResponseTime = $"{(avgHours / 24):F1}d";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading statistics: {ex.Message}");
+        }
+    }
+
+    private async void DebounceSearch()
+    {
+        searchDebounceTimer?.Dispose();
+        searchDebounceTimer = new Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                currentPage = 1;
+                await LoadData();
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || page > totalPages) return;
+        
+        currentPage = page;
+        await LoadData();
+        selectedMessage = null;
+    }
+
+    private async Task SelectMessage(int id)
+    {
+        if (selectedMessage?.Id == id) return;
+        
+        try
+        {
+            selectedMessage = await ContactService.GetContactMessageAsync(id);
+            
+            // Mark as read if not already
+            if (selectedMessage != null && !selectedMessage.IsRead)
+            {
+                await ContactService.MarkAsReadAsync(id);
+                selectedMessage.IsRead = true;
+                unreadCount--;
+                await LoadData(); // Refresh the list
+            }
+            
+            replyText = "";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading message: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleReadStatus(int id)
+    {
+        if (selectedMessage == null) return;
+        
+        try
+        {
+            if (selectedMessage.IsRead)
+            {
+                // Mark as unread (you might need to implement this endpoint)
+                // For now, we'll just toggle locally
+                selectedMessage.IsRead = false;
+                unreadCount++;
+            }
+            else
+            {
+                await ContactService.MarkAsReadAsync(id);
+                selectedMessage.IsRead = true;
+                unreadCount--;
+            }
+            
+            await LoadData(); // Refresh the list
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error toggling read status: {ex.Message}");
+        }
+    }
+
+    private async Task SendReply(int id)
+    {
+        if (string.IsNullOrWhiteSpace(replyText)) return;
+        
+        isSendingReply = true;
+        StateHasChanged();
+        
+        try
+        {
+            var success = await ContactService.ReplyToContactAsync(id, replyText);
+            
+            if (success)
+            {
+                // Refresh the message to show the reply
+                selectedMessage = await ContactService.GetContactMessageAsync(id);
+                replyText = "";
+                
+                // Show success message
+                await JS.InvokeVoidAsync("alert", "Reply sent successfully!");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Failed to send reply. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending reply: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", "An error occurred while sending the reply.");
+        }
+        finally
+        {
+            isSendingReply = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ClearReply()
+    {
+        replyText = "";
+    }
+
+    private void ConfirmDelete(int id)
+    {
+        deleteMessageId = id;
+        deleteMessageName = messages?.FirstOrDefault(m => m.Id == id)?.Name ?? "Unknown";
+        showDeleteModal = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteModal = false;
+        deleteMessageId = 0;
+        deleteMessageName = "";
+    }
+
+    private async Task DeleteMessage()
+    {
+        if (deleteMessageId == 0) return;
+        
+        isDeleting = true;
+        StateHasChanged();
+        
+        try
+        {
+            var success = await ContactService.DeleteContactMessageAsync(deleteMessageId);
+            
+            if (success)
+            {
+                showDeleteModal = false;
+                
+                if (selectedMessage?.Id == deleteMessageId)
+                {
+                    selectedMessage = null;
+                }
+                
+                await LoadData();
+                await LoadStatistics();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Failed to delete message. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting message: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", "An error occurred while deleting the message.");
+        }
+        finally
+        {
+            isDeleting = false;
+            showDeleteModal = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+        await LoadStatistics();
+    }
+
+    private string GetMessageRowClass(ContactMessageDto message)
+    {
+        if (!message.IsRead && !message.IsReplied)
+            return "unread";
+        if (message.IsReplied)
+            return "replied";
+        return "";
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "new" => "bg-danger",
+            "inprogress" => "bg-warning text-dark",
+            "replied" => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    public void Dispose()
+    {
+        searchDebounceTimer?.Dispose();
+    }
+}

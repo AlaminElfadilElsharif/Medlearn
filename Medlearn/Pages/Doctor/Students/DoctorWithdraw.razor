@@ -1,0 +1,887 @@
+﻿@page "/doctor/withdraw"
+
+
+<PageTitle>Withdraw Funds</PageTitle>
+
+<div class="doctor-withdraw">
+    <!-- Mobile Header -->
+    <div class="d-block d-md-none bg-primary text-white">
+        <div class="d-flex align-items-center p-3">
+            <button class="btn btn-link text-white p-0 me-3" @onclick="CancelWithdrawal">
+                <i class="fas fa-arrow-left fa-lg"></i>
+            </button>
+            <h5 class="mb-0 flex-grow-1">Withdraw Funds</h5>
+            <span class="badge bg-light text-primary">Balance: $@(balanceData?.AvailableBalance.ToString("N0") ?? "0")</span>
+        </div>
+    </div>
+
+    <!-- Desktop Header -->
+    <div class="d-none d-md-block container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="text-center mb-5">
+                    <h1>Withdraw Funds</h1>
+                    <p class="text-muted">Request withdrawal of your earnings</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid px-0 px-md-3">
+        <div class="row justify-content-center g-0 g-md-3">
+            <div class="col-12 col-md-8 col-lg-6">
+                @if (isLoading)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading withdrawal information...</p>
+                    </div>
+                }
+                else if (errorMessage != null)
+                {
+                    <div class="alert alert-danger m-3">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        @errorMessage
+                        <button class="btn btn-outline-danger btn-sm d-block mt-3" @onclick="LoadWithdrawalData">
+                            <i class="fas fa-redo me-1"></i> Retry
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <!-- Mobile Balance Card -->
+                    <div class="d-block d-md-none">
+                        <div class="bg-gradient-primary text-white p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="small opacity-75">Available Balance</span>
+                                <span class="small opacity-75">Min: $@minimumWithdrawal.ToString("N0")</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-end">
+                                <div>
+                                    <div class="h2 mb-0 fw-bold">$@(balanceData?.AvailableBalance.ToString("N2") ?? "0.00")</div>
+                                    <small class="opacity-75">Total earned: $@(balanceData?.TotalEarned.ToString("N2") ?? "0.00")</small>
+                                </div>
+                                <button class="btn btn-light btn-sm" @onclick="SetMaxAmount">
+                                    Withdraw Max
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Balance Card -->
+                    <div class="d-none d-md-block card mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted mb-1">Available Balance</h6>
+                                    <h2 class="text-success mb-0">$@(balanceData?.AvailableBalance.ToString("N2") ?? "0.00")</h2>
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Minimum withdrawal: $@minimumWithdrawal.ToString("N2")
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="mb-2">
+                                        <small class="text-muted">Pending Withdrawals</small>
+                                        <div class="fw-bold">$@(balanceData?.PendingWithdrawals.ToString("N2") ?? "0.00")</div>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted">Total Earned</small>
+                                        <div class="fw-bold">$@(balanceData?.TotalEarned.ToString("N2") ?? "0.00")</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Form Card -->
+                    <div class="card border-0 border-md rounded-0 rounded-md">
+                        <div class="card-body p-4">
+                            <!-- Mobile Form Title -->
+                            <h6 class="d-block d-md-none mb-4 fw-bold">
+                                <i class="fas fa-money-bill-wave me-2 text-primary"></i>
+                                Withdrawal Details
+                            </h6>
+
+                            <!-- Desktop Form Title -->
+                            <h5 class="d-none d-md-block card-title mb-4">Withdrawal Request</h5>
+
+                            <!-- Check for pending withdrawals -->
+                            @if (balanceData?.PendingWithdrawals > 0)
+                            {
+                                <div class="alert alert-warning mb-4">
+                                    <i class="fas fa-clock me-2"></i>
+                                    You have a pending withdrawal request of $@(balanceData?.PendingWithdrawals.ToString("N2")).
+                                    New requests can only be submitted after the current one is processed.
+                                </div>
+                            }
+
+                            <form @onsubmit="HandleWithdrawal">
+                                <!-- Amount Section -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-dollar-sign me-2 text-primary"></i>
+                                        Withdrawal Amount
+                                    </label>
+
+                                    <!-- Mobile Amount Input -->
+                                    <div class="d-block d-md-none">
+                                        <div class="input-group mb-2">
+                                            <span class="input-group-text bg-light">$</span>
+                                            <input type="number"
+                                                   class="form-control form-control-lg text-center @(amountError ? "is-invalid" : "")"
+                                                   @bind="withdrawalAmount"
+                                                   @bind:event="oninput"
+                                                   step="0.01"
+                                                   min="@minimumWithdrawal"
+                                                   max="@(balanceData?.AvailableBalance ?? 0)"
+                                                   placeholder="0.00"
+                                                   disabled="@(balanceData?.PendingWithdrawals > 0)" />
+                                        </div>
+                                        <div class="d-flex justify-content-between small">
+                                            <span class="text-muted">Min: $@minimumWithdrawal.ToString("N0")</span>
+                                            <span class="text-muted">Max: $@(balanceData?.AvailableBalance.ToString("N0") ?? "0")</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Desktop Amount Input -->
+                                    <div class="d-none d-md-block">
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number"
+                                                   class="form-control @(amountError ? "is-invalid" : "")"
+                                                   @bind="withdrawalAmount"
+                                                   @bind:event="oninput"
+                                                   step="0.01"
+                                                   min="@minimumWithdrawal"
+                                                   max="@(balanceData?.AvailableBalance ?? 0)"
+                                                   disabled="@(balanceData?.PendingWithdrawals > 0)" />
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    @onclick="SetMaxAmount"
+                                                    disabled="@(balanceData?.PendingWithdrawals > 0)">
+                                                Max
+                                            </button>
+                                        </div>
+                                        <div class="d-flex justify-content-between mt-2">
+                                            <small class="text-muted">
+                                                Available: $@(balanceData?.AvailableBalance.ToString("N2") ?? "0.00")
+                                            </small>
+                                            <small class="text-muted">
+                                                Minimum: $@minimumWithdrawal.ToString("N2")
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    @if (amountError)
+                                    {
+                                        <div class="text-danger small mt-2">
+                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                            @amountErrorMessage
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Quick Amount Selector (Mobile) -->
+                                <div class="d-block d-md-none mb-4">
+                                    <label class="form-label small">Quick Select</label>
+                                    <div class="row g-2">
+                                        <div class="col-4">
+                                            <button type="button" class="btn btn-outline-primary w-100 btn-sm"
+                                                    @onclick="() => SetQuickAmount(100)"
+                                                    disabled="@(balanceData?.PendingWithdrawals > 0)">
+                                                $100
+                                            </button>
+                                        </div>
+                                        <div class="col-4">
+                                            <button type="button" class="btn btn-outline-primary w-100 btn-sm"
+                                                    @onclick="() => SetQuickAmount(500)"
+                                                    disabled="@(balanceData?.PendingWithdrawals > 0)">
+                                                $500
+                                            </button>
+                                        </div>
+                                        <div class="col-4">
+                                            <button type="button" class="btn btn-outline-primary w-100 btn-sm"
+                                                    @onclick="() => SetQuickAmount(1000)"
+                                                    disabled="@(balanceData?.PendingWithdrawals > 0)">
+                                                $1000
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Method (Mobile - Vertical List) -->
+                                <div class="d-block d-md-none mb-4">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-credit-card me-2 text-primary"></i>
+                                        Payment Method
+                                    </label>
+                                    <div class="vstack gap-2">
+                                        @foreach (var method in paymentMethods)
+                                        {
+                                            <div class="border rounded p-3 @(selectedMethod?.Id == method.Id ? "border-primary bg-primary bg-opacity-10" : "")"
+                                                 @onclick="() => SelectMethod(method)">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="me-3">
+                                                        <i class="fas @method.Icon fa-lg @(selectedMethod?.Id == method.Id ? "text-primary" : "text-muted")"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="fw-bold">@method.Name</div>
+                                                        <small class="text-muted">@method.Description</small>
+                                                    </div>
+                                                    <div>
+                                                        @if (selectedMethod?.Id == method.Id)
+                                                        {
+                                                            <i class="fas fa-check-circle text-primary"></i>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="far fa-circle text-muted"></i>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (paymentMethodError)
+                                    {
+                                        <div class="text-danger small mt-2">
+                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                            Please select a payment method
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Payment Method (Desktop - List Group) -->
+                                <div class="d-none d-md-block mb-4">
+                                    <label class="form-label fw-bold">Payment Method</label>
+                                    <div class="list-group">
+                                        @foreach (var method in paymentMethods)
+                                        {
+                                            <button type="button"
+                                                    class="list-group-item list-group-item-action @(selectedMethod?.Id == method.Id ? "active" : "")"
+                                                    @onclick="() => SelectMethod(method)"
+                                                    disabled="@(balanceData?.PendingWithdrawals > 0)">
+                                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="me-3">
+                                                            <i class="fas @method.Icon fa-lg"></i>
+                                                        </div>
+                                                        <div class="text-start">
+                                                            <div class="fw-bold">@method.Name</div>
+                                                            <small>@method.Description</small>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        @if (selectedMethod?.Id == method.Id)
+                                                        {
+                                                            <i class="fas fa-check-circle"></i>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        }
+                                    </div>
+                                    @if (paymentMethodError)
+                                    {
+                                        <div class="text-danger small mt-2">
+                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                            Please select a payment method
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Method Details -->
+                                @if (selectedMethod != null && balanceData?.PendingWithdrawals == 0)
+                                {
+                                    <div class="mb-4">
+                                        @if (selectedMethod.Id == "bank")
+                                        {
+                                            <div class="bg-light p-3 rounded">
+                                                <h6 class="mb-3">Bank Account Details</h6>
+                                                <div class="vstack gap-3">
+                                                    <div>
+                                                        <label class="form-label small">Account Holder Name</label>
+                                                        <input type="text" class="form-control"
+                                                               placeholder="Full name as on bank account"
+                                                               @bind="accountHolderName" />
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label small">Account Number/IBAN</label>
+                                                        <input type="text" class="form-control"
+                                                               placeholder="Account number or IBAN"
+                                                               @bind="accountNumber" />
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label small">Bank Name</label>
+                                                        <input type="text" class="form-control"
+                                                               placeholder="Bank name"
+                                                               @bind="bankName" />
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-label small">SWIFT/Routing Number</label>
+                                                        <input type="text" class="form-control"
+                                                               placeholder="SWIFT or routing number"
+                                                               @bind="routingNumber" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        else if (selectedMethod.Id == "paypal")
+                                        {
+                                            <div class="bg-light p-3 rounded">
+                                                <h6 class="mb-3">PayPal Details</h6>
+                                                <div>
+                                                    <label class="form-label small">PayPal Email</label>
+                                                    <input type="email" class="form-control"
+                                                           placeholder="your@email.com"
+                                                           @bind="paypalEmail" />
+                                                </div>
+                                            </div>
+                                        }
+                                        else if (selectedMethod.Id == "crypto")
+                                        {
+                                            <div class="bg-light p-3 rounded">
+                                                <h6 class="mb-3">Cryptocurrency Wallet</h6>
+                                                <div>
+                                                    <label class="form-label small">Wallet Address</label>
+                                                    <input type="text" class="form-control"
+                                                           placeholder="Enter your wallet address"
+                                                           @bind="cryptoWallet" />
+                                                    <small class="text-muted d-block mt-2">
+                                                        <i class="fas fa-exclamation-triangle me-1 text-warning"></i>
+                                                        Double-check your wallet address - transactions are irreversible
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <!-- Summary -->
+                                <div class="mb-4">
+                                    <div class="bg-light p-3 rounded">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Withdrawal Amount</span>
+                                            <span class="fw-bold">$@withdrawalAmount.ToString("N2")</span>
+                                        </div>
+                                        <hr class="my-2">
+                                        <div class="d-flex justify-content-between fw-bold">
+                                            <span>You'll Receive</span>
+                                            <span class="text-success">$@withdrawalAmount.ToString("N2")</span>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Est. processing: @(selectedMethod?.ProcessingTime ?? "3-5 business days")
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <!-- Terms -->
+                                <div class="mb-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input @(termsError ? "is-invalid" : "")"
+                                               type="checkbox"
+                                               @bind="acceptTerms"
+                                               disabled="@(balanceData?.PendingWithdrawals > 0)" />
+                                        <label class="form-check-label small">
+                                            I confirm that the account details provided are correct and agree to the
+                                            <a href="#" class="text-primary" @onclick="ShowTerms">
+                                                Terms & Conditions
+                                            </a>
+                                        </label>
+                                        @if (termsError)
+                                        {
+                                            <div class="invalid-feedback">
+                                                You must agree to the terms
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Mobile Fixed Bottom Action Buttons -->
+                                <div class="d-block d-md-none">
+                                    <div class="fixed-bottom p-3 bg-white border-top">
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-outline-secondary flex-fill"
+                                                    @onclick="CancelWithdrawal">
+                                                Cancel
+                                            </button>
+                                            <button type="submit" class="btn btn-primary flex-fill"
+                                                    disabled="@(!CanSubmit || isSubmitting || balanceData?.PendingWithdrawals > 0)">
+                                                @if (isSubmitting)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fas fa-paper-plane me-1"></i>
+                                                }
+                                                Withdraw
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Spacer for fixed button -->
+                                    <div class="mb-5 pb-3"></div>
+                                </div>
+
+                                <!-- Desktop Action Buttons -->
+                                <div class="d-none d-md-block">
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-primary btn-lg"
+                                                disabled="@(!CanSubmit || isSubmitting || balanceData?.PendingWithdrawals > 0)">
+                                            @if (isSubmitting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-paper-plane me-2"></i>
+                                            }
+                                            Submit Withdrawal Request
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                @onclick="CancelWithdrawal">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Recent Withdrawals -->
+                    @if (balanceData?.RecentWithdrawals != null && balanceData.RecentWithdrawals.Any())
+                    {
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-history me-2"></i> Recent Withdrawals
+                                </h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush">
+                                    @foreach (var withdrawal in balanceData.RecentWithdrawals)
+                                    {
+                                        <div class="list-group-item">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>$@withdrawal.Amount.ToString("N2")</strong>
+                                                    <br />
+                                                    <small class="text-muted">
+                                                        @withdrawal.PaymentMethod • @withdrawal.RequestDate.ToString("MMM dd, yyyy")
+                                                    </small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <span class="badge @GetStatusBadge(withdrawal.Status)">
+                                                        @withdrawal.Status
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                @if (balanceData.RecentWithdrawals.Count >= 10)
+                                {
+                                    <div class="p-3 text-center">
+                                        <a href="/doctor/withdrawals/history" class="btn btn-outline-primary btn-sm">
+                                            View All
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Monthly Earnings Chart Placeholder -->
+                    @if (balanceData?.MonthlyEarnings != null && balanceData.MonthlyEarnings.Any())
+                    {
+                        <div class="card mt-4 d-none d-md-block">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-line me-2"></i> Monthly Earnings (Last 6 Months)
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Month</th>
+                                                <th class="text-end">Earnings</th>
+                                                <th class="text-end">Enrollments</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var month in balanceData.MonthlyEarnings)
+                                            {
+                                                <tr>
+                                                    <td>@month.Month</td>
+                                                    <td class="text-end">$@month.Earnings.ToString("N2")</td>
+                                                    <td class="text-end">@month.Enrollments</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private string? errorMessage;
+    private DoctorBalanceDto? balanceData;
+
+    // Withdrawal form
+    private decimal withdrawalAmount = 0;
+    private bool amountError = false;
+    private string amountErrorMessage = "";
+    private const decimal minimumWithdrawal = 50.00m;
+
+    private List<PaymentMethod> paymentMethods = new();
+    private PaymentMethod? selectedMethod = null;
+    private bool paymentMethodError = false;
+
+    // Account details
+    private string accountHolderName = "";
+    private string accountNumber = "";
+    private string bankName = "";
+    private string routingNumber = "";
+    private string paypalEmail = "";
+    private string cryptoWallet = "";
+
+    private bool acceptTerms = false;
+    private bool termsError = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWithdrawalData();
+    }
+
+    private async Task LoadWithdrawalData()
+    {
+        isLoading = true;
+        errorMessage = null;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Load doctor balance and withdrawals
+            balanceData = await WithdrawalService.GetDoctorBalanceAsync();
+
+            if (balanceData != null)
+            {
+                // Set default withdrawal amount to minimum
+                withdrawalAmount = Math.Min(minimumWithdrawal, balanceData.AvailableBalance);
+            }
+
+            // Load payment methods
+            paymentMethods = new List<PaymentMethod>
+            {
+                new PaymentMethod
+                {
+                    Id = "bank",
+                    Name = "Bank Transfer",
+                    Description = "Direct transfer to your bank account",
+                    Icon = "fa-university",
+                    ProcessingTime = "3-5 business days"
+                },
+                new PaymentMethod
+                {
+                    Id = "paypal",
+                    Name = "PayPal",
+                    Description = "Transfer to your PayPal account",
+                    Icon = "fa-paypal",
+                    ProcessingTime = "1-2 business days"
+                },
+                new PaymentMethod
+                {
+                    Id = "crypto",
+                    Name = "Cryptocurrency",
+                    Description = "Transfer to crypto wallet (USDT, BTC, ETH)",
+                    Icon = "fa-bitcoin",
+                    ProcessingTime = "24 hours"
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading withdrawal data: {ex.Message}";
+            await JS.InvokeVoidAsync("showToast", "error", errorMessage);
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void SetQuickAmount(decimal amount)
+    {
+        if (balanceData != null)
+        {
+            withdrawalAmount = Math.Min(amount, balanceData.AvailableBalance);
+            ValidateAmount();
+            StateHasChanged();
+        }
+    }
+
+    private void SetMaxAmount()
+    {
+        if (balanceData != null)
+        {
+            withdrawalAmount = balanceData.AvailableBalance;
+            ValidateAmount();
+            StateHasChanged();
+        }
+    }
+
+    private void SelectMethod(PaymentMethod method)
+    {
+        selectedMethod = method;
+        paymentMethodError = false;
+        StateHasChanged();
+    }
+
+    private void ValidateAmount()
+    {
+        amountError = false;
+
+        if (withdrawalAmount < minimumWithdrawal)
+        {
+            amountError = true;
+            amountErrorMessage = $"Minimum withdrawal amount is ${minimumWithdrawal:N2}";
+        }
+        else if (balanceData != null && withdrawalAmount > balanceData.AvailableBalance)
+        {
+            amountError = true;
+            amountErrorMessage = $"Cannot withdraw more than available balance (${balanceData.AvailableBalance:N2})";
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        var isValid = true;
+
+        // Validate amount
+        ValidateAmount();
+        if (amountError)
+            isValid = false;
+
+        // Check if there are pending withdrawals
+        if (balanceData?.PendingWithdrawals > 0)
+        {
+            amountError = true;
+            amountErrorMessage = "Cannot create new withdrawal while pending request exists";
+            isValid = false;
+        }
+
+        // Validate payment method
+        if (selectedMethod == null)
+        {
+            paymentMethodError = true;
+            isValid = false;
+        }
+
+        // Validate account details based on payment method
+        if (selectedMethod != null)
+        {
+            switch (selectedMethod.Id)
+            {
+                case "bank":
+                    if (string.IsNullOrWhiteSpace(accountHolderName) ||
+                        string.IsNullOrWhiteSpace(accountNumber) ||
+                        string.IsNullOrWhiteSpace(bankName))
+                    {
+                        // You might want to show specific validation errors here
+                        isValid = false;
+                    }
+                    break;
+                case "paypal":
+                    if (string.IsNullOrWhiteSpace(paypalEmail) || !paypalEmail.Contains("@"))
+                    {
+                        isValid = false;
+                    }
+                    break;
+                case "crypto":
+                    if (string.IsNullOrWhiteSpace(cryptoWallet))
+                    {
+                        isValid = false;
+                    }
+                    break;
+            }
+        }
+
+        // Validate terms
+        if (!acceptTerms)
+        {
+            termsError = true;
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private string GetAccountDetails()
+    {
+        if (selectedMethod == null) return "";
+
+        return selectedMethod.Id switch
+        {
+            "bank" => $"Bank: {bankName}, Account: {accountNumber}, Holder: {accountHolderName}",
+            "paypal" => paypalEmail,
+            "crypto" => cryptoWallet,
+            _ => ""
+        };
+    }
+
+    private async Task HandleWithdrawal()
+    {
+        if (!ValidateForm())
+        {
+            await JS.InvokeVoidAsync("showToast", "warning", "Please fix the errors in the form");
+            return;
+        }
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Confirm withdrawal of ${withdrawalAmount:N2}?");
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            isSubmitting = true;
+            await InvokeAsync(StateHasChanged);
+
+            var createDto = new CreateWithdrawalRequestDto
+            {
+                Amount = withdrawalAmount,
+                PaymentMethod = selectedMethod?.Name ?? "",
+                AccountDetails = GetAccountDetails()
+            };
+
+            var result = await WithdrawalService.CreateWithdrawalAsync(createDto);
+
+            if (result != null)
+            {
+                await JS.InvokeVoidAsync("showToast", "success",
+                    $"Withdrawal request submitted successfully!");
+
+                // Refresh balance data
+                await LoadWithdrawalData();
+
+                // Reset form
+                ResetForm();
+
+                // Navigate to transactions after short delay
+                await Task.Delay(1500);
+                Navigation.NavigateTo("/doctor/withdrawals/history");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("showToast", "error",
+                    "Failed to submit withdrawal request");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("showToast", "error",
+                $"Error processing withdrawal: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ResetForm()
+    {
+        if (balanceData != null)
+        {
+            withdrawalAmount = Math.Min(minimumWithdrawal, balanceData.AvailableBalance);
+        }
+        selectedMethod = null;
+        accountHolderName = "";
+        accountNumber = "";
+        bankName = "";
+        routingNumber = "";
+        paypalEmail = "";
+        cryptoWallet = "";
+        acceptTerms = false;
+
+        amountError = false;
+        paymentMethodError = false;
+        termsError = false;
+
+        StateHasChanged();
+    }
+
+    private async Task ShowTerms(MouseEventArgs e)
+    {
+
+        var terms = @"WITHDRAWAL TERMS AND CONDITIONS
+
+1. Withdrawal Processing
+- Withdrawals are processed within 3-5 business days
+- Minimum withdrawal amount is $50.00
+
+2. Payment Methods
+- Bank transfers may incur additional fees from your bank
+- PayPal transfers are subject to PayPal's terms and fees
+- Cryptocurrency transactions are irreversible
+
+3. Tax Responsibility
+- You are responsible for reporting income and paying taxes
+- We provide tax documents at the end of each fiscal year
+
+4. Dispute Resolution
+- Any disputes must be submitted within 30 days
+- Contact support@yourapp.com for assistance
+
+By proceeding, you agree to these terms and conditions.";
+
+        await JS.InvokeVoidAsync("alert", terms);
+    }
+
+    private void CancelWithdrawal()
+    {
+        Navigation.NavigateTo("/doctor/dashboard");
+    }
+
+    private string GetStatusBadge(WithdrawalStatus status)
+    {
+        return status switch
+        {
+            WithdrawalStatus.Completed => "bg-success",
+            WithdrawalStatus.Approved => "bg-info",
+            WithdrawalStatus.Pending => "bg-warning text-dark",
+            WithdrawalStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private bool CanSubmit => balanceData != null &&
+                              balanceData.AvailableBalance >= minimumWithdrawal &&
+                              balanceData.PendingWithdrawals == 0 &&
+                              !isLoading;
+
+    // Supporting classes
+    private class PaymentMethod
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public string ProcessingTime { get; set; } = "";
+    }
+}

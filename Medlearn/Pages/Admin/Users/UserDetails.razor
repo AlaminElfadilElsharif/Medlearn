@@ -1,0 +1,1869 @@
+﻿@page "/admin/users/{userId:int}"
+
+
+<PageTitle>User Details - @(user?.FirstName ?? "Loading...")</PageTitle>
+
+<!-- Mobile View (d-block d-md-none) -->
+<div class="d-block d-md-none">
+    @if (!isAuthenticated)
+    {
+        <div class="container py-4">
+            <div class="alert alert-danger text-center">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <h5>Access Denied</h5>
+                <p class="small">You must be logged in to view user details.</p>
+                <a href="/login" class="btn btn-primary btn-sm">Go to Login</a>
+            </div>
+        </div>
+    }
+    else if (!isLoading && user == null)
+    {
+        <div class="container py-4">
+            <div class="alert alert-warning text-center">
+                <i class="fas fa-user-slash fa-2x mb-3"></i>
+                <h5>User Not Found</h5>
+                <p class="small">The requested user could not be found.</p>
+                <button class="btn btn-outline-primary btn-sm" @onclick="GoBack">
+                    <i class="fas fa-arrow-left me-1"></i> Back
+                </button>
+            </div>
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 small">Loading user details...</p>
+        </div>
+    }
+    else if (user != null)
+    {
+        <!-- Mobile Header -->
+        <div class="bg-primary text-white p-3 sticky-top">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                    <i class="fas fa-arrow-left fa-lg"></i>
+                </button>
+                <h6 class="mb-0 flex-grow-1">User Profile</h6>
+                <div class="dropdown">
+                    <button class="btn btn-link text-white p-0" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <button class="dropdown-item" @onclick="EditUser">
+                                <i class="fas fa-edit me-2"></i>Edit User
+                            </button>
+                        </li>
+                        <li>
+                            <button class="dropdown-item" @onclick="ToggleUserStatus">
+                                <i class="fas @(user.IsActive ? "fa-user-slash" : "fa-user-check") me-2"></i>
+                                @(user.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                        </li>
+                        @if (user.UserType != UserType.Admin)
+                        {
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button class="dropdown-item text-danger" @onclick="ConfirmDelete">
+                                    <i class="fas fa-trash me-2"></i>Delete User
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile User Profile Card -->
+        <div class="p-3">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="text-center">
+                        <!-- Profile Image -->
+                        @if (!string.IsNullOrEmpty(user!.ProfileImageUrl))
+                        {
+                            <img src="@GetUserImageUrl(user)"
+                                 class="rounded-circle mb-2"
+                                 width="80"
+                                 height="80"
+                                 alt="@user.FirstName"
+                                 style="object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                                 style="width: 80px; height: 80px; font-size: 24px;">
+                                @GetUserInitials(user)
+                            </div>
+                        }
+
+                        <h5 class="mb-1">@user!.FirstName @user.LastName</h5>
+                        <span class="badge @GetUserTypeBadge(user.UserType) mb-2">
+                            @user.UserType.ToString()
+                        </span>
+
+                        <div class="d-flex justify-content-center gap-2 mt-2">
+                            <span class="badge @(user.IsActive ? "bg-success" : "bg-danger")">
+                                @(user.IsActive ? "Active" : "Inactive")
+                            </span>
+                            <span class="badge bg-secondary">
+                                Joined @user.CreatedAt.ToString("MMM yyyy")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Quick Stats -->
+            @if (user.UserType == UserType.User || user.UserType == UserType.Doctor)
+            {
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <div class="card bg-primary bg-opacity-10 border-0">
+                            <div class="card-body text-center p-2">
+                                <h6 class="mb-0">@userEnrollments.Count</h6>
+                                <small class="text-muted">Enrollments</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card bg-success bg-opacity-10 border-0">
+                            <div class="card-body text-center p-2">
+                                <h6 class="mb-0">@completedEnrollments</h6>
+                                <small class="text-muted">Completed</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card bg-warning bg-opacity-10 border-0">
+                            <div class="card-body text-center p-2">
+                                <h6 class="mb-0">$@totalSpent.ToString("N0")</h6>
+                                <small class="text-muted">Spent</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Mobile Contact Info -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body p-3">
+                    <h6 class="fw-bold mb-3">
+                        <i class="fas fa-address-card me-2 text-primary"></i>Contact Information
+                    </h6>
+
+                    <div class="mb-2">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 30px;">
+                                <i class="fas fa-envelope text-muted"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <small class="text-muted d-block">Email</small>
+                                <span class="small">@user.Email</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 30px;">
+                                <i class="fas fa-phone text-muted"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <small class="text-muted d-block">Phone</small>
+                                <span class="small">@(user.PhoneNumber ?? "Not provided")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (user.DateOfBirth.HasValue)
+                    {
+                        <div class="mb-2">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 30px;">
+                                    <i class="fas fa-birthday-cake text-muted"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <small class="text-muted d-block">Date of Birth</small>
+                                    <span class="small">@user.DateOfBirth.Value.ToString("MMM dd, yyyy")</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Mobile Bio -->
+            @if (!string.IsNullOrEmpty(user.Bio))
+            {
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold mb-2">
+                            <i class="fas fa-user-circle me-2 text-primary"></i>Bio
+                        </h6>
+                        <p class="small mb-0">@user.Bio</p>
+                    </div>
+                </div>
+            }
+
+            <!-- Mobile Doctor Profile -->
+            @if (user.UserType == UserType.Doctor && user.Profile != null)
+            {
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold mb-3">
+                            <i class="fas fa-user-md me-2 text-info"></i>Doctor Profile
+                        </h6>
+
+                        @if (!string.IsNullOrEmpty(user.Profile.Title))
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted d-block">Title</small>
+                                <span class="small">@user.Profile.Title</span>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(user.Profile.Department))
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted d-block">Department</small>
+                                <span class="small">@user.Profile.Department</span>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(user.Profile.Institution))
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted d-block">Institution</small>
+                                <span class="small">@user.Profile.Institution</span>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(user.Profile.Expertise))
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted d-block">Expertise</small>
+                                <span class="small">@user.Profile.Expertise</span>
+                            </div>
+                        }
+
+                        <div class="row g-2 mt-2">
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <small class="text-muted d-block">Students</small>
+                                    <span class="fw-bold">@user.Profile.TotalStudents</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <small class="text-muted d-block">Rating</small>
+                                    <span class="fw-bold">
+                                        <i class="fas fa-star text-warning small"></i>
+                                        @user.Profile.RatingAverage.ToString("0.0")
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <small class="text-muted d-block">Revenue</small>
+                                    <span class="fw-bold text-success">$@doctorTotalRevenue.ToString("N0")</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Mobile Tab Navigation -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent p-0">
+                    <ul class="nav nav-tabs nav-fill" style="border-bottom: none;">
+                        <li class="nav-item">
+                            <button class="nav-link py-3 @(activeTab == "enrollments" ? "active" : "")"
+                                    @onclick='() => SetActiveTab("enrollments")'>
+                                <i class="fas fa-graduation-cap d-block mb-1"></i>
+                                <small>Enrollments</small>
+                                <span class="badge bg-primary ms-1">@userEnrollments.Count</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link py-3 @(activeTab == "payments" ? "active" : "")"
+                                    @onclick='() => SetActiveTab("payments")'>
+                                <i class="fas fa-credit-card d-block mb-1"></i>
+                                <small>Payments</small>
+                                <span class="badge bg-warning ms-1">@paymentRequests.Count</span>
+                            </button>
+                        </li>
+                        @if (user!.UserType == UserType.Doctor)
+                        {
+                            <li class="nav-item">
+                                <button class="nav-link py-3 @(activeTab == "doctor" ? "active" : "")"
+                                        @onclick='() => SetActiveTab("doctor")'>
+                                    <i class="fas fa-user-md d-block mb-1"></i>
+                                    <small>Content</small>
+                                    <span class="badge bg-info ms-1">@doctorSpecializations.Count</span>
+                                </button>
+                            </li>
+                        }
+                        <li class="nav-item">
+                            <button class="nav-link py-3 @(activeTab == "reviews" ? "active" : "")"
+                                    @onclick='() => SetActiveTab("reviews")'>
+                                <i class="fas fa-star d-block mb-1"></i>
+                                <small>Reviews</small>
+                                <span class="badge bg-success ms-1">@userReviews.Count</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body p-2">
+                    <!-- Mobile Enrollments Tab -->
+                    @if (activeTab == "enrollments")
+                    {
+                        <div class="mb-2">
+                            <select class="form-select form-select-sm" @onchange="HandleEnrollmentFilterMobile">
+                                <option value="">All Enrollments</option>
+                                <option value="inprogress">In Progress</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+
+                        @if (!filteredEnrollments.Any())
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-graduation-cap fa-2x text-muted mb-2"></i>
+                                <p class="small text-muted">No enrollments found</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var enrollment in filteredEnrollments)
+                                {
+                                    <div class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1 small fw-bold">@GetEnrollmentTitle(enrollment)</h6>
+                                                <div class="d-flex gap-2 mb-1">
+                                                    <span class="badge @GetEnrollmentTypeBadge(enrollment.EnrollmentType) small">
+                                                        @enrollment.EnrollmentType
+                                                    </span>
+                                                    <span class="badge @(enrollment.IsCompleted ? "bg-success" : "bg-primary") small">
+                                                        @(enrollment.IsCompleted ? "Completed" : "In Progress")
+                                                    </span>
+                                                </div>
+                                                <small class="text-muted d-block">
+                                                    Enrolled: @enrollment.EnrollmentDate.ToString("MMM dd, yyyy")
+                                                </small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success mb-1">$@enrollment.PricePaid.ToString("N0")</span>
+                                                <div class="progress mt-2" style="height: 4px; width: 80px;">
+                                                    <div class="progress-bar @(enrollment.IsCompleted ? "bg-success" : "bg-primary")"
+                                                         style="width: @(enrollment.ProgressPercentage)%;">
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">@enrollment.ProgressPercentage.ToString("0")%</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+
+                    <!-- Mobile Payments Tab -->
+                    @if (activeTab == "payments")
+                    {
+                        <div class="mb-2">
+                            <select class="form-select form-select-sm" @onchange="HandlePaymentFilterMobile">
+                                <option value="">All Payments</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+
+                        @if (!filteredPayments.Any())
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-credit-card fa-2x text-muted mb-2"></i>
+                                <p class="small text-muted">No payment requests found</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var payment in filteredPayments)
+                                {
+                                    <div class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1 small fw-bold">@payment.InvoiceNumber</h6>
+                                                <span class="badge @GetPaymentStatusBadge(payment.Status) small mb-1">
+                                                    @payment.Status
+                                                </span>
+                                                <small class="text-muted d-block">
+                                                    @payment.CreatedAt.ToString("MMM dd, yyyy")
+                                                </small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-info mb-1">$@payment.Amount.ToString("N0")</span>
+                                                @if (payment.Status == PaymentStatus.Pending)
+                                                {
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button class="btn btn-outline-success btn-sm"
+                                                                @onclick="() => ProcessPayment(payment.Id, PaymentStatus.Approved)">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-danger btn-sm"
+                                                                @onclick="() => ProcessPayment(payment.Id, PaymentStatus.Rejected)">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+
+                    <!-- Mobile Doctor Content Tab -->
+                    @if (activeTab == "doctor" && user!.UserType == UserType.Doctor)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted">@doctorSpecializations.Count specializations</small>
+                            <button class="btn btn-outline-primary btn-sm" @onclick="LoadDoctorContent">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+
+                        @if (!doctorSpecializations.Any())
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-book-medical fa-2x text-muted mb-2"></i>
+                                <p class="small text-muted">No content created yet</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var specialization in doctorSpecializations)
+                                {
+                                    <div class="list-group-item px-0">
+                                        <h6 class="mb-1 small fw-bold">@specialization.Title</h6>
+                                        <p class="small text-muted mb-2">@Truncate(specialization.Description, 60)</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge bg-primary me-1">@(specialization.Courses?.Count ?? 0) courses</span>
+                                                <span class="badge bg-success">$@specialization.Price.ToString("N0")</span>
+                                            </div>
+                                            <small>
+                                                <i class="fas fa-star text-warning"></i> @specialization.AverageRating.ToString("0.0")
+                                            </small>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+
+                    <!-- Mobile Reviews Tab -->
+                    @if (activeTab == "reviews")
+                    {
+                        <div class="mb-2">
+                            <select class="form-select form-select-sm" @onchange="HandleReviewFilterMobile">
+                                <option value="">All Reviews</option>
+                                <option value="4">4+ Stars</option>
+                                <option value="3">3 Stars</option>
+                                <option value="1">1-2 Stars</option>
+                            </select>
+                        </div>
+
+                        @if (!filteredReviews.Any())
+                        {
+                            <div class="text-center py-4">
+                                <i class="fas fa-star fa-2x text-muted mb-2"></i>
+                                <p class="small text-muted">No reviews found</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var review in filteredReviews)
+                                {
+                                    <div class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1 small fw-bold">@GetReviewEntityTitle(review)</h6>
+                                                <div class="text-warning small mb-1">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <i class="fas fa-star@(i <= review.Rating ? "" : "-o")"></i>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(review.Comment))
+                                                {
+                                                    <p class="small text-muted mb-1">"@Truncate(review.Comment, 50)"</p>
+                                                }
+                                                <small class="text-muted">@review.ReviewDate.ToString("MMM dd, yyyy")</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Desktop View (d-none d-md-block) -->
+<div class="d-none d-md-block">
+    <div class="user-details">
+        <div class="container-fluid">
+            <!-- Desktop Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>User Details</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="/admin">Dashboard</a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="/admin/users">Users</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">@(user?.FirstName ?? "Loading...")</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary me-2" @onclick="GoBack">
+                        <i class="fas fa-arrow-left me-2"></i> Back
+                    </button>
+                    <button class="btn btn-primary" @onclick="EditUser">
+                        <i class="fas fa-edit me-2"></i> Edit
+                    </button>
+                </div>
+            </div>
+
+            @if (!isAuthenticated)
+            {
+                <div class="container py-5">
+                    <div class="alert alert-danger text-center">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                        <h4>Access Denied</h4>
+                        <p>You must be logged in to view user details.</p>
+                        <a href="/login" class="btn btn-primary">Go to Login</a>
+                    </div>
+                </div>
+            }
+            else if (!isLoading && user == null)
+            {
+                <div class="container py-5">
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-user-slash fa-2x mb-3"></i>
+                        <h4>User Not Found</h4>
+                        <p>The requested user could not be found.</p>
+                        <button class="btn btn-outline-primary" @onclick="GoBack">
+                            <i class="fas fa-arrow-left me-2"></i> Back to Users
+                        </button>
+                    </div>
+                </div>
+            }
+            else if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading user details...</p>
+                </div>
+            }
+            else
+            {
+                <!-- Desktop User Profile Card -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                @if (!string.IsNullOrEmpty(user!.ProfileImageUrl))
+                                {
+                                    <img src="@GetUserImageUrl(user)"
+                                         class="rounded-circle mb-3"
+                                         width="120"
+                                         height="120"
+                                         alt="@user.FirstName"
+                                         style="object-fit: cover;" />
+                                }
+                                else
+                                {
+                                    <div class="avatar-placeholder bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                                         style="width: 120px; height: 120px; font-size: 36px;">
+                                        @GetUserInitials(user)
+                                    </div>
+                                }
+
+                                <h4>@user!.FirstName @user.LastName</h4>
+                                <span class="badge @GetUserTypeBadge(user.UserType) mb-2">
+                                    @user.UserType.ToString()
+                                </span>
+
+                                <div class="mt-3">
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <button class="btn btn-outline-warning btn-sm"
+                                                @onclick="ToggleUserStatus"
+                                                title="@(user.IsActive ? "Deactivate" : "Activate")">
+                                            <i class="fas @(user.IsActive ? "fa-user-slash" : "fa-user-check")"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm"
+                                                @onclick="ConfirmDelete"
+                                                @disabled="@(user.UserType == UserType.Admin)"
+                                                title="Delete User">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">User Information</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small mb-1">Email Address</label>
+                                            <p class="mb-0">
+                                                <a href="mailto:@user.Email" class="text-decoration-none">@user.Email</a>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small mb-1">Phone Number</label>
+                                            <p class="mb-0">@(user.PhoneNumber ?? "Not provided")</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small mb-1">Date of Birth</label>
+                                            <p class="mb-0">@(user.DateOfBirth?.ToString("MMM dd, yyyy") ?? "Not provided")</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small mb-1">Account Status</label>
+                                            <p class="mb-0">
+                                                <span class="badge @(user.IsActive ? "bg-success" : "bg-danger")">
+                                                    @(user.IsActive ? "Active" : "Inactive")
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small mb-1">Bio</label>
+                                    <p class="mb-0">@(user.Bio ?? "No bio provided")</p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small mb-1">Account Created</label>
+                                    <p class="mb-0">@user.CreatedAt.ToString("MMM dd, yyyy hh:mm tt")</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Doctor Profile -->
+                @if (user!.UserType == UserType.Doctor && user.Profile != null)
+                {
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Doctor Profile</h5>
+                                    <div class="row">
+                                        @if (!string.IsNullOrEmpty(user.Profile.Title))
+                                        {
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small mb-1">Title</label>
+                                                    <p class="mb-0">@user.Profile.Title</p>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(user.Profile.Department))
+                                        {
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small mb-1">Department</label>
+                                                    <p class="mb-0">@user.Profile.Department</p>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (!string.IsNullOrEmpty(user.Profile.Institution))
+                                        {
+                                            <div class="col-md-4">
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small mb-1">Institution</label>
+                                                    <p class="mb-0">@user.Profile.Institution</p>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="row">
+                                        @if (!string.IsNullOrEmpty(user.Profile.Expertise))
+                                        {
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small mb-1">Expertise</label>
+                                                    <p class="mb-0">@user.Profile.Expertise</p>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (user.Profile.Balance > 0)
+                                        {
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label text-muted small mb-1">Balance</label>
+                                                    <p class="mb-0">
+                                                        <span class="badge bg-success">$@user.Profile.Balance.ToString("N2")</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label text-muted small mb-1">Total Students</label>
+                                                <p class="mb-0">@user.Profile.TotalStudents</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label text-muted small mb-1">Rating</label>
+                                                <p class="mb-0">
+                                                    <i class="fas fa-star text-warning"></i> @user.Profile.RatingAverage.ToString("0.0")/5.0
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label text-muted small mb-1">Total Revenue</label>
+                                                <p class="mb-0">
+                                                    <span class="badge bg-info">$@doctorTotalRevenue.ToString("N2")</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <!-- Desktop Statistics Cards -->
+                <div class="row mb-4">
+                    @if (user!.UserType == UserType.User || user.UserType == UserType.Doctor)
+                    {
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-muted mb-1">Total Enrollments</h6>
+                                            <h3 class="mb-0">@userEnrollments.Count</h3>
+                                        </div>
+                                        <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-graduation-cap text-white"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-muted mb-1">Completed</h6>
+                                            <h3 class="mb-0">@completedEnrollments</h3>
+                                        </div>
+                                        <div class="avatar-sm bg-success rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-check-circle text-white"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-muted mb-1">Total Spent</h6>
+                                            <h3 class="mb-0">$@totalSpent.ToString("N2")</h3>
+                                        </div>
+                                        <div class="avatar-sm bg-warning rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-money-bill-wave text-white"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (user!.UserType == UserType.Doctor)
+                    {
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-muted mb-1">Doctor Content</h6>
+                                            <h3 class="mb-0">@doctorCoursesCount</h3>
+                                        </div>
+                                        <div class="avatar-sm bg-info rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-book-medical text-white"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Desktop Tab Navigation -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs">
+                            <li class="nav-item">
+                                <button class="nav-link @(activeTab == "enrollments" ? "active" : "")"
+                                        @onclick='() => SetActiveTab("enrollments")'>
+                                    <i class="fas fa-graduation-cap me-2"></i> Enrollments
+                                    <span class="badge bg-primary ms-2">@userEnrollments.Count</span>
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link @(activeTab == "payments" ? "active" : "")"
+                                        @onclick='() => SetActiveTab("payments")'>
+                                    <i class="fas fa-credit-card me-2"></i> Payments
+                                    <span class="badge bg-warning ms-2">@paymentRequests.Count</span>
+                                </button>
+                            </li>
+                            @if (user!.UserType == UserType.Doctor)
+                            {
+                                <li class="nav-item">
+                                    <button class="nav-link @(activeTab == "doctor" ? "active" : "")"
+                                            @onclick='() => SetActiveTab("doctor")'>
+                                        <i class="fas fa-user-md me-2"></i> Doctor Content
+                                        <span class="badge bg-info ms-2">@doctorSpecializations.Count</span>
+                                    </button>
+                                </li>
+                            }
+                            <li class="nav-item">
+                                <button class="nav-link @(activeTab == "reviews" ? "active" : "")"
+                                        @onclick='() => SetActiveTab("reviews")'>
+                                    <i class="fas fa-star me-2"></i> Reviews
+                                    <span class="badge bg-success ms-2">@userReviews.Count</span>
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Desktop Enrollments Tab -->
+                        @if (activeTab == "enrollments")
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">User Enrollments</h5>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button"
+                                            class="btn @(enrollmentFilter == null ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="ClearEnrollmentFilter">
+                                        All
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(enrollmentFilter == false ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => FilterEnrollments(false)">
+                                        In Progress
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(enrollmentFilter == true ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => FilterEnrollments(true)">
+                                        Completed
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (!filteredEnrollments.Any())
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                                    <h5>No enrollments found</h5>
+                                    <p class="text-muted">This user hasn't enrolled in any content yet.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Course/Program</th>
+                                                <th>Type</th>
+                                                <th>Enrollment Date</th>
+                                                <th>Progress</th>
+                                                <th>Price</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var enrollment in filteredEnrollments)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex flex-column">
+                                                            <strong>@GetEnrollmentTitle(enrollment)</strong>
+                                                            <small class="text-muted">
+                                                                ID: @enrollment.Id
+                                                            </small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge @GetEnrollmentTypeBadge(enrollment.EnrollmentType)">
+                                                            @enrollment.EnrollmentType.ToString()
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <small>@enrollment.EnrollmentDate.ToString("MMM dd, yyyy")</small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                                <div class="progress-bar @(enrollment.IsCompleted ? "bg-success" : "bg-primary")"
+                                                                     style="width: @(enrollment.ProgressPercentage)%;">
+                                                                </div>
+                                                            </div>
+                                                            <span class="small">@enrollment.ProgressPercentage.ToString("0")%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-success">$@enrollment.PricePaid.ToString("N2")</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge @(enrollment.IsCompleted ? "bg-success" : "bg-primary")">
+                                                            @(enrollment.IsCompleted ? "Completed" : "In Progress")
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        }
+
+                        <!-- Desktop Payments Tab -->
+                        @if (activeTab == "payments")
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">Payment Requests</h5>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button"
+                                            class="btn @(paymentFilter == null ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="ClearPaymentFilter">
+                                        All
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(paymentFilter == PaymentStatus.Pending ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => FilterPayments(PaymentStatus.Pending)">
+                                        Pending
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(paymentFilter == PaymentStatus.Approved ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => FilterPayments(PaymentStatus.Approved)">
+                                        Approved
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(paymentFilter == PaymentStatus.Rejected ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => FilterPayments(PaymentStatus.Rejected)">
+                                        Rejected
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (!filteredPayments.Any())
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                                    <h5>No payment requests found</h5>
+                                    <p class="text-muted">This user hasn't made any payment requests.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Invoice #</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Date</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var payment in filteredPayments)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex flex-column">
+                                                            <strong>@payment.InvoiceNumber</strong>
+                                                            <small class="text-muted">
+                                                                @GetPaymentType(payment)
+                                                            </small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        @if (payment.LectureId.HasValue)
+                                                        {
+                                                            <span class="badge bg-primary">Lecture</span>
+                                                        }
+                                                        else if (payment.CourseId.HasValue)
+                                                        {
+                                                            <span class="badge bg-success">Course</span>
+                                                        }
+                                                        else if (payment.SpecializationId.HasValue)
+                                                        {
+                                                            <span class="badge bg-warning">Specialization</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-info">$@payment.Amount.ToString("N2")</span>
+                                                    </td>
+                                                    <td>
+                                                        <small>@payment.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge @GetPaymentStatusBadge(payment.Status)">
+                                                            @payment.Status.ToString()
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="btn-group btn-group-sm" role="group">
+                                                            @if (payment.Status == PaymentStatus.Pending)
+                                                            {
+                                                                <button class="btn btn-outline-success btn-sm"
+                                                                        @onclick="() => ProcessPayment(payment.Id, PaymentStatus.Approved)"
+                                                                        title="Approve">
+                                                                    <i class="fas fa-check"></i>
+                                                                </button>
+                                                                <button class="btn btn-outline-danger btn-sm"
+                                                                        @onclick="() => ProcessPayment(payment.Id, PaymentStatus.Rejected)"
+                                                                        title="Reject">
+                                                                    <i class="fas fa-times"></i>
+                                                                </button>
+                                                            }
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        }
+
+                        <!-- Desktop Doctor Content Tab -->
+                        @if (activeTab == "doctor" && user!.UserType == UserType.Doctor)
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">Doctor Content</h5>
+                                <button class="btn btn-outline-primary btn-sm" @onclick="LoadDoctorContent">
+                                    <i class="fas fa-sync-alt me-1"></i> Refresh
+                                </button>
+                            </div>
+
+                            @if (!doctorSpecializations.Any())
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-book-medical fa-3x text-muted mb-3"></i>
+                                    <h5>No content created yet</h5>
+                                    <p class="text-muted">This doctor hasn't created any content.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="row">
+                                    @foreach (var specialization in doctorSpecializations)
+                                    {
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card h-100">
+                                                <div class="card-body">
+                                                    <h5 class="card-title">@specialization.Title</h5>
+                                                    <p class="card-text text-muted small">@Truncate(specialization.Description, 100)</p>
+
+                                                    <div class="row mb-2">
+                                                        <div class="col-6">
+                                                            <small class="text-muted">Courses</small>
+                                                            <div>@specialization.Courses?.Count ?? 0</div>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <small class="text-muted">Enrollments</small>
+                                                            <div>@specialization.TotalEnrollments</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row mb-2">
+                                                        <div class="col-6">
+                                                            <small class="text-muted">Price</small>
+                                                            <div class="badge bg-success">$@specialization.Price.ToString("N2")</div>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <small class="text-muted">Rating</small>
+                                                            <div>
+                                                                <i class="fas fa-star text-warning"></i> @specialization.AverageRating.ToString("0.0")
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+
+                        <!-- Desktop Reviews Tab -->
+                        @if (activeTab == "reviews")
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">User Reviews</h5>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button"
+                                            class="btn @(reviewFilter == null ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="ClearReviewFilter">
+                                        All
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(reviewFilter == 4 ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => FilterReviews(4)">
+                                        4+ Stars
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(reviewFilter == 3 ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => FilterReviews(3)">
+                                        3 Stars
+                                    </button>
+                                    <button type="button"
+                                            class="btn @(reviewFilter == 1 ? "btn-primary" : "btn-outline-primary")"
+                                            @onclick="() => FilterReviews(1)">
+                                        1-2 Stars
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (!filteredReviews.Any())
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-star fa-3x text-muted mb-3"></i>
+                                    <h5>No reviews found</h5>
+                                    <p class="text-muted">This user hasn't written any reviews.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="row">
+                                    @foreach (var review in filteredReviews)
+                                    {
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card h-100">
+                                                <div class="card-body">
+                                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                                        <h6 class="mb-0">@GetReviewEntityTitle(review)</h6>
+                                                        <div class="text-warning">
+                                                            @for (int i = 1; i <= 5; i++)
+                                                            {
+                                                                <i class="fas fa-star@(i <= review.Rating ? "" : "-o")"></i>
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    <p class="card-text">@Truncate(review.Comment ?? "No comment", 150)</p>
+
+                                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                                        <small class="text-muted">
+                                                            @review.ReviewDate.ToString("MMM dd, yyyy")
+                                                        </small>
+                                                        <small class="text-muted">
+                                                            @review.ReviewType.ToString()
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-placeholder {
+        font-weight: 600;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .stat-card {
+        transition: transform 0.2s;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+    .avatar-sm {
+        width: 45px;
+        height: 45px;
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        color: #6c757d;
+    }
+
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            border-bottom: 3px solid #0d6efd;
+        }
+
+    /* Mobile specific styles */
+    @@media (max-width: 767.98px) {
+        .nav-tabs .nav-link {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+            .nav-tabs .nav-link i {
+                font-size: 1rem;
+            }
+
+        .list-group-item {
+            border-left: none;
+            border-right: none;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public int UserId { get; set; }
+
+    private UserDto? user;
+    private List<EnrollmentDto> userEnrollments = new();
+    private List<PaymentRequestDto> paymentRequests = new();
+    private List<ReviewDto> userReviews = new();
+    private List<SpecializationDto> doctorSpecializations = new();
+
+    // Filtered lists
+    private List<EnrollmentDto> filteredEnrollments = new();
+    private List<PaymentRequestDto> filteredPayments = new();
+    private List<ReviewDto> filteredReviews = new();
+
+    // Stats
+    private int completedEnrollments = 0;
+    private decimal totalSpent = 0;
+    private int doctorCoursesCount = 0;
+    private int doctorLecturesCount = 0;
+    private decimal doctorTotalRevenue = 0;
+
+    // UI state
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private string activeTab = "enrollments";
+    private bool? enrollmentFilter = null;
+    private PaymentStatus? paymentFilter = null;
+    private int? reviewFilter = null;
+
+    // Current user info for permissions
+    private UserDto? currentAdminUser;
+    private bool isAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+
+        if (isAuthenticated)
+        {
+            await LoadCurrentAdminUser();
+            await LoadUserData();
+        }
+        else
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (UserId > 0 && isAuthenticated)
+        {
+            await LoadUserData();
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+        }
+    }
+
+    private async Task LoadCurrentAdminUser()
+    {
+        currentAdminUser = await AuthService.GetCurrentUserAsync();
+        if (currentAdminUser != null)
+        {
+            isAdmin = currentAdminUser.UserType == UserType.Admin;
+
+            if (!isAdmin)
+            {
+                await ShowToast("error", "Access denied. Admin privileges required.");
+                Navigation.NavigateTo("/");
+                return;
+            }
+        }
+        else
+        {
+            isAuthenticated = false;
+        }
+    }
+
+    private async Task LoadUserData()
+    {
+        isLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Verify we're still authenticated and admin
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+
+            if (!isAuthenticated || !isAdmin)
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+
+            // Load the requested user using UserService
+            user = await UserService.GetUserAsync(UserId);
+
+            if (user == null)
+            {
+                await ShowToast("error", "User not found");
+                return;
+            }
+
+            // Load user enrollments using EnrollmentService
+            await LoadEnrollments();
+
+            // Load payment requests using PaymentService
+            await LoadPayments();
+
+            // Load reviews using ReviewService
+            await LoadReviews();
+
+            // Load doctor-specific data if user is a doctor
+            if (user.UserType == UserType.Doctor)
+            {
+                await LoadDoctorData();
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", $"Error loading user data: {ex.Message}");
+            await ShowToast("error", "Error loading user data");
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadEnrollments()
+    {
+        try
+        {
+            // Use EnrollmentService to get user enrollments
+            var enrollments = await EnrollmentService.GetUserEnrollmentsAsync(UserId);
+
+            if (enrollments != null)
+            {
+                userEnrollments = enrollments;
+                completedEnrollments = userEnrollments.Count(e => e.IsCompleted);
+                totalSpent = userEnrollments.Sum(e => e.PricePaid);
+                filteredEnrollments = userEnrollments;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading enrollments: {ex.Message}");
+        }
+    }
+
+    private async Task LoadPayments()
+    {
+        try
+        {
+            // Use PaymentService if it has a method for getting user payments
+            var payments = await PaymentService.GetUserPaymentRequestsAsync(UserId);
+
+            if (payments != null)
+            {
+                paymentRequests = payments;
+                filteredPayments = paymentRequests;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading payments: {ex.Message}");
+        }
+    }
+
+    private async Task LoadReviews()
+    {
+        try
+        {
+            // Use ReviewService if it has a method for getting user reviews
+            var reviews = await ReviewService.GetUserReviewsAsync(UserId);
+
+            if (reviews != null)
+            {
+                userReviews = reviews;
+                filteredReviews = userReviews;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading reviews: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDoctorData()
+    {
+        try
+        {
+            // Use existing service method for doctor's specializations
+            var specializations = await SpecializationService.GetSpecializationsAsync(doctorId: UserId);
+
+            if (specializations != null)
+            {
+                doctorSpecializations = specializations;
+                doctorCoursesCount = doctorSpecializations.Sum(s => s.Courses?.Count ?? 0);
+                doctorLecturesCount = doctorSpecializations.Sum(s =>
+                    s.Courses?.Sum(c => c.Lectures?.Count ?? 0) ?? 0
+                );
+                doctorTotalRevenue = doctorSpecializations.Sum(s =>
+                    (s.TotalEnrollments * s.Price * 0.8m)
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading doctor data: {ex.Message}");
+        }
+    }
+
+    // Helper methods for UI
+    private string GetUserImageUrl(UserDto user)
+    {
+        if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+        {
+            return ImageUrlService.GetImageUrl(user.ProfileImageUrl);
+        }
+
+        // Return a default avatar image
+        return "/images/default-avatar.png";
+    }
+
+    private string GetUserInitials(UserDto user)
+    {
+        var first = user.FirstName?.Length > 0 ? user.FirstName[0] : 'U';
+        var last = user.LastName?.Length > 0 ? user.LastName[0] : 'S';
+        return $"{first}{last}";
+    }
+
+    private string GetUserTypeBadge(UserType userType)
+    {
+        return userType switch
+        {
+            UserType.Admin => "bg-danger",
+            UserType.Doctor => "bg-info",
+            UserType.User => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetEnrollmentTypeBadge(EnrollmentType type)
+    {
+        return type switch
+        {
+            EnrollmentType.Lecture => "bg-primary",
+            EnrollmentType.Course => "bg-success",
+            EnrollmentType.Specialization => "bg-warning",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPaymentStatusBadge(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Pending => "bg-warning",
+            PaymentStatus.Approved => "bg-success",
+            PaymentStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetEnrollmentTitle(EnrollmentDto enrollment)
+    {
+        return enrollment.EnrollmentType switch
+        {
+            EnrollmentType.Lecture => enrollment.Lecture?.Title ?? "Unknown Lecture",
+            EnrollmentType.Course => enrollment.Course?.Title ?? "Unknown Course",
+            EnrollmentType.Specialization => enrollment.Specialization?.Title ?? "Unknown Specialization",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetReviewEntityTitle(ReviewDto review)
+    {
+        if (review.LectureId.HasValue)
+            return $"Lecture: {review.Lecture?.Title ?? "Unknown"}";
+        if (review.CourseId.HasValue)
+            return $"Course: {review.Course?.Title ?? "Unknown"}";
+        if (review.SpecializationId.HasValue)
+            return $"Specialization: {review.Specialization?.Title ?? "Unknown"}";
+        return "Unknown";
+    }
+
+    private string GetPaymentType(PaymentRequestDto payment)
+    {
+        if (payment.LectureId.HasValue)
+            return "Lecture";
+        if (payment.CourseId.HasValue)
+            return "Course";
+        if (payment.SpecializationId.HasValue)
+            return "Specialization";
+        return "Unknown";
+    }
+
+    // Helper method for truncation
+    private string Truncate(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+    }
+
+    // Tab management
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        StateHasChanged();
+    }
+
+    // Filter methods for mobile
+    private void HandleEnrollmentFilterMobile(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (string.IsNullOrEmpty(value))
+        {
+            ClearEnrollmentFilter();
+        }
+        else if (value == "inprogress")
+        {
+            FilterEnrollments(false);
+        }
+        else if (value == "completed")
+        {
+            FilterEnrollments(true);
+        }
+    }
+
+    private void HandlePaymentFilterMobile(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (string.IsNullOrEmpty(value))
+        {
+            ClearPaymentFilter();
+        }
+        else
+        {
+            FilterPayments((PaymentStatus)Enum.Parse(typeof(PaymentStatus), value, true));
+        }
+    }
+
+    private void HandleReviewFilterMobile(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (string.IsNullOrEmpty(value))
+        {
+            ClearReviewFilter();
+        }
+        else
+        {
+            FilterReviews(int.Parse(value));
+        }
+    }
+
+    // Desktop filter methods
+    private void FilterEnrollments(bool? completed)
+    {
+        enrollmentFilter = completed;
+
+        if (!completed.HasValue)
+        {
+            filteredEnrollments = userEnrollments;
+        }
+        else
+        {
+            filteredEnrollments = userEnrollments
+                .Where(e => e.IsCompleted == completed.Value)
+                .ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearEnrollmentFilter()
+    {
+        enrollmentFilter = null;
+        filteredEnrollments = userEnrollments;
+        StateHasChanged();
+    }
+
+    private void FilterPayments(PaymentStatus? status)
+    {
+        paymentFilter = status;
+
+        if (!status.HasValue)
+        {
+            filteredPayments = paymentRequests;
+        }
+        else
+        {
+            filteredPayments = paymentRequests
+                .Where(p => p.Status == status.Value)
+                .ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearPaymentFilter()
+    {
+        paymentFilter = null;
+        filteredPayments = paymentRequests;
+        StateHasChanged();
+    }
+
+    private void FilterReviews(int? minRating)
+    {
+        reviewFilter = minRating;
+
+        if (!minRating.HasValue)
+        {
+            filteredReviews = userReviews;
+        }
+        else if (minRating == 1)
+        {
+            filteredReviews = userReviews
+                .Where(r => r.Rating <= 2)
+                .ToList();
+        }
+        else if (minRating == 3)
+        {
+            filteredReviews = userReviews
+                .Where(r => r.Rating == 3)
+                .ToList();
+        }
+        else if (minRating == 4)
+        {
+            filteredReviews = userReviews
+                .Where(r => r.Rating >= 4)
+                .ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearReviewFilter()
+    {
+        reviewFilter = null;
+        filteredReviews = userReviews;
+        StateHasChanged();
+    }
+
+    // Action methods
+    private async Task ToggleUserStatus()
+    {
+        if (user == null) return;
+
+        bool confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Are you sure you want to {(user.IsActive ? "deactivate" : "activate")} user '{user.FirstName}'?");
+
+        if (confirmed)
+        {
+            try
+            {
+                var success = await UserService.ToggleUserStatusAsync(user.Id, !user.IsActive);
+
+                if (success)
+                {
+                    user.IsActive = !user.IsActive;
+                    await ShowToast("success",
+                        $"User {(user.IsActive ? "activated" : "deactivated")} successfully");
+                    StateHasChanged();
+                }
+                else
+                {
+                    await ShowToast("error", "Failed to update user status");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowToast("error", ex.Message);
+            }
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (user == null || user.UserType == UserType.Admin) return;
+
+        bool confirmed = await JS.InvokeAsync<bool>("confirm",
+            $"Are you sure you want to delete user '{user.FirstName}'? This action cannot be undone.");
+
+        if (confirmed)
+        {
+            try
+            {
+                var success = await UserService.DeleteUserAsync(user.Id);
+
+                if (success)
+                {
+                    await ShowToast("success", "User deleted successfully");
+                    Navigation.NavigateTo("/admin/users");
+                }
+                else
+                {
+                    await ShowToast("error", "Failed to delete user");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowToast("error", ex.Message);
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/users");
+    }
+
+    private void EditUser()
+    {
+        Navigation.NavigateTo($"/admin/users/edit/{UserId}");
+    }
+
+    private void ViewEnrollmentDetails(int enrollmentId)
+    {
+        Navigation.NavigateTo($"/admin/enrollments/{enrollmentId}");
+    }
+
+    private async Task ProcessPayment(int paymentId, PaymentStatus status)
+    {
+        try
+        {
+            var updateDto = new UpdatePaymentRequestDto
+            {
+                Status = status
+            };
+
+            if (status == PaymentStatus.Rejected)
+            {
+                var reason = await JS.InvokeAsync<string>("prompt", "Enter rejection reason:");
+                if (!string.IsNullOrEmpty(reason))
+                {
+                    updateDto.RejectionReason = reason;
+                }
+            }
+
+            await PaymentService.UpdatePaymentStatusAsync(paymentId, updateDto);
+            await ShowToast("success", $"Payment {status.ToString().ToLower()} successfully");
+            await LoadUserData();
+        }
+        catch (Exception ex)
+        {
+            await ShowToast("error", ex.Message);
+        }
+    }
+
+    private async Task LoadDoctorContent()
+    {
+        if (user?.UserType == UserType.Doctor)
+        {
+            await LoadDoctorData();
+            await ShowToast("success", "Doctor content refreshed");
+        }
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        await JS.InvokeVoidAsync("showToast", type, message);
+    }
+}

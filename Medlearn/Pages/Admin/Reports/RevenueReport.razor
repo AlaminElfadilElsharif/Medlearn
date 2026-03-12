@@ -1,0 +1,826 @@
+﻿@page "/admin/reports/revenue"
+
+
+<PageTitle>Revenue Report</PageTitle>
+
+@if (!isAuthenticated)
+{
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <h4>Access Denied</h4>
+                    <p>You must be logged in as an administrator to view this page.</p>
+                    <a href="/account/login" class="btn btn-primary">Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else if (!isAdmin)
+{
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <div class="alert alert-danger">
+                    <i class="fas fa-ban fa-2x mb-3"></i>
+                    <h4>Unauthorized</h4>
+                    <p>Administrator access required to view revenue reports.</p>
+                    <a href="/" class="btn btn-secondary">Go to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="revenue-report">
+        <div class="container-fluid px-0 px-md-3">
+            <!-- Mobile Header -->
+            <div class="d-block d-md-none mb-3">
+                <div class="bg-primary text-white p-3">
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                            <i class="fas fa-arrow-left fa-lg"></i>
+                        </button>
+                        <h5 class="mb-0 flex-grow-1">Revenue Report</h5>
+                        <button class="btn btn-link text-white p-0" @onclick="ExportReport" disabled="@isExporting">
+                            @if (isExporting)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-file-export fa-lg"></i>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Header -->
+            <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
+                <h1>Revenue Report</h1>
+                <div>
+                    <button class="btn btn-outline-secondary me-2" @onclick="GoToEnrollmentReport">
+                        <i class="fas fa-users me-2"></i> Enrollment Report
+                    </button>
+                    <button class="btn btn-primary" @onclick="ExportReport" disabled="@isExporting">
+                        @if (isExporting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span>Exporting...</span>
+                        }
+                        else
+                        {
+                            <i class="fas fa-file-export me-2"></i>
+                            <span>Export Report</span>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters - Mobile -->
+            <div class="d-block d-md-none mb-3">
+                <div class="card">
+                    <div class="card-header bg-light py-2" @onclick="ToggleMobileFilters">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-filter me-2"></i>Filters
+                            </h6>
+                            <i class="fas @(showMobileFilters ? "fa-chevron-up" : "fa-chevron-down")"></i>
+                        </div>
+                    </div>
+                    @if (showMobileFilters)
+                    {
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label small">Start Date</label>
+                                <input type="date" class="form-control form-control-sm" @bind="startDate" @bind:format="yyyy-MM-dd" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small">End Date</label>
+                                <input type="date" class="form-control form-control-sm" @bind="endDate" @bind:format="yyyy-MM-dd" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small">Content Type</label>
+                                <select class="form-select form-select-sm" @bind="contentTypeFilter">
+                                    <option value="">All Types</option>
+                                    <option value="Specialization">Specializations</option>
+                                    <option value="Course">Courses</option>
+                                    <option value="Lecture">Lectures</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small">Payment Status</label>
+                                <select class="form-select form-select-sm" @bind="paymentStatusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Rejected">Rejected</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary w-100" @onclick="LoadReport" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Loading...</span>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-sync-alt me-2"></i>
+                                    <span>Generate Report</span>
+                                }
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Filters - Desktop -->
+            <div class="d-none d-md-block card mb-4">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-control" @bind="startDate" @bind:format="yyyy-MM-dd" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-control" @bind="endDate" @bind:format="yyyy-MM-dd" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Content Type</label>
+                            <select class="form-select" @bind="contentTypeFilter">
+                                <option value="">All Types</option>
+                                <option value="Specialization">Specializations</option>
+                                <option value="Course">Courses</option>
+                                <option value="Lecture">Lectures</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Payment Status</label>
+                            <select class="form-select" @bind="paymentStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button class="btn btn-primary" @onclick="LoadReport" disabled="@isLoading">
+                                    @if (isLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Loading...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-sync-alt me-2"></i>
+                                        <span>Generate</span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading revenue data...</p>
+                </div>
+            }
+            else if (errorMessage != null)
+            {
+                <div class="alert alert-danger mx-2 mx-md-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    @errorMessage
+                </div>
+            }
+            else if (!payments.Any())
+            {
+                <div class="alert alert-info mx-2 mx-md-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No payment data found for the selected period
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card metric-card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">Total Revenue</h6>
+                                <h2 class="text-success">$@totalRevenue.ToString("N2")</h2>
+                                <small class="text-muted">From @totalTransactions transactions</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card metric-card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">Average Daily</h6>
+                                <h2 class="text-primary">$@averageDailyRevenue.ToString("N2")</h2>
+                                <small class="text-muted">Over @daysInPeriod days</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card metric-card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">Average Transaction</h6>
+                                <h2>$@averageTransactionValue.ToString("N2")</h2>
+                                <small class="text-muted">Per payment</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card metric-card h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted">Pending Payments</h6>
+                                <h2 class="text-warning">@pendingPayments</h2>
+                                <small class="text-muted">Awaiting approval</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Breakdown by Content Type -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">Revenue by Content Type</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Content Type</th>
+                                                <th class="text-end">Transactions</th>
+                                                <th class="text-end">Revenue</th>
+                                                <th class="text-end">%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var type in revenueByType)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <span class="badge @GetContentTypeBadge(type.ContentType)">
+                                                            @type.ContentType
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-end">@type.Transactions</td>
+                                                    <td class="text-end text-success">$@type.Revenue.ToString("N2")</td>
+                                                    <td class="text-end">@type.Percentage.ToString("0.0")%</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-active">
+                                                <td class="fw-bold">Total</td>
+                                                <td class="text-end fw-bold">@totalTransactions</td>
+                                                <td class="text-end fw-bold text-success">$@totalRevenue.ToString("N2")</td>
+                                                <td class="text-end fw-bold">100%</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">Top Performing Items</h5>
+                            </div>
+                            <div class="card-body">
+                                @if (topItems.Any())
+                                {
+                                    <div class="list-group">
+                                        @foreach (var item in topItems.Take(5))
+                                        {
+                                            <div class="list-group-item">
+                                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                                    <div>
+                                                        <span class="badge @GetContentTypeBadge(item.ContentType) me-2">
+                                                            @item.ContentType.Substring(0, 3)
+                                                        </span>
+                                                        <span class="fw-bold" title="@item.Name">@Truncate(item.Name, 25)</span>
+                                                    </div>
+                                                    <span class="text-success fw-bold">$@item.Revenue.ToString("N2")</span>
+                                                </div>
+                                                <small class="text-muted ms-4 ps-1">@item.Transactions transactions</small>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="text-muted text-center mb-0">No revenue data available</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Payments Table -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Payment Transactions</h5>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-select-sm" @bind="sortBy" style="width: 120px;">
+                                <option value="date">Date</option>
+                                <option value="amount">Amount</option>
+                                <option value="status">Status</option>
+                                <option value="type">Content Type</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>User</th>
+                                        <th>Content Type</th>
+                                        <th>Item</th>
+                                        <th class="text-center">Status</th>
+                                        <th class="text-end">Amount</th>
+                                        <th class="text-center">Invoice</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var payment in pagedPayments)
+                                    {
+                                        <tr>
+                                            <td>@(payment.ApprovedDate?.ToString("MMM dd, yyyy") ?? payment.CreatedAt.ToString("MMM dd, yyyy"))</td>
+                                            <td>
+                                                <div>@payment.User?.FirstName @payment.User?.LastName</div>
+                                                <small class="text-muted">@payment.User?.Email</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetContentTypeBadge(payment.EnrollmentType.ToString())">
+                                                    @payment.EnrollmentType
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (payment.EnrollmentType == EnrollmentType.Lecture && payment.Lecture != null)
+                                                {
+                                                    <span>@payment.Lecture.Title</span>
+                                                }
+                                                else if (payment.EnrollmentType == EnrollmentType.Course && payment.Course != null)
+                                                {
+                                                    <span>@payment.Course.Title</span>
+                                                }
+                                                else if (payment.EnrollmentType == EnrollmentType.Specialization && payment.Specialization != null)
+                                                {
+                                                    <span>@payment.Specialization.Title</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>-</span>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge @GetStatusBadge(payment.Status)">
+                                                    @payment.Status
+                                                </span>
+                                            </td>
+                                            <td class="text-end text-success fw-bold">$@payment.Amount.ToString("N2")</td>
+                                            <td class="text-center">
+                                                @if (!string.IsNullOrEmpty(payment.InvoicePdfUrl))
+                                                {
+                                                    <a href="@payment.InvoicePdfUrl" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span>-</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        @if (totalPages > 1)
+                        {
+                            <nav class="mt-4 pb-3 px-3">
+                                <ul class="pagination justify-content-center">
+                                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(currentPage - 1)">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                    </li>
+
+                                    @for (int i = 1; i <= totalPages; i++)
+                                    {
+                                        <li class="page-item @(currentPage == i ? "active" : "")">
+                                            <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                                        </li>
+                                    }
+
+                                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                        <button class="page-link" @onclick="() => ChangePage(currentPage + 1)">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool showMobileFilters = true;
+    private List<PaymentRequestDto> payments = new();
+    private List<PaymentRequestDto> filteredPayments = new();
+    private List<PaymentRequestDto> pagedPayments = new();
+    private List<RevenueByType> revenueByType = new();
+    private List<RevenueItem> topItems = new();
+
+    private DateTime startDate = DateTime.Now.AddMonths(-1);
+    private DateTime endDate = DateTime.Now;
+    private string? contentTypeFilter = "";
+    private string? paymentStatusFilter = "";
+    private string sortBy = "date";
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalPages = 1;
+    private bool isLoading = false;
+    private bool isExporting = false;
+    private bool isAuthenticated = false;
+    private bool isAdmin = false;
+    private string? errorMessage = null;
+
+    // Summary stats
+    private decimal totalRevenue = 0;
+    private decimal averageDailyRevenue = 0;
+    private int totalTransactions = 0;
+    private decimal averageTransactionValue = 0;
+    private int pendingPayments = 0;
+    private int daysInPeriod = 0;
+
+    private UserDto? currentUser = null;
+
+    private class RevenueByType
+    {
+        public string ContentType { get; set; } = "";
+        public int Transactions { get; set; }
+        public decimal Revenue { get; set; }
+        public decimal Percentage { get; set; }
+    }
+
+    private class RevenueItem
+    {
+        public string ContentType { get; set; } = "";
+        public string Name { get; set; } = "";
+        public int Transactions { get; set; }
+        public decimal Revenue { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+        if (isAuthenticated && isAdmin)
+        {
+            await LoadReport();
+        }
+    }
+
+    private async Task CheckAuthentication()
+    {
+        try
+        {
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+
+            if (isAuthenticated)
+            {
+                currentUser = await AuthService.GetCurrentUserAsync();
+                if (currentUser != null)
+                {
+                    isAdmin = currentUser.UserType == UserType.Admin;
+                }
+                else
+                {
+                    isAuthenticated = false;
+                    isAdmin = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CheckAuthentication: {ex.Message}");
+            isAuthenticated = false;
+            isAdmin = false;
+        }
+    }
+
+    private void ToggleMobileFilters()
+    {
+        showMobileFilters = !showMobileFilters;
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin");
+    }
+
+    private async Task LoadReport()
+    {
+        if (!isAuthenticated || !isAdmin)
+        {
+            errorMessage = "Access denied. Administrator privileges required.";
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            // Clear existing data
+            payments.Clear();
+            filteredPayments.Clear();
+
+            // Map status filter to PaymentStatus enum
+            PaymentStatus? status = null;
+            if (!string.IsNullOrEmpty(paymentStatusFilter))
+            {
+                status = paymentStatusFilter switch
+                {
+                    "Approved" => PaymentStatus.Approved,
+                    "Pending" => PaymentStatus.Pending,
+                    "Rejected" => PaymentStatus.Rejected,
+                    _ => null
+                };
+            }
+
+            // Get payment requests from service
+            var paymentRequests = await PaymentService.GetPaymentRequestsAsync(
+                status: status,
+                search: null,
+                page: 1,
+                pageSize: 1000 // Get up to 1000 records
+            );
+
+            if (paymentRequests != null && paymentRequests.Any())
+            {
+                payments = paymentRequests
+                    .Where(p => p.CreatedAt >= startDate && p.CreatedAt <= endDate.AddDays(1))
+                    .ToList();
+
+                ApplyFilters();
+                CalculateSummaryStats();
+                CalculateBreakdowns();
+                SortPayments();
+                ApplyPagination();
+            }
+            else
+            {
+                errorMessage = "No payment data available";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading report: {ex.Message}";
+            Console.WriteLine($"Error loading revenue report: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var query = payments.AsQueryable();
+
+        // Apply content type filter
+        if (!string.IsNullOrEmpty(contentTypeFilter))
+        {
+            query = contentTypeFilter switch
+            {
+                "Specialization" => query.Where(p => p.EnrollmentType == EnrollmentType.Specialization),
+                "Course" => query.Where(p => p.EnrollmentType == EnrollmentType.Course),
+                "Lecture" => query.Where(p => p.EnrollmentType == EnrollmentType.Lecture),
+                _ => query
+            };
+        }
+
+        filteredPayments = query.ToList();
+    }
+
+    private void CalculateSummaryStats()
+    {
+        // Approved payments only for revenue stats
+        var approvedPayments = filteredPayments.Where(p => p.Status == PaymentStatus.Approved).ToList();
+
+        totalRevenue = approvedPayments.Sum(p => p.Amount);
+        totalTransactions = approvedPayments.Count;
+        pendingPayments = filteredPayments.Count(p => p.Status == PaymentStatus.Pending);
+
+        daysInPeriod = (endDate - startDate).Days + 1;
+        averageDailyRevenue = daysInPeriod > 0 ? totalRevenue / daysInPeriod : 0;
+        averageTransactionValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+    }
+
+    private void CalculateBreakdowns()
+    {
+        var approvedPayments = filteredPayments.Where(p => p.Status == PaymentStatus.Approved).ToList();
+
+        // Revenue by content type
+        revenueByType = approvedPayments
+            .GroupBy(p => p.EnrollmentType.ToString())
+            .Select(g => new RevenueByType
+            {
+                ContentType = g.Key,
+                Transactions = g.Count(),
+                Revenue = g.Sum(p => p.Amount),
+                Percentage = totalRevenue > 0 ? (g.Sum(p => p.Amount) / totalRevenue) * 100 : 0
+            })
+            .OrderByDescending(r => r.Revenue)
+            .ToList();
+
+        // Top items by revenue
+        topItems = approvedPayments
+            .GroupBy(p => new
+            {
+                Type = p.EnrollmentType.ToString(),
+                Name = p.EnrollmentType switch
+                {
+                    EnrollmentType.Lecture => p.Lecture?.Title ?? "Unknown",
+                    EnrollmentType.Course => p.Course?.Title ?? "Unknown",
+                    EnrollmentType.Specialization => p.Specialization?.Title ?? "Unknown",
+                    _ => "Unknown"
+                }
+            })
+            .Where(g => !string.IsNullOrEmpty(g.Key.Name) && g.Key.Name != "Unknown")
+            .Select(g => new RevenueItem
+            {
+                ContentType = g.Key.Type,
+                Name = g.Key.Name,
+                Transactions = g.Count(),
+                Revenue = g.Sum(p => p.Amount)
+            })
+            .OrderByDescending(i => i.Revenue)
+            .Take(10)
+            .ToList();
+    }
+
+    private void SortPayments()
+    {
+        filteredPayments = sortBy switch
+        {
+            "date" => filteredPayments.OrderByDescending(p => p.CreatedAt).ToList(),
+            "amount" => filteredPayments.OrderByDescending(p => p.Amount).ToList(),
+            "status" => filteredPayments.OrderBy(p => p.Status).ToList(),
+            "type" => filteredPayments.OrderBy(p => p.EnrollmentType).ToList(),
+            _ => filteredPayments.OrderByDescending(p => p.CreatedAt).ToList()
+        };
+    }
+
+    private void ApplyPagination()
+    {
+        totalPages = (int)Math.Ceiling((double)filteredPayments.Count / pageSize);
+        pagedPayments = filteredPayments
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private void ChangePage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            ApplyPagination();
+            StateHasChanged();
+        }
+    }
+
+    private string GetContentTypeBadge(string contentType)
+    {
+        return contentType switch
+        {
+            "Specialization" => "bg-primary",
+            "Course" => "bg-info",
+            "Lecture" => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusBadge(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Approved => "bg-success",
+            PaymentStatus.Pending => "bg-warning text-dark",
+            PaymentStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+        return value.Length <= maxLength ? value : value.Substring(0, maxLength - 3) + "...";
+    }
+
+    private async Task ExportReport()
+    {
+        try
+        {
+            isExporting = true;
+            StateHasChanged();
+
+            // Create CSV content
+            var csvContent = "Date,User,Email,Content Type,Item,Status,Amount,Invoice URL\n";
+
+            foreach (var payment in filteredPayments)
+            {
+                var itemName = payment.EnrollmentType switch
+                {
+                    EnrollmentType.Lecture => payment.Lecture?.Title ?? "N/A",
+                    EnrollmentType.Course => payment.Course?.Title ?? "N/A",
+                    EnrollmentType.Specialization => payment.Specialization?.Title ?? "N/A",
+                    _ => "N/A"
+                };
+
+                csvContent += $"{payment.CreatedAt:yyyy-MM-dd HH:mm}," +
+                              $"\"{payment.User?.FirstName} {payment.User?.LastName}\"," +
+                              $"\"{payment.User?.Email}\"," +
+                              $"{payment.EnrollmentType}," +
+                              $"\"{itemName}\"," +
+                              $"{payment.Status}," +
+                              $"{payment.Amount:F2}," +
+                              $"\"{payment.InvoicePdfUrl}\"\n";
+            }
+
+            // Add summary
+            csvContent += $"\n\nSUMMARY\n";
+            csvContent += $"Total Revenue,${totalRevenue:F2}\n";
+            csvContent += $"Total Transactions,{totalTransactions}\n";
+            csvContent += $"Average Transaction,${averageTransactionValue:F2}\n";
+            csvContent += $"Pending Payments,{pendingPayments}\n";
+            csvContent += $"Period,{startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}\n";
+            csvContent += $"Generated By,{currentUser?.FirstName} {currentUser?.LastName}\n";
+            csvContent += $"Generated At,{DateTime.Now:yyyy-MM-dd HH:mm:ss}\n";
+
+            var fileName = $"Revenue_Report_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+
+            // Simple export using Blob
+            await JS.InvokeVoidAsync("downloadCsv", fileName, csvContent);
+            await ShowToast("success", "Report exported successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting report: {ex}");
+            await ShowToast("error", $"Export failed: {ex.Message}");
+        }
+        finally
+        {
+            isExporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", type, message);
+        }
+        catch
+        {
+            Console.WriteLine($"[{type}] {message}");
+        }
+    }
+
+    private void GoToEnrollmentReport()
+    {
+        Navigation.NavigateTo("/admin/reports/enrollment");
+    }
+}

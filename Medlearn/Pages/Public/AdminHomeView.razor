@@ -1,0 +1,283 @@
+﻿
+
+<div class="admin-home-view">
+    <!-- Welcome Header -->
+    <div class="bg-primary text-white p-4 mb-4">
+        <div class="container">
+            <h2><i class="fas fa-tachometer-alt me-2"></i>Admin Home</h2>
+            <p class="mb-0">Welcome, @User?.FirstName @User?.LastName</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Quick Stats -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3 col-6">
+                <div class="card bg-primary text-white shadow">
+                    <div class="card-body">
+                        <h6>Total Users</h6>
+                        <h3>@TotalUsers.ToString("N0")</h3>
+                        <small>@TotalDoctors Docs • @TotalStudents Students</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card bg-success text-white shadow">
+                    <div class="card-body">
+                        <h6>Revenue</h6>
+                        <h3>$@TotalRevenue.ToString("N0")</h3>
+                        <small>Total platform revenue</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card bg-warning text-dark shadow">
+                    <div class="card-body">
+                        <h6>Pending</h6>
+                        <h3>@PendingPayments</h3>
+                        <small>Payment requests</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card bg-danger text-white shadow">
+                    <div class="card-body">
+                        <h6>Withdrawals</h6>
+                        <h3>@PendingWithdrawals</h3>
+                        <small>Pending approvals</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3 col-6">
+                                <button class="btn btn-outline-primary w-100 py-3" @onclick="OnViewUsers">
+                                    <i class="fas fa-users fa-2x mb-2"></i><br />
+                                    Manage Users
+                                </button>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <button class="btn btn-outline-warning w-100 py-3" @onclick="OnViewPayments">
+                                    <i class="fas fa-credit-card fa-2x mb-2"></i><br />
+                                    Payments (@PendingPayments)
+                                </button>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <button class="btn btn-outline-danger w-100 py-3" @onclick="OnViewWithdrawals">
+                                    <i class="fas fa-money-bill-wave fa-2x mb-2"></i><br />
+                                    Withdrawals (@PendingWithdrawals)
+                                </button>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <button class="btn btn-outline-success w-100 py-3" onclick="location.href='/admin/announcements'">
+                                    <i class="fas fa-bullhorn fa-2x mb-2"></i><br />
+                                    Announcement
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row">
+            <!-- Recent Payments -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Recent Payment Requests</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (RecentPayments.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var payment in RecentPayments)
+                                {
+                                    <a href="/admin/payments/review/@payment.Id" class="list-group-item list-group-item-action">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <strong>@payment.InvoiceNumber</strong><br />
+                                                <small>@payment.User?.FirstName @payment.User?.LastName</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="fw-bold text-success">$@payment.Amount.ToString("N2")</span><br />
+                                                <span class="badge @GetStatusBadge(payment.Status)">@payment.Status</span>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">@payment.CreatedAt.ToString("MMM dd, hh:mm tt")</small>
+                                    </a>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <p class="text-muted mb-0">No recent payments</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Withdrawals -->
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Recent Withdrawal Requests</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (RecentWithdrawals.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var withdrawal in RecentWithdrawals)
+                                {
+                                    <a href="/admin/withdrawals/@withdrawal.Id" class="list-group-item list-group-item-action">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <strong>@withdrawal.Doctor?.FirstName @withdrawal.Doctor?.LastName</strong><br />
+                                                <small>@withdrawal.PaymentMethod</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="fw-bold text-danger">$@withdrawal.Amount.ToString("N2")</span><br />
+                                                <span class="badge @GetWithdrawalBadge(withdrawal.Status)">@withdrawal.Status</span>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">@withdrawal.RequestDate.ToString("MMM dd")</small>
+                                    </a>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <p class="text-muted mb-0">No recent withdrawals</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Popular Content -->
+        @if (PopularContent.Any())
+        {
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Popular Content</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Type</th>
+                                            <th>Enrollments</th>
+                                            <th>Revenue</th>
+                                            <th>Rating</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var content in PopularContent)
+                                        {
+                                            <tr class="cursor-pointer" @onclick="() => NavigateToContent(content)">
+                                                <td>@content.Title</td>
+                                                <td><span class="badge bg-info">@content.ContentType</span></td>
+                                                <td>@content.EnrollmentCount</td>
+                                                <td>$@content.Revenue.ToString("N2")</td>
+                                                <td>
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <i class="fas fa-star @(i <= Math.Round(content.AverageRating) ? "text-warning" : "text-muted")"></i>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+        .cursor-pointer:hover {
+            background-color: #f8f9fa;
+        }
+</style>
+
+@code {
+    [Parameter] public UserDto? User { get; set; }
+    [Parameter] public int PendingPayments { get; set; }
+    [Parameter] public int PendingWithdrawals { get; set; }
+    [Parameter] public List<PaymentRequestDto> RecentPayments { get; set; } = new();
+    [Parameter] public List<WithdrawalRequestDto> RecentWithdrawals { get; set; } = new();
+    [Parameter] public List<PopularContentDto> PopularContent { get; set; } = new();
+    [Parameter] public int TotalUsers { get; set; }
+    [Parameter] public int TotalDoctors { get; set; }
+    [Parameter] public int TotalStudents { get; set; }
+    [Parameter] public decimal TotalRevenue { get; set; }
+
+    [Parameter] public EventCallback OnViewUsers { get; set; }
+    [Parameter] public EventCallback OnViewPayments { get; set; }
+    [Parameter] public EventCallback OnViewWithdrawals { get; set; }
+    [Parameter] public EventCallback<(int id, string type)> OnViewContent { get; set; }
+
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+    private string GetStatusBadge(PaymentStatus status) => status switch
+    {
+        PaymentStatus.Pending => "bg-warning",
+        PaymentStatus.Approved => "bg-success",
+        PaymentStatus.Rejected => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string GetWithdrawalBadge(WithdrawalStatus status) => status switch
+    {
+        WithdrawalStatus.Pending => "bg-warning",
+        WithdrawalStatus.Approved => "bg-success",
+        WithdrawalStatus.Rejected => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private void NavigateToContent(PopularContentDto content)
+    {
+        if (OnViewContent.HasDelegate)
+        {
+            OnViewContent.InvokeAsync((content.ContentId, content.ContentType));
+        }
+        else
+        {
+            // Fallback navigation if no callback is provided
+            string url = content.ContentType.ToLower() switch
+            {
+                "specialization" => $"/specializations/{content.ContentId}",
+                "course" => $"/courses/{content.ContentId}",
+                "lecture" => $"/lectures/{content.ContentId}",
+                _ => "/admin/dashboard"
+            };
+            NavigationManager.NavigateTo(url);
+        }
+    }
+}

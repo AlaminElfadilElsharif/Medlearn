@@ -1,0 +1,2090 @@
+﻿@page "/doctor/earnings"
+
+
+<PageTitle>Earnings Dashboard</PageTitle>
+
+<div class="earnings-dashboard">
+    <div class="container-fluid px-0 px-md-3">
+        <!-- Authentication Check (same for both) -->
+        @if (!isAuthenticated)
+        {
+            <div class="text-center py-5">
+                <div class="alert alert-warning mx-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Please login to view earnings dashboard
+                </div>
+                <a href="/account/login" class="btn btn-primary mt-3">
+                    <i class="fas fa-sign-in-alt me-2"></i> Login
+                </a>
+            </div>
+        }
+        else if (currentUser == null)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading doctor profile...</p>
+            </div>
+        }
+        else if (currentUser.UserType != UserType.Doctor)
+        {
+            <div class="text-center py-5">
+                <div class="alert alert-danger mx-3">
+                    <i class="fas fa-user-slash me-2"></i>
+                    Access denied. This page is for doctors only.
+                </div>
+                <a href="/" class="btn btn-primary mt-3">
+                    <i class="fas fa-home me-2"></i> Go to Home
+                </a>
+            </div>
+        }
+        else
+        {
+            <!-- Mobile Header -->
+            <div class="d-block d-md-none">
+                <div class="bg-primary text-white p-3">
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-link text-white p-0 me-3" @onclick="GoBack">
+                            <i class="fas fa-arrow-left fa-lg"></i>
+                        </button>
+                        <h5 class="mb-0 flex-grow-1">Earnings Dashboard</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-link text-white p-0" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v fa-lg"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="/doctor/withdrawals">
+                                        <i class="fas fa-history me-2"></i> Withdrawal History
+                                    </a>
+                                </li>
+                                <li>
+                                    <button class="dropdown-item" @onclick="ExportEarnings">
+                                        <i class="fas fa-file-export me-2"></i> Export Report
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Header -->
+            <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Earnings Dashboard</h1>
+                    <p class="text-muted mb-0">Track your teaching earnings and revenue</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" @onclick="ExportEarnings">
+                        <i class="fas fa-file-export me-2"></i> Export Report
+                    </button>
+                    <a href="/doctor/withdrawals" class="btn btn-outline-secondary">
+                        <i class="fas fa-history me-2"></i> Withdrawal History
+                    </a>
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading earnings data...</p>
+                </div>
+            }
+            else
+            {
+                <!-- Mobile Stats Cards (Horizontal Scroll) -->
+                <div class="d-block d-md-none mb-3">
+                    <div class="stats-scroll-container">
+                        <div class="d-flex px-3" style="gap: 12px;">
+                            <!-- Available Balance -->
+                            <div class="stat-card-mini">
+                                <div class="stat-card-mini-content bg-primary-light">
+                                    <small class="text-muted">Available</small>
+                                    <h5 class="mb-1">$@availableBalance.ToString("N2")</h5>
+                                    <small class="text-success">
+                                        <i class="fas fa-wallet fa-xs"></i> Ready
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Total Earnings -->
+                            <div class="stat-card-mini">
+                                <div class="stat-card-mini-content bg-success-light">
+                                    <small class="text-muted">Total</small>
+                                    <h5 class="mb-1">$@totalEarnings.ToString("N2")</h5>
+                                    <small class="text-info">
+                                        <i class="fas fa-chart-line fa-xs"></i> All time
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- This Month -->
+                            <div class="stat-card-mini">
+                                <div class="stat-card-mini-content bg-warning-light">
+                                    <small class="text-muted">This Month</small>
+                                    <h5 class="mb-1">$@monthlyEarnings.ToString("N2")</h5>
+                                    <small class="text-warning">
+                                        <i class="fas fa-calendar fa-xs"></i> @DateTime.Now.ToString("MMM")
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Total Students -->
+                            <div class="stat-card-mini">
+                                <div class="stat-card-mini-content bg-info-light">
+                                    <small class="text-muted">Students</small>
+                                    <h5 class="mb-1">@totalStudents</h5>
+                                    <small class="text-info">
+                                        <i class="fas fa-users fa-xs"></i> Enrolled
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Stats Cards (Grid) -->
+                <div class="d-none d-md-block">
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="text-muted">Available Balance</h6>
+                                            <h3>$@availableBalance.ToString("N2")</h3>
+                                            <small class="text-success">
+                                                <i class="fas fa-wallet me-1"></i> Ready for withdrawal
+                                            </small>
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    Pending withdrawals: $@pendingWithdrawals.ToString("N2")
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="stat-icon">
+                                            <i class="fas fa-wallet text-primary"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="text-muted">Total Earnings</h6>
+                                            <h3>$@totalEarnings.ToString("N2")</h3>
+                                            <small class="text-info">
+                                                <i class="fas fa-chart-line me-1"></i> All time
+                                            </small>
+                                        </div>
+                                        <div class="stat-icon">
+                                            <i class="fas fa-dollar-sign text-success"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="text-muted">This Month</h6>
+                                            <h3>$@monthlyEarnings.ToString("N2")</h3>
+                                            <small class="text-warning">
+                                                <i class="fas fa-calendar me-1"></i> @DateTime.Now.ToString("MMMM yyyy")
+                                            </small>
+                                        </div>
+                                        <div class="stat-icon">
+                                            <i class="fas fa-calendar-alt text-warning"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <h6 class="text-muted">Total Students</h6>
+                                            <h3>@totalStudents</h3>
+                                            <small class="text-success">
+                                                <i class="fas fa-user-plus me-1"></i> Enrolled in your content
+                                            </small>
+                                        </div>
+                                        <div class="stat-icon">
+                                            <i class="fas fa-users text-info"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Quick Actions -->
+                <div class="d-block d-md-none mb-3 px-3">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="/doctor/specializations/create" class="btn btn-primary w-100">
+                                <i class="fas fa-plus me-1"></i> New Content
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-primary w-100" @onclick='() => activeTab = " withdrawals"'>
+                                <i class="fas fa-money-bill-wave me-1"></i> Withdraw
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Content Tabs -->
+                <div class="d-block d-md-none mb-3">
+                    <ul class="nav nav-tabs nav-fill">
+                        <li class="nav-item">
+                            <button class="nav-link @(activeSection == "content" ? "active" : "")"
+                                    @onclick='() => activeSection = " content"'>
+                                <i class="fas fa-book me-1"></i> Content
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeSection == "activity" ? "active" : "")"
+                                    @onclick='() => activeSection = " activity"'>
+                                <i class="fas fa-clock me-1"></i> Activity
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeSection == "withdraw" ? "active" : "")"
+                                    @onclick='() => activeSection = " withdraw"'>
+                                <i class="fas fa-money-bill me-1"></i> Withdraw
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Mobile Content Section -->
+                <div class="d-block d-md-none">
+                    @if (activeSection == "content")
+                    {
+                        <div class="px-3">
+                            <h6 class="fw-bold mb-3">Your Content</h6>
+                            @if (doctorSpecializations.Any())
+                            {
+                                @foreach (var spec in doctorSpecializations)
+                                {
+                                    var specImageUrl = ImageUrlService.GetImageUrl(spec.ThumbnailUrl);
+
+                                    <!-- Mobile Content Card -->
+                                    <div class="content-card mb-3">
+                                        <div class="d-flex">
+                                            <div class="content-thumbnail me-2">
+                                                @if (!string.IsNullOrEmpty(spec.ThumbnailUrl))
+                                                {
+                                                    <img src="@specImageUrl"
+                                                         alt="@spec.Title"
+                                                         class="rounded"
+                                                         style="width: 60px; height: 60px; object-fit: cover;" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                                         style="width: 60px; height: 60px;">
+                                                        <i class="fas fa-book text-muted"></i>
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1">@spec.Title</h6>
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <span class="badge bg-primary me-2">Specialization</span>
+                                                            <span class="fw-bold">$@spec.Price.ToString("N2")</span>
+                                                        </div>
+                                                        <div class="d-flex align-items-center small text-muted">
+                                                            <span class="me-3">
+                                                                <i class="fas fa-users me-1"></i>@spec.TotalEnrollments
+                                                            </span>
+                                                            <span>
+                                                                @for (int i = 1; i <= 5; i++)
+                                                                {
+                                                                    <i class="fas fa-star @(i <= Math.Round(spec.AverageRating) ? "text-warning" : "text-muted")" style="font-size: 10px;"></i>
+                                                                }
+                                                                <small class="ms-1">@spec.AverageRating.ToString("N1")</small>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-link p-0" data-bs-toggle="dropdown">
+                                                            <i class="fas fa-ellipsis-v"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end">
+                                                            <li>
+                                                                <a class="dropdown-item" href="/doctor/specializations/@spec.Id">
+                                                                    <i class="fas fa-edit me-2"></i> Edit
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <button class="dropdown-item" @onclick="@(() => ToggleSpecializationStatus(spec.Id, !spec.IsActive))">
+                                                                    <i class="fas @(spec.IsActive ? "fa-pause" : "fa-play") me-2"></i>
+                                                                    @(spec.IsActive ? "Deactivate" : "Activate")
+                                                                </button>
+                                                            </li>
+                                                            <li>
+                                                                <hr class="dropdown-divider" />
+                                                            </li>
+                                                            <li>
+                                                                <button class="dropdown-item text-danger" @onclick="@(() => ConfirmDeleteSpecialization(spec.Id))">
+                                                                    <i class="fas fa-trash me-2"></i> Delete
+                                                                </button>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Courses under specialization (Mobile) -->
+                                                @if (spec.Courses != null && spec.Courses.Any())
+                                                {
+                                                    <div class="mt-2 ps-2 border-start">
+                                                        @foreach (var course in spec.Courses.Take(2))
+                                                        {
+                                                            var courseImageUrl = ImageUrlService.GetImageUrl(course.ThumbnailUrl);
+                                                            <div class="d-flex align-items-center small mb-1">
+                                                                @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                                                                {
+                                                                    <img src="@courseImageUrl"
+                                                                         alt="@course.Title"
+                                                                         class="rounded me-2"
+                                                                         style="width: 24px; height: 24px; object-fit: cover;" />
+                                                                }
+                                                                else
+                                                                {
+                                                                    <div class="bg-light rounded d-flex align-items-center justify-content-center me-2"
+                                                                         style="width: 24px; height: 24px;">
+                                                                        <i class="fas fa-folder text-muted" style="font-size: 10px;"></i>
+                                                                    </div>
+                                                                }
+                                                                <span class="text-truncate" style="max-width: 150px;">@course.Title</span>
+                                                                <span class="badge bg-info ms-2">Course</span>
+                                                            </div>
+                                                        }
+                                                        @if (spec.Courses.Count > 2)
+                                                        {
+                                                            <small class="text-muted">+@(spec.Courses.Count - 2) more courses</small>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center py-4">
+                                    <i class="fas fa-book fa-2x text-muted mb-3"></i>
+                                    <p class="text-muted mb-3">No content created yet</p>
+                                    <a href="/doctor/specializations/create" class="btn btn-primary">
+                                        Create Your First Content
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (activeSection == "activity")
+                    {
+                        <div class="px-3">
+                            <!-- Mobile Activity Toggle -->
+                            <div class="btn-group w-100 mb-3">
+                                <button class="btn @(activeTab == "transactions" ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick='@(() => activeTab = "transactions")'>
+                                    Payments
+                                </button>
+                                <button class="btn @(activeTab == "withdrawals" ? "btn-primary" : "btn-outline-primary")"
+                                        @onclick='@(() => activeTab = "withdrawals")'>
+                                    Withdrawals
+                                </button>
+                            </div>
+
+                            @if (activeTab == "transactions")
+                            {
+                                @if (recentPayments.Any())
+                                {
+                                    @foreach (var payment in recentPayments.Take(5))
+                                    {
+                                        <div class="activity-card mb-2">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        @if (payment.Specialization != null)
+                                                        {
+                                                            <span class="badge bg-primary me-2">Spec</span>
+                                                        }
+                                                        else if (payment.Course != null)
+                                                        {
+                                                            <span class="badge bg-info me-2">Course</span>
+                                                        }
+                                                        else if (payment.Lecture != null)
+                                                        {
+                                                            <span class="badge bg-success me-2">Lecture</span>
+                                                        }
+                                                        @TruncateText(
+                                                        payment.Specialization?.Title ??
+                                                        payment.Course?.Title ??
+                                                        payment.Lecture?.Title ?? "Unknown", 30)
+                            </h6>
+                            <small class="text-muted">
+                                @payment.User?.FirstName @payment.User?.LastName
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-success fw-bold">$@payment.Amount.ToString("N2")</div>
+                            <small class="text-muted">+$@((payment.Amount * 0.8m).ToString("N2"))</small>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>
+                            @payment.CreatedAt.ToString("MMM dd")
+                        </small>
+                        <span class="badge @GetPaymentStatusBadge(payment.Status)">
+                            @payment.Status
+                        </span>
+                    </div>
+                </div>
+                                }
+                                    <div class="text-center mt-3">
+                                        <a href="/doctor/payment-requests" class="btn btn-outline-primary btn-sm">
+                                            View All Payments
+                                        </a>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-receipt fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted">No payment history yet</p>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                @if (recentWithdrawals.Any())
+                                {
+                                    @foreach (var withdrawal in recentWithdrawals.Take(5))
+                                    {
+                                        <div class="activity-card mb-2">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <h6 class="mb-1">Withdrawal</h6>
+                                                    <small class="text-muted">
+                                                        @withdrawal.PaymentMethod
+                                                    </small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <div class="text-primary fw-bold">$@withdrawal.Amount.ToString("N2")</div>
+                                                    <small class="text-muted">@withdrawal.RequestDate.ToString("MMM dd")</small>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-end">
+                                                <span class="badge @GetWithdrawalStatusBadge(withdrawal.Status)">
+                                                    @withdrawal.Status
+                                                </span>
+                                            </div>
+                                        </div>
+                                    }
+                                    <div class="text-center mt-3">
+                                        <a href="/doctor/withdrawals" class="btn btn-outline-primary btn-sm">
+                                            View All Withdrawals
+                                        </a>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-money-bill-wave fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted">No withdrawal history yet</p>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                    else if (activeSection == "withdraw")
+                    {
+                        <div class="px-3">
+                            <!-- Mobile Withdrawal Section -->
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="fw-bold mb-3">Withdraw Funds</h6>
+
+                                    @if (availableBalance >= 50)
+                                    {
+                                        <div class="text-center mb-3">
+                                            <h2 class="text-success">$@availableBalance.ToString("N2")</h2>
+                                            <p class="text-muted small">Available for withdrawal</p>
+                                            @if (pendingWithdrawals > 0)
+                                            {
+                                                <div class="alert alert-warning py-1 px-2 small">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    $@pendingWithdrawals.ToString("N2") pending
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small">Amount ($)</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number"
+                                                       class="form-control"
+                                                       @bind="withdrawalAmount"
+                                                       @bind:event="oninput"
+                                                       min="50"
+                                                       max="@availableBalance"
+                                                       step="0.01"
+                                                       placeholder="Enter amount" />
+                                                <button class="btn btn-outline-secondary"
+                                                        type="button"
+                                                        @onclick="() => withdrawalAmount = availableBalance">
+                                                    Max
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small">Payment Method</label>
+                                            <select class="form-select" @bind="selectedPaymentMethod">
+                                                <option value="">Select</option>
+                                                <option value="Bank Transfer">Bank Transfer</option>
+                                                <option value="PayPal">PayPal</option>
+                                                <option value="Stripe">Stripe</option>
+                                            </select>
+                                        </div>
+
+                                        @if (selectedPaymentMethod == "Bank Transfer")
+                                        {
+                                            <div class="mb-2">
+                                                <label class="form-label small">Bank Name</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="bankName" placeholder="Bank name" />
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small">Account Number</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="accountNumber" placeholder="Account number" />
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small">Account Holder</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="accountHolderName" placeholder="Holder name" />
+                                            </div>
+                                            <div class="mb-2">
+                                                <label class="form-label small">SWIFT/BIC</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="swiftCode" placeholder="SWIFT code" />
+                                            </div>
+                                        }
+                                        else if (selectedPaymentMethod == "PayPal")
+                                        {
+                                            <div class="mb-2">
+                                                <label class="form-label small">PayPal Email</label>
+                                                <input type="email" class="form-control form-control-sm" @bind="paypalEmail" placeholder="Your PayPal email" />
+                                            </div>
+                                        }
+                                        else if (selectedPaymentMethod == "Stripe")
+                                        {
+                                            <div class="mb-2">
+                                                <label class="form-label small">Stripe Account ID</label>
+                                                <input type="text" class="form-control form-control-sm" @bind="stripeAccountId" placeholder="Stripe account ID" />
+                                            </div>
+                                        }
+
+                                        <button class="btn btn-primary w-100 mt-3"
+                                                disabled="@(withdrawalAmount < 50 || withdrawalAmount > availableBalance || string.IsNullOrEmpty(selectedPaymentMethod) || isWithdrawing)"
+                                                @onclick="RequestWithdrawal">
+                                            @if (isWithdrawing)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                <span>Processing...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-paper-plane me-2"></i>
+                                                <span>Request Withdrawal</span>
+                                            }
+                                        </button>
+
+                                        <div class="mt-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Processed in 3-5 business days. Platform fee (20%) deducted.
+                                            </small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-3">
+                                            <i class="fas fa-money-bill-wave fa-2x text-muted mb-3"></i>
+                                            <h6>Insufficient Balance</h6>
+                                            <p class="text-muted small mb-3">
+                                                Minimum withdrawal: $50.00<br />
+                                                Available: $@availableBalance.ToString("N2")
+                                            </p>
+                                            <a href="/doctor/specializations/create" class="btn btn-primary btn-sm">
+                                                Create More Content
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Desktop Layout (Original with enhancements) -->
+                <div class="d-none d-md-block">
+                    <!-- Content & Recent Transactions -->
+                    <div class="row mb-4">
+                        <!-- Your Content -->
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Your Content</h5>
+                                    <div>
+                                        <a href="/doctor/specializations" class="btn btn-sm btn-outline-primary me-2">
+                                            View All
+                                        </a>
+                                        <a href="/doctor/specializations/create" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-plus me-1"></i> Create New
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    @if (doctorSpecializations.Any())
+                                    {
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Content</th>
+                                                        <th>Type</th>
+                                                        <th>Price</th>
+                                                        <th>Students</th>
+                                                        <th>Rating</th>
+                                                        <th>Status</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var spec in doctorSpecializations)
+                                                    {
+                                                        var specImageUrl = ImageUrlService.GetImageUrl(spec.ThumbnailUrl);
+                                                        <tr>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    @if (!string.IsNullOrEmpty(spec.ThumbnailUrl))
+                                                                    {
+                                                                        <img src="@specImageUrl"
+                                                                             alt="@spec.Title"
+                                                                             class="rounded me-2"
+                                                                             style="width: 40px; height: 40px; object-fit: cover;"
+                                                                             onerror="this.src='/placeholder-image.jpg';this.onerror=null;" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <div class="bg-light rounded d-flex align-items-center justify-content-center me-2"
+                                                                             style="width: 40px; height: 40px;">
+                                                                            <i class="fas fa-book text-muted"></i>
+                                                                        </div>
+                                                                    }
+                                                                    <div>
+                                                                        <h6 class="mb-0">@spec.Title</h6>
+                                                                        <small class="text-muted">@TruncateText(spec.Description, 50)</small>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-primary">Specialization</span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="fw-bold">$@spec.Price.ToString("N2")</span>
+                                                            </td>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    <i class="fas fa-users text-info me-2"></i>
+                                                                    <span>@spec.TotalEnrollments</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    @for (int i = 1; i <= 5; i++)
+                                                                    {
+                                                                        <i class="fas fa-star @(i <= Math.Round(spec.AverageRating) ? "text-warning" : "text-muted") me-1"></i>
+                                                                    }
+                                                                    <small class="ms-2">@spec.AverageRating.ToString("N1")</small>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="form-check form-switch">
+                                                                    <input class="form-check-input"
+                                                                           type="checkbox"
+                                                                           role="switch"
+                                                                           checked="@spec.IsActive"
+                                                                           @onchange="@(async (e) => await ToggleSpecializationStatus(spec.Id, (bool)e.Value))">
+                                                                    <label class="form-check-label">
+                                                                        @(spec.IsActive ? "Active" : "Inactive")
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="btn-group btn-group-sm">
+                                                                    <a href="/doctor/specializations/@spec.Id" class="btn btn-outline-primary">
+                                                                        <i class="fas fa-edit"></i>
+                                                                    </a>
+                                                                    <button class="btn btn-outline-danger" @onclick="@(() => ConfirmDeleteSpecialization(spec.Id))">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+
+                                                        <!-- Show courses under this specialization -->
+                                                        @if (spec.Courses != null && spec.Courses.Any())
+                                                        {
+                                                            @foreach (var course in spec.Courses)
+                                                            {
+                                                                var courseImageUrl = ImageUrlService.GetImageUrl(course.ThumbnailUrl);
+                                                                <tr class="bg-light">
+                                                                    <td>
+                                                                        <div class="d-flex align-items-center ms-4">
+                                                                            @if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                                                                            {
+                                                                                <img src="@courseImageUrl"
+                                                                                     alt="@course.Title"
+                                                                                     class="rounded me-2"
+                                                                                     style="width: 30px; height: 30px; object-fit: cover;"
+                                                                                     onerror="this.src='/placeholder-image.jpg';this.onerror=null;" />
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <div class="bg-light rounded d-flex align-items-center justify-content-center me-2"
+                                                                                     style="width: 30px; height: 30px;">
+                                                                                    <i class="fas fa-folder text-muted"></i>
+                                                                                </div>
+                                                                            }
+                                                                            <div>
+                                                                                <small class="fw-semibold">@course.Title</small>
+                                                                                <br />
+                                                                                <small class="text-muted">@TruncateText(course.Description, 50)</small>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class="badge bg-info">Course</span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <small>$@course.Price.ToString("N2")</small>
+                                                                    </td>
+                                                                    <td>
+                                                                        <small class="text-muted">@course.TotalEnrollments</small>
+                                                                    </td>
+                                                                    <td>
+                                                                        <small class="text-muted">@course.AverageRating.ToString("N1")</small>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="form-check form-switch">
+                                                                            <input class="form-check-input"
+                                                                                   type="checkbox"
+                                                                                   role="switch"
+                                                                                   checked="@course.IsActive"
+                                                                                   @onchange="@(async (e) => await ToggleCourseStatus(course.Id, (bool)e.Value))">
+                                                                            <label class="form-check-label">
+                                                                                @(course.IsActive ? "Active" : "Inactive")
+                                                                            </label>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="btn-group btn-group-sm">
+                                                                            <a href="/doctor/courses/@course.Id" class="btn btn-outline-primary">
+                                                                                <i class="fas fa-edit"></i>
+                                                                            </a>
+                                                                            <button class="btn btn-outline-danger" @onclick="@(() => ConfirmDeleteCourse(course.Id))">
+                                                                                <i class="fas fa-trash"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        }
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-4">
+                                            <i class="fas fa-book fa-2x text-muted mb-3"></i>
+                                            <p class="text-muted mb-3">No content created yet</p>
+                                            <a href="/doctor/specializations/create" class="btn btn-primary">
+                                                Create Your First Content
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Desktop Recent Activity (compact) -->
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Recent Activity</h5>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm @(activeTab == "transactions" ? "btn-primary" : "btn-outline-primary")"
+                                                @onclick="@(() => SwitchTab("transactions"))">
+                                            Payments
+                                        </button>
+                                        <button class="btn btn-sm @(activeTab == "withdrawals" ? "btn-primary" : "btn-outline-primary")"
+                                                @onclick="@(() => SwitchTab("withdrawals"))">
+                                            Withdrawals
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0">
+                                    @if (activeTab == "transactions")
+                                    {
+                                        <div class="list-group list-group-flush">
+                                            @if (recentPayments.Any())
+                                            {
+                                                @foreach (var payment in recentPayments.Take(5))
+                                                {
+                                                    <div class="list-group-item">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <div>
+                                                                <h6 class="mb-1">
+                                                                    @if (payment.Specialization != null)
+                                                                    {
+                                                                        <span class="badge bg-primary me-2">Specialization</span>
+                                                                        @payment.Specialization.Title
+                                                                    }
+                                                                    else if (payment.Course != null)
+                                                                    {
+                                                                        <span class="badge bg-info me-2">Course</span>
+                                                                        @payment.Course.Title
+                                                                    }
+                                                                    else if (payment.Lecture != null)
+                                                                    {
+                                                                        <span class="badge bg-success me-2">Lecture</span>
+                                                                        @payment.Lecture.Title
+                                                                    }
+                                                                </h6>
+                                                                <small class="text-muted">
+                                                                    Invoice: @payment.InvoiceNumber
+                                                                </small>
+                                                                <br />
+                                                                <small class="text-muted">
+                                                                    <i class="fas fa-user me-1"></i>
+                                                                    @payment.User?.FirstName @payment.User?.LastName
+                                                                </small>
+                                                            </div>
+                                                            <div class="text-end">
+                                                                <div class="text-success fw-bold">
+                                                                    $@payment.Amount.ToString("N2")
+                                                                </div>
+                                                                <small class="text-muted">
+                                                                    You earn: $@((payment.Amount * 0.8m).ToString("N2"))
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-calendar me-1"></i>
+                                                                @payment.CreatedAt.ToString("MMM dd, yyyy")
+                                                            </small>
+                                                            <span class="badge @GetPaymentStatusBadge(payment.Status)">
+                                                                @payment.Status
+                                                            </span>
+                                                        </div>
+                                                        @if (!string.IsNullOrEmpty(payment.InvoicePdfUrl))
+                                                        {
+                                                            var invoiceUrl = ImageUrlService.GetImageUrl(payment.InvoicePdfUrl);
+                                                            <div class="mt-2">
+                                                                <a href="@invoiceUrl"
+                                                                   target="_blank"
+                                                                   class="btn btn-sm btn-outline-danger">
+                                                                    <i class="fas fa-file-pdf me-1"></i> View Invoice
+                                                                </a>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                                <div class="list-group-item text-center">
+                                                    <a href="/doctor/payment-requests" class="btn btn-sm btn-outline-primary">
+                                                        View All Payments
+                                                    </a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="text-center py-4">
+                                                    <i class="fas fa-receipt fa-2x text-muted mb-2"></i>
+                                                    <p class="text-muted">No payment history yet</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="list-group list-group-flush">
+                                            @if (recentWithdrawals.Any())
+                                            {
+                                                @foreach (var withdrawal in recentWithdrawals.Take(5))
+                                                {
+                                                    <div class="list-group-item">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <div>
+                                                                <h6 class="mb-1">Withdrawal Request</h6>
+                                                                <small class="text-muted">
+                                                                    ID: #@withdrawal.Id
+                                                                </small>
+                                                                <br />
+                                                                <small class="text-muted">
+                                                                    Method: @withdrawal.PaymentMethod
+                                                                </small>
+                                                            </div>
+                                                            <div class="text-end">
+                                                                <div class="text-primary fw-bold">
+                                                                    $@withdrawal.Amount.ToString("N2")
+                                                                </div>
+                                                                <small class="text-muted">
+                                                                    @withdrawal.RequestDate.ToString("MMM dd, yyyy")
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <small class="text-muted">
+                                                                @withdrawal.AccountDetails
+                                                            </small>
+                                                            <span class="badge @GetWithdrawalStatusBadge(withdrawal.Status)">
+                                                                @withdrawal.Status
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                <div class="list-group-item text-center">
+                                                    <a href="/doctor/withdrawals" class="btn btn-sm btn-outline-primary">
+                                                        View All Withdrawals
+                                                    </a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="text-center py-4">
+                                                    <i class="fas fa-money-bill-wave fa-2x text-muted mb-2"></i>
+                                                    <p class="text-muted">No withdrawal history yet</p>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Withdrawal Section -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Withdraw Funds</h5>
+                                </div>
+                                <div class="card-body">
+                                    @if (availableBalance >= 50)
+                                    {
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="text-center mb-3 mb-md-0">
+                                                    <h2 class="text-success">$@availableBalance.ToString("N2")</h2>
+                                                    <p class="text-muted">Available for withdrawal</p>
+                                                    @if (pendingWithdrawals > 0)
+                                                    {
+                                                        <div class="alert alert-warning py-1 px-2 d-inline-block mt-2">
+                                                            <small>
+                                                                <i class="fas fa-clock me-1"></i>
+                                                                You have $@pendingWithdrawals.ToString("N2") pending
+                                                            </small>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Withdrawal Amount</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text">$</span>
+                                                                <input type="number"
+                                                                       class="form-control"
+                                                                       @bind="withdrawalAmount"
+                                                                       @bind:event="oninput"
+                                                                       min="50"
+                                                                       max="@availableBalance"
+                                                                       step="0.01"
+                                                                       placeholder="Enter amount" />
+                                                                <button class="btn btn-outline-secondary"
+                                                                        type="button"
+                                                                        @onclick="() => withdrawalAmount = availableBalance">
+                                                                    Max
+                                                                </button>
+                                                            </div>
+                                                            <div class="form-text">
+                                                                Minimum withdrawal: $50.00
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Payment Method</label>
+                                                            <select class="form-select" @bind="selectedPaymentMethod">
+                                                                <option value="">Select Payment Method</option>
+                                                                <option value="Bank Transfer">Bank Transfer</option>
+                                                                <option value="PayPal">PayPal</option>
+                                                                <option value="Stripe">Stripe</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                @if (selectedPaymentMethod == "Bank Transfer")
+                                                {
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Bank Name</label>
+                                                            <input type="text" class="form-control" @bind="bankName" placeholder="Enter bank name" />
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Account Number</label>
+                                                            <input type="text" class="form-control" @bind="accountNumber" placeholder="Enter account number" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">Account Holder Name</label>
+                                                            <input type="text" class="form-control" @bind="accountHolderName" placeholder="Enter account holder name" />
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label">SWIFT/BIC Code</label>
+                                                            <input type="text" class="form-control" @bind="swiftCode" placeholder="Enter SWIFT/BIC code" />
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else if (selectedPaymentMethod == "PayPal")
+                                                {
+                                                    <div class="mb-3">
+                                                        <label class="form-label">PayPal Email</label>
+                                                        <input type="email" class="form-control" @bind="paypalEmail" placeholder="Enter your PayPal email" />
+                                                    </div>
+                                                }
+                                                else if (selectedPaymentMethod == "Stripe")
+                                                {
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Stripe Account ID</label>
+                                                        <input type="text" class="form-control" @bind="stripeAccountId" placeholder="Enter your Stripe account ID" />
+                                                    </div>
+                                                }
+                                                <div class="d-grid">
+                                                    <button class="btn btn-primary btn-lg"
+                                                            disabled="@(withdrawalAmount < 50 || withdrawalAmount > availableBalance || string.IsNullOrEmpty(selectedPaymentMethod) || isWithdrawing)"
+                                                            @onclick="RequestWithdrawal">
+                                                        @if (isWithdrawing)
+                                                        {
+                                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                            <span>Processing...</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="fas fa-paper-plane me-2"></i>
+                                                            <span>Request Withdrawal</span>
+                                                        }
+                                                    </button>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        Withdrawals are processed within 3-5 business days. Platform fee (20%) has already been deducted from your earnings.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-4">
+                                            <i class="fas fa-money-bill-wave fa-2x text-muted mb-3"></i>
+                                            <h6>Insufficient Balance</h6>
+                                            <p class="text-muted mb-3">
+                                                Minimum withdrawal amount is $50.00. You currently have $@availableBalance.ToString("N2") available.
+                                            </p>
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <a href="/doctor/specializations/create" class="btn btn-primary">
+                                                    Create More Content
+                                                </a>
+                                                <a href="/doctor/enrollments" class="btn btn-outline-primary">
+                                                    View Enrollments
+                                                </a>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Charts and Enrollment Stats (unchanged) -->
+                    @if (monthlyEarningsList.Any())
+                    {
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Monthly Earnings</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container" style="height: 300px;">
+                                            <canvas id="earningsChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (doctorEnrollments.Any())
+                    {
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Student Enrollments</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Student</th>
+                                                        <th>Content</th>
+                                                        <th>Enrollment Date</th>
+                                                        <th>Progress</th>
+                                                        <th>Status</th>
+                                                        <th>Amount Paid</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var enrollment in doctorEnrollments.OrderByDescending(e => e.EnrollmentDate).Take(10))
+                                                    {
+                                                        var studentImageUrl = ImageUrlService.GetImageUrl(enrollment.User.ProfileImageUrl);
+                                                        <tr>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    @if (!string.IsNullOrEmpty(enrollment.User.ProfileImageUrl))
+                                                                    {
+                                                                        <img src="@studentImageUrl"
+                                                                             alt="@enrollment.User.FirstName"
+                                                                             class="rounded-circle me-2"
+                                                                             style="width: 32px; height: 32px; object-fit: cover;"
+                                                                             onerror="this.src='/placeholder-image.jpg';this.onerror=null;" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2"
+                                                                             style="width: 32px; height: 32px;">
+                                                                            <i class="fas fa-user text-muted"></i>
+                                                                        </div>
+                                                                    }
+                                                                    <div>
+                                                                        <div class="fw-semibold">@enrollment.User.FirstName @enrollment.User.LastName</div>
+                                                                        <small class="text-muted">@enrollment.User.Email</small>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                @if (enrollment.Specialization != null)
+                                                                {
+                                                                    <span class="badge bg-primary me-1">Specialization</span>
+                                                                    <span>@enrollment.Specialization.Title</span>
+                                                                }
+                                                                else if (enrollment.Course != null)
+                                                                {
+                                                                    <span class="badge bg-info me-1">Course</span>
+                                                                    <span>@enrollment.Course.Title</span>
+                                                                }
+                                                                else if (enrollment.Lecture != null)
+                                                                {
+                                                                    <span class="badge bg-success me-1">Lecture</span>
+                                                                    <span>@enrollment.Lecture.Title</span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                <small>@enrollment.EnrollmentDate.ToString("MMM dd, yyyy")</small>
+                                                                <br />
+                                                                <small class="text-muted">@enrollment.EnrollmentDate.ToString("hh:mm tt")</small>
+                                                            </td>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                                        <div class="progress-bar bg-success"
+                                                                             style="width: @(enrollment.ProgressPercentage)%"
+                                                                             role="progressbar"></div>
+                                                                    </div>
+                                                                    <small>@enrollment.ProgressPercentage.ToString("N0")%</small>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                @if (enrollment.IsCompleted)
+                                                                {
+                                                                    <span class="badge bg-success">
+                                                                        <i class="fas fa-check me-1"></i>Completed
+                                                                    </span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="badge bg-warning">
+                                                                        <i class="fas fa-spinner me-1"></i>In Progress
+                                                                    </span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                <span class="fw-bold">$@enrollment.PricePaid.ToString("N2")</span>
+                                                                <br />
+                                                                <small class="text-muted">You earn: $@((enrollment.PricePaid * 0.8m).ToString("N2"))</small>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        @if (doctorEnrollments.Count > 10)
+                                        {
+                                            <div class="text-center mt-3">
+                                                <a href="/doctor/enrollments" class="btn btn-outline-primary">
+                                                    View All Enrollments (@doctorEnrollments.Count)
+                                                </a>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    // ... (keep all your existing code in the @code block exactly as is)
+    private UserDto? currentUser;
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+
+    // Dashboard data
+    private decimal totalEarnings = 0;
+    private decimal monthlyEarnings = 0;
+    private decimal availableBalance = 0;
+    private decimal pendingWithdrawals = 0;
+    private int totalStudents = 0;
+    private List<PaymentRequestDto> recentPayments = new();
+    private List<WithdrawalRequestDto> recentWithdrawals = new();
+    private List<EnrollmentDto> doctorEnrollments = new();
+    private List<SpecializationDto> doctorSpecializations = new();
+    private List<MonthlyEarningDto> monthlyEarningsList = new();
+
+    // Withdrawal form
+    private decimal withdrawalAmount = 0;
+    private string selectedPaymentMethod = "";
+    private string bankName = "";
+    private string accountNumber = "";
+    private string accountHolderName = "";
+    private string swiftCode = "";
+    private string paypalEmail = "";
+    private string stripeAccountId = "";
+    private bool isWithdrawing = false;
+
+    // UI state
+    private string activeTab = "transactions";
+    private string activeSection = "content"; // For mobile: content, activity, withdraw
+    private DotNetObjectReference<EarningsDashboard>? dotNetHelper;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Check authentication
+            isAuthenticated = await TokenService.IsAuthenticatedAsync();
+
+            if (!isAuthenticated)
+            {
+                isLoading = false;
+                await ShowError("Please login to view the earnings dashboard");
+                return;
+            }
+
+            // Get current user
+            currentUser = await AuthService.GetCurrentUserAsync();
+
+            if (currentUser == null)
+            {
+                isLoading = false;
+                await ShowError("Unable to load user profile");
+                return;
+            }
+
+            if (currentUser.UserType != UserType.Doctor)
+            {
+                await ShowError("Access denied. This page is for doctors only.");
+                await Task.Delay(1000);
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            // Load all dashboard data
+            await LoadDashboardData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading earnings dashboard: {ex}");
+            await ShowError($"Failed to load dashboard: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && monthlyEarningsList.Any())
+        {
+            await InitializeChart();
+        }
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            // Load doctor's balance and withdrawal data
+            var balanceData = await WithdrawalService.GetDoctorBalanceAsync();
+            if (balanceData != null)
+            {
+                availableBalance = balanceData.AvailableBalance;
+                pendingWithdrawals = balanceData.PendingWithdrawals;
+                totalEarnings = balanceData.TotalEarned;
+                recentWithdrawals = balanceData.RecentWithdrawals;
+                monthlyEarningsList = balanceData.MonthlyEarnings;
+
+                // Calculate this month's earnings
+                var currentMonth = DateTime.Now.ToString("yyyy-MM");
+                var currentMonthData = monthlyEarningsList.FirstOrDefault(m => m.Month == currentMonth);
+                monthlyEarnings = currentMonthData?.Earnings ?? 0;
+            }
+
+            // Load doctor's specializations
+            var specializations = await SpecializationService.GetMySpecializationsAsync();
+            doctorSpecializations = specializations ?? new List<SpecializationDto>();
+
+            // Load recent payments
+            await LoadRecentPayments();
+
+            // Load doctor's enrollments
+            await LoadDoctorEnrollments();
+
+            // Calculate total students
+            await CalculateTotalStudents();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex}");
+            await ShowError("Failed to load some dashboard data");
+        }
+    }
+
+    private async Task LoadRecentPayments()
+    {
+        try
+        {
+            var payments = await PaymentService.GetMyPaymentRequestsAsync();
+            if (payments != null)
+            {
+                // Get only approved payments for this doctor
+                recentPayments = payments
+                    .Where(p => p.Status == PaymentStatus.Approved)
+                    .OrderByDescending(p => p.ApprovedDate ?? p.CreatedAt)
+                    .Take(10)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading payments: {ex}");
+            // Don't show error to user for this, just log it
+        }
+    }
+
+    private async Task LoadDoctorEnrollments()
+    {
+        try
+        {
+            doctorEnrollments = await EnrollmentService.GetDoctorContentEnrollmentsAsync() ?? new List<EnrollmentDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading enrollments: {ex}");
+            // Don't show error to user for this, just log it
+        }
+    }
+
+    private async Task CalculateTotalStudents()
+    {
+        try
+        {
+            // Count unique students from enrollments
+            totalStudents = doctorEnrollments
+                .Select(e => e.UserId)
+                .Distinct()
+                .Count();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error calculating total students: {ex}");
+            totalStudents = 0;
+        }
+    }
+
+    private async Task RequestWithdrawal()
+    {
+        if (withdrawalAmount < 50 || withdrawalAmount > availableBalance)
+        {
+            await ShowError("Invalid withdrawal amount. Minimum is $50.00");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(selectedPaymentMethod))
+        {
+            await ShowError("Please select a payment method");
+            return;
+        }
+
+        // Prepare account details based on payment method
+        string accountDetails = "";
+        switch (selectedPaymentMethod)
+        {
+            case "Bank Transfer":
+                if (string.IsNullOrEmpty(bankName) || string.IsNullOrEmpty(accountNumber))
+                {
+                    await ShowError("Please provide bank details");
+                    return;
+                }
+                accountDetails = $"Bank: {bankName}, Account: {accountNumber}, Holder: {accountHolderName}, SWIFT: {swiftCode}";
+                break;
+            case "PayPal":
+                if (string.IsNullOrEmpty(paypalEmail))
+                {
+                    await ShowError("Please provide your PayPal email");
+                    return;
+                }
+                accountDetails = $"PayPal Email: {paypalEmail}";
+                break;
+            case "Stripe":
+                if (string.IsNullOrEmpty(stripeAccountId))
+                {
+                    await ShowError("Please provide your Stripe account ID");
+                    return;
+                }
+                accountDetails = $"Stripe Account ID: {stripeAccountId}";
+                break;
+        }
+
+        isWithdrawing = true;
+        StateHasChanged();
+
+        try
+        {
+            var withdrawalDto = new CreateWithdrawalRequestDto
+            {
+                Amount = withdrawalAmount,
+                PaymentMethod = selectedPaymentMethod,
+                AccountDetails = accountDetails
+            };
+
+            var result = await WithdrawalService.CreateWithdrawalAsync(withdrawalDto);
+
+            if (result != null)
+            {
+                // Update available balance
+                availableBalance -= withdrawalAmount;
+                pendingWithdrawals += withdrawalAmount;
+
+                // Update current user's profile balance
+                if (currentUser?.Profile != null)
+                {
+                    currentUser.Profile.Balance = availableBalance;
+                }
+
+                // Add to recent withdrawals
+                recentWithdrawals.Insert(0, result);
+
+                await ShowSuccess($"Withdrawal request of ${withdrawalAmount:N2} submitted successfully!");
+
+                // Reset form
+                ResetWithdrawalForm();
+
+                // Switch to withdrawals tab on mobile
+                if (System.Environment.OSVersion.Platform == PlatformID.Other)
+                {
+                    activeSection = "activity";
+                    activeTab = "withdrawals";
+                }
+                else
+                {
+                    activeTab = "withdrawals";
+                }
+
+                StateHasChanged();
+            }
+            else
+            {
+                await ShowError("Failed to submit withdrawal request");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Failed to process withdrawal: {ex.Message}");
+        }
+        finally
+        {
+            isWithdrawing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetWithdrawalForm()
+    {
+        withdrawalAmount = 0;
+        selectedPaymentMethod = "";
+        bankName = "";
+        accountNumber = "";
+        accountHolderName = "";
+        swiftCode = "";
+        paypalEmail = "";
+        stripeAccountId = "";
+    }
+
+    private async Task ExportEarnings()
+    {
+        try
+        {
+            // Generate CSV content
+            var csv = new System.Text.StringBuilder();
+            csv.AppendLine("Doctor Earnings Report");
+            csv.AppendLine($"Generated: {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}");
+            csv.AppendLine($"Doctor: {currentUser?.FirstName} {currentUser?.LastName}");
+            csv.AppendLine($"Email: {currentUser?.Email}");
+            csv.AppendLine();
+
+            csv.AppendLine("SUMMARY");
+            csv.AppendLine("Metric,Value");
+            csv.AppendLine($"Total Earnings,${totalEarnings:N2}");
+            csv.AppendLine($"Monthly Earnings,${monthlyEarnings:N2}");
+            csv.AppendLine($"Available Balance,${availableBalance:N2}");
+            csv.AppendLine($"Pending Withdrawals,${pendingWithdrawals:N2}");
+            csv.AppendLine($"Total Students,{totalStudents}");
+            csv.AppendLine();
+
+            csv.AppendLine("RECENT TRANSACTIONS");
+            csv.AppendLine("Date,Invoice,Student,Content Type,Content,Amount,Status");
+
+            foreach (var payment in recentPayments)
+            {
+                var studentName = $"{payment.User?.FirstName} {payment.User?.LastName}";
+                var contentType = payment.Specialization != null ? "Specialization" :
+                                 payment.Course != null ? "Course" :
+                                 payment.Lecture != null ? "Lecture" : "Unknown";
+                var contentTitle = payment.Specialization?.Title ??
+                                 payment.Course?.Title ??
+                                 payment.Lecture?.Title ?? "Unknown";
+
+                csv.AppendLine($"\"{payment.CreatedAt:yyyy-MM-dd HH:mm}\",\"{payment.InvoiceNumber}\",\"{studentName}\",\"{contentType}\",\"{contentTitle}\",${payment.Amount:N2},\"{payment.Status}\"");
+            }
+
+            csv.AppendLine();
+            csv.AppendLine("RECENT WITHDRAWALS");
+            csv.AppendLine("Date,ID,Method,Amount,Status,Account Details");
+
+            foreach (var withdrawal in recentWithdrawals)
+            {
+                csv.AppendLine($"\"{withdrawal.RequestDate:yyyy-MM-dd HH:mm}\",\"{withdrawal.Id}\",\"{withdrawal.PaymentMethod}\",${withdrawal.Amount:N2},\"{withdrawal.Status}\",\"{withdrawal.AccountDetails}\"");
+            }
+
+            csv.AppendLine();
+            csv.AppendLine("MONTHLY EARNINGS");
+            csv.AppendLine("Month,Earnings,Enrollments");
+
+            foreach (var month in monthlyEarningsList)
+            {
+                csv.AppendLine($"\"{month.Month}\",${month.Earnings:N2},{month.Enrollments}");
+            }
+
+            csv.AppendLine();
+            csv.AppendLine("YOUR CONTENT");
+            csv.AppendLine("Title,Type,Price,Students,Rating,Status");
+
+            foreach (var spec in doctorSpecializations)
+            {
+                csv.AppendLine($"\"{spec.Title}\",Specialization,${spec.Price:N2},{spec.TotalEnrollments},{spec.AverageRating:N1},\"{(spec.IsActive ? "Active" : "Inactive")}\"");
+            }
+
+            // Trigger download
+            var fileName = $"Earnings_Report_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+            await JS.InvokeVoidAsync("downloadCSV", fileName, csv.ToString());
+
+            await ShowSuccess("Report exported successfully!");
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Failed to export report: {ex.Message}");
+        }
+    }
+
+    private async Task InitializeChart()
+    {
+        try
+        {
+            // Prepare data for chart
+            var labels = monthlyEarningsList.Select(m => m.Month).Reverse().ToArray();
+            var earnings = monthlyEarningsList.Select(m => (double)m.Earnings).Reverse().ToArray();
+            var enrollments = monthlyEarningsList.Select(m => (double)m.Enrollments).Reverse().ToArray();
+
+            await JS.InvokeVoidAsync("initializeEarningsChart",
+                new { labels = labels, earnings = earnings, enrollments = enrollments });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing chart: {ex}");
+        }
+    }
+
+    private async Task ToggleSpecializationStatus(int id, bool isActive)
+    {
+        try
+        {
+            var result = await SpecializationService.UpdateSpecializationStatusAsync(id, isActive);
+            if (result)
+            {
+                await ShowSuccess($"Specialization {(isActive ? "activated" : "deactivated")} successfully!");
+
+                // Update local state
+                var spec = doctorSpecializations.FirstOrDefault(s => s.Id == id);
+                if (spec != null)
+                {
+                    spec.IsActive = isActive;
+                    StateHasChanged();
+                }
+            }
+            else
+            {
+                await ShowError($"Failed to update specialization status");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleCourseStatus(int id, bool isActive)
+    {
+        try
+        {
+            // Note: You need to inject and use ICourseService
+            // var result = await CourseService.UpdateCourseStatusAsync(id, isActive);
+            // For now, we'll just show a message
+            await ShowInfo("Course status update functionality coming soon!");
+        }
+        catch (Exception ex)
+        {
+            await ShowError($"Error: {ex.Message}");
+        }
+    }
+
+    private async void ConfirmDeleteSpecialization(int id)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this specialization? This action cannot be undone.");
+        if (confirmed)
+        {
+            try
+            {
+                var result = await SpecializationService.DeleteSpecializationAsync(id);
+                if (result)
+                {
+                    await ShowSuccess("Specialization deleted successfully!");
+
+                    // Remove from list
+                    doctorSpecializations = doctorSpecializations.Where(s => s.Id != id).ToList();
+                    StateHasChanged();
+                }
+                else
+                {
+                    await ShowError("Failed to delete specialization");
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowError($"Error: {ex.Message}");
+            }
+        }
+    }
+
+    private async void ConfirmDeleteCourse(int id)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this course? This action cannot be undone.");
+        if (confirmed)
+        {
+            await ShowInfo("Course deletion functionality coming soon!");
+        }
+    }
+
+    private string GetPaymentStatusBadge(PaymentStatus status)
+    {
+        return status switch
+        {
+            PaymentStatus.Approved => "bg-success",
+            PaymentStatus.Pending => "bg-warning",
+            PaymentStatus.Rejected => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetWithdrawalStatusBadge(WithdrawalStatus status)
+    {
+        return status switch
+        {
+            WithdrawalStatus.Approved => "bg-success",
+            WithdrawalStatus.Pending => "bg-warning",
+            WithdrawalStatus.Rejected => "bg-danger",
+            WithdrawalStatus.Completed => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
+            return text;
+
+        return text.Substring(0, maxLength - 3) + "...";
+    }
+
+    private void SwitchTab(string tab)
+    {
+        activeTab = tab;
+        StateHasChanged();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/doctor/dashboard");
+    }
+
+    private async Task ShowSuccess(string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", "success", message);
+        }
+        catch
+        {
+            // Fallback to alert if toast not available
+            await JS.InvokeVoidAsync("alert", message);
+        }
+    }
+
+    private async Task ShowError(string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", "error", message);
+        }
+        catch
+        {
+            // Fallback to alert if toast not available
+            await JS.InvokeVoidAsync("alert", "Error: " + message);
+        }
+    }
+
+    private async Task ShowInfo(string message)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("showToast", "info", message);
+        }
+        catch
+        {
+            // Fallback to alert if toast not available
+            await JS.InvokeVoidAsync("alert", message);
+        }
+    }
+
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+    }
+}
+
+<style>
+    /* Desktop styles */
+    .earnings-dashboard .stat-card {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
+        height: 100%;
+    }
+
+        .earnings-dashboard .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+    .earnings-dashboard .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+
+    .earnings-dashboard .card {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .earnings-dashboard .card-header {
+        background-color: #fff;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        padding: 1rem 1.5rem;
+    }
+
+    .earnings-dashboard .list-group-item {
+        border: none;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        padding: 1rem;
+        transition: background-color 0.2s ease;
+    }
+
+        .earnings-dashboard .list-group-item:hover {
+            background-color: rgba(0,0,0,0.02);
+        }
+
+        .earnings-dashboard .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+    .earnings-dashboard .table th {
+        border-top: none;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        background-color: #f8f9fa;
+    }
+
+    .earnings-dashboard .table td {
+        vertical-align: middle;
+        border-top: 1px solid #f1f1f1;
+    }
+
+    .earnings-dashboard .chart-container {
+        position: relative;
+    }
+
+    .earnings-dashboard .progress {
+        width: 100px;
+    }
+
+    /* Mobile styles */
+    @@media (max-width: 768px) {
+        .earnings-dashboard .container-fluid {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+        /* Horizontal scroll stats */
+        .stats-scroll-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+            .stats-scroll-container::-webkit-scrollbar {
+                display: none;
+            }
+
+        .stat-card-mini {
+            flex: 0 0 auto;
+            width: 140px;
+        }
+
+        .stat-card-mini-content {
+            background: white;
+            border-radius: 10px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .bg-primary-light {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        .bg-success-light {
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+
+        .bg-warning-light {
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+
+        .bg-info-light {
+            background-color: rgba(23, 162, 184, 0.1);
+        }
+        /* Mobile content cards */
+        .content-card {
+            background: white;
+            border-radius: 10px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .content-thumbnail {
+            flex-shrink: 0;
+        }
+        /* Mobile activity cards */
+        .activity-card {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        /* Mobile navigation tabs */
+        .nav-tabs {
+            border-bottom: 2px solid #dee2e6;
+            background: white;
+        }
+
+            .nav-tabs .nav-link {
+                border: none;
+                color: #6c757d;
+                font-size: 0.9rem;
+                padding: 12px 0;
+            }
+
+                .nav-tabs .nav-link.active {
+                    border: none;
+                    border-bottom: 2px solid #007bff;
+                    color: #007bff;
+                    background: transparent;
+                    font-weight: 600;
+                }
+        /* Mobile form controls */
+        .form-control, .form-select {
+            font-size: 16px; /* Prevent zoom on iOS */
+        }
+        /* Bottom spacing for mobile */
+        .earnings-dashboard {
+            padding-bottom: 70px;
+        }
+    }
+
+    /* Status badges */
+    .badge.bg-success {
+        background-color: #28a745 !important;
+    }
+
+    .badge.bg-warning {
+        background-color: #ffc107 !important;
+        color: #000;
+    }
+
+    .badge.bg-danger {
+        background-color: #dc3545 !important;
+    }
+
+    .badge.bg-primary {
+        background-color: #007bff !important;
+    }
+
+    .badge.bg-info {
+        background-color: #17a2b8 !important;
+    }
+
+    .badge.bg-secondary {
+        background-color: #6c757d !important;
+    }
+
+    /* Form styles */
+    .form-check-input:checked {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    /* Button styles */
+    .btn-outline-primary {
+        color: #007bff;
+        border-color: #007bff;
+    }
+
+        .btn-outline-primary:hover {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+    /* Alert styles */
+    .alert-warning {
+        background-color: rgba(255, 193, 7, 0.1);
+        border-color: rgba(255, 193, 7, 0.3);
+        color: #856404;
+    }
+
+    /* Mobile-optimized dropdown */
+    .dropdown-menu {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        padding: 8px 0;
+    }
+
+    .dropdown-item {
+        padding: 12px 16px;
+    }
+
+        .dropdown-item i {
+            width: 20px;
+        }
+</style>

@@ -1,0 +1,837 @@
+﻿@page "/student/mylearning/specialization/{SpecializationId:int}"
+@implements IDisposable
+
+<PageTitle>My Learning - @(specialization?.Title ?? "Specialization")</PageTitle>
+
+<div class="learning-page">
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading your learning progress...</p>
+        </div>
+    }
+    else if (enrollment == null || specialization == null)
+    {
+        <div class="alert alert-warning mt-4">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            You are not enrolled in this specialization.
+            <a href="/specialization/@SpecializationId" class="alert-link ms-2">Enroll now</a>
+        </div>
+    }
+    else
+    {
+        <div class="container-fluid px-0 px-md-3 py-2 py-md-4">
+            <!-- Mobile Header with Progress -->
+            <div class="d-block d-md-none mb-3">
+                <div class="bg-white border-bottom p-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <button class="btn btn-link p-0 me-3" @onclick="GoBack">
+                            <i class="fas fa-arrow-left fa-lg"></i>
+                        </button>
+                        <h5 class="mb-0 flex-grow-1">@specialization.Title</h5>
+                        <button class="btn btn-outline-primary btn-sm" @onclick="ContinueLearning">
+                            <i class="fas fa-play me-1"></i> Continue
+                        </button>
+                    </div>
+                    
+                    <!-- Mobile Progress Bar -->
+                    <div class="mobile-progress mt-2">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>Overall Progress</span>
+                            <span class="fw-bold">@overallProgress.ToString("0.0")%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: @overallProgress%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Breadcrumb -->
+            <div class="d-none d-md-block">
+                <nav aria-label="breadcrumb" class="mb-4">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="/student/dashboard">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item">
+                            <a href="/student/mylearning">My Learning</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            @specialization.Title
+                        </li>
+                    </ol>
+                </nav>
+            </div>
+
+            <!-- Header Section - Desktop Only -->
+            <div class="d-none d-md-block learning-header mb-5">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-start">
+                            <div class="learning-thumbnail me-4">
+                                @if (!string.IsNullOrEmpty(specialization.ThumbnailUrl))
+                                {
+                                    <img src="@GetImageUrl(specialization.ThumbnailUrl)" 
+                                         class="rounded" 
+                                         alt="@specialization.Title"
+                                         onerror="this.onerror=null;this.src='https://placehold.co/400x200?text=Specialization';"
+                                         style="width: 150px; height: 100px; object-fit: cover;">
+                                }
+                            </div>
+                            <div>
+                                <h1 class="learning-title mb-2">@specialization.Title</h1>
+                                <div class="learning-meta mb-3">
+                                    <span class="badge bg-primary">Specialization</span>
+                                    <span class="text-muted ms-2">
+                                        <i class="fas fa-user-md me-1"></i> @specialization.Doctor?.FirstName @specialization.Doctor?.LastName
+                                    </span>
+                                    <span class="text-muted ms-2">
+                                        <i class="fas fa-calendar me-1"></i> Enrolled on @enrollment.EnrollmentDate.ToString("MMM dd, yyyy")
+                                    </span>
+                                </div>
+                                <div class="progress-info">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Overall Progress</span>
+                                        <span>@overallProgress.ToString("0.0")%</span>
+                                    </div>
+                                    <div class="progress" style="height: 10px;">
+                                        <div class="progress-bar bg-success" 
+                                             role="progressbar" 
+                                             style="width: @overallProgress%"
+                                             aria-valuenow="@overallProgress" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="learning-stats">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="stat-box">
+                                        <div class="stat-value">@completedCourses</div>
+                                        <div class="stat-label">Courses</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="stat-box">
+                                        <div class="stat-value">@completedLectures</div>
+                                        <div class="stat-label">Lectures</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-center">
+                                @if (overallProgress < 100)
+                                {
+                                    <button class="btn btn-primary btn-sm" @onclick="ContinueLearning">
+                                        <i class="fas fa-play me-2"></i> Continue Learning
+                                    </button>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-success mb-0 py-2">
+                                        <i class="fas fa-trophy me-2"></i> Congratulations! You've completed this specialization!
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Stats Cards -->
+            <div class="d-block d-md-none mb-3">
+                <div class="row g-2 mx-1">
+                    <div class="col-4">
+                        <div class="card bg-primary text-white text-center py-2">
+                            <div class="small">Courses</div>
+                            <div class="h4 mb-0">@completedCourses</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card bg-info text-white text-center py-2">
+                            <div class="small">Lectures</div>
+                            <div class="h4 mb-0">@completedLectures</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card bg-success text-white text-center py-2">
+                            <div class="small">Hours</div>
+                            <div class="h4 mb-0">@totalTimeSpentHours.ToString("0.0")</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <!-- Courses List -->
+                <div class="col-lg-8">
+                    <!-- Mobile Quick Actions -->
+                    <div class="d-block d-md-none mb-3">
+                        <div class="d-flex gap-2 overflow-auto pb-2">
+                            <button class="btn btn-outline-primary btn-sm flex-shrink-0" @onclick="ContinueLearning">
+                                <i class="fas fa-play me-1"></i> Continue
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm flex-shrink-0" @onclick="DownloadCertificate">
+                                <i class="fas fa-certificate me-1"></i> Certificate
+                            </button>
+                            <button class="btn btn-outline-info btn-sm flex-shrink-0" @onclick="ViewNotes">
+                                <i class="fas fa-sticky-note me-1"></i> Notes
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm flex-shrink-0" @onclick="WriteReview">
+                                <i class="fas fa-star me-1"></i> Review
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Courses</h5>
+                        </div>
+                        <div class="card-body p-0 p-md-3">
+                            @if (specialization.Courses != null && specialization.Courses.Any())
+                            {
+                                <div class="courses-progress-list">
+                                    @foreach (var course in specialization.Courses.OrderBy(c => c.Order))
+                                    {
+                                        var courseProgress = CalculateCourseProgress(course);
+                                        var courseEnrollment = GetCourseEnrollment(course.Id);
+                                        
+                                        <!-- Mobile Course Item -->
+                                        <div class="d-block d-md-none">
+                                            <div class="course-item-mobile border-bottom p-3">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <h6 class="mb-0 flex-grow-1" style="font-size: 1rem;">
+                                                        <a href="javascript:void(0)" 
+                                                           @onclick="() => ToggleCourseLectures(course.Id)"
+                                                           class="text-decoration-none text-dark">
+                                                            <i class="fas @(expandedCourses.Contains(course.Id) ? "fa-chevron-down" : "fa-chevron-right") me-2"></i>
+                                                            @course.Title
+                                                        </a>
+                                                    </h6>
+                                                    <div class="ms-2">
+                                                        <span class="badge bg-primary rounded-pill">@courseProgress.ToString("0.0")%</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="small text-muted mb-2">
+                                                    <i class="fas fa-video me-1"></i> @course.Lectures?.Count lectures
+                                                    <i class="fas fa-clock ms-2 me-1"></i> @CalculateCourseDuration(course) hours
+                                                </div>
+
+                                                <!-- Mobile Progress Bar -->
+                                                <div class="progress mb-2" style="height: 4px;">
+                                                    <div class="progress-bar bg-primary" style="width: @courseProgress%"></div>
+                                                </div>
+                                                
+                                                <!-- Lectures for mobile -->
+                                                @if (expandedCourses.Contains(course.Id) && course.Lectures != null)
+                                                {
+                                                    <div class="lectures-list-mobile mt-3">
+                                                        @foreach (var lecture in course.Lectures.OrderBy(l => l.Order))
+                                                        {
+                                                            var lectureProgress = CalculateLectureProgress(lecture.Id);
+                                                            var lectureEnrollment = GetLectureEnrollment(lecture.Id);
+                                                            
+                                                            <div class="lecture-item-mobile mb-2 p-2 bg-light rounded">
+                                                                <div class="d-flex align-items-center">
+                                                                    <div class="flex-grow-1 me-2">
+                                                                        <div class="d-flex align-items-center">
+                                                                            @if (lecture.IsFreePreview || enrollment != null)
+                                                                            {
+                                                                                <i class="fas fa-play-circle text-primary me-2"></i>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <i class="fas fa-lock text-muted me-2"></i>
+                                                                            }
+                                                                            <div>
+                                                                                <div class="fw-bold small">@lecture.Title</div>
+                                                                                <div class="small text-muted">
+                                                                                    @lecture.EstimatedDurationMinutes mins
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        @if (lecture.IsFreePreview || enrollment != null)
+                                                                        {
+                                                                            <button class="btn btn-sm @(lectureProgress >= 100 ? "btn-outline-success" : "btn-outline-primary")" 
+                                                                                    @onclick="() => StartLecture(lecture.Id)">
+                                                                                @if (lectureProgress >= 100)
+                                                                                {
+                                                                                    <i class="fas fa-redo"></i>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <i class="fas fa-play"></i>
+                                                                                }
+                                                                            </button>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="badge bg-secondary">Locked</span>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <!-- Lecture Progress -->
+                                                                @if (lectureProgress > 0 && lectureProgress < 100)
+                                                                {
+                                                                    <div class="progress mt-1" style="height: 2px;">
+                                                                        <div class="progress-bar bg-warning" style="width: @lectureProgress%"></div>
+                                                                    </div>
+                                                                }
+                                                                else if (lectureProgress >= 100)
+                                                                {
+                                                                    <div class="text-end">
+                                                                        <small class="text-success">
+                                                                            <i class="fas fa-check-circle"></i> Completed
+                                                                        </small>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <!-- Desktop Course Item -->
+                                        <div class="d-none d-md-block course-progress-item mb-4">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <h5 class="mb-1">
+                                                        <a href="javascript:void(0)" 
+                                                           @onclick="() => ToggleCourseLectures(course.Id)"
+                                                           class="text-decoration-none">
+                                                            <i class="fas @(expandedCourses.Contains(course.Id) ? "fa-chevron-down" : "fa-chevron-right") me-2"></i>
+                                                            @course.Title
+                                                        </a>
+                                                    </h5>
+                                                    <div class="course-meta text-muted">
+                                                        <small>
+                                                            <i class="fas fa-video me-1"></i> @course.Lectures?.Count lectures
+                                                            <i class="fas fa-clock ms-2 me-1"></i> @CalculateCourseDuration(course) hours
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="text-end">
+                                                    <div class="progress-percentage">@courseProgress.ToString("0.0")%</div>
+                                                    <div class="progress" style="width: 150px; height: 6px;">
+                                                        <div class="progress-bar bg-primary" style="width: @courseProgress%"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Desktop Lectures -->
+                                            @if (expandedCourses.Contains(course.Id) && course.Lectures != null)
+                                            {
+                                                <div class="lectures-list ms-4 mt-3">
+                                                    @foreach (var lecture in course.Lectures.OrderBy(l => l.Order))
+                                                    {
+                                                        var lectureProgress = CalculateLectureProgress(lecture.Id);
+                                                        var lectureEnrollment = GetLectureEnrollment(lecture.Id);
+                                                        
+                                                        <div class="lecture-progress-item mb-3 p-3 border rounded">
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <div>
+                                                                    <h6 class="mb-1">
+                                                                        @if (lecture.IsFreePreview || enrollment != null)
+                                                                        {
+                                                                            <a href="javascript:void(0)" 
+                                                                               @onclick="() => StartLecture(lecture.Id)"
+                                                                               class="text-decoration-none">
+                                                                                <i class="fas fa-play-circle text-primary me-2"></i>
+                                                                                @lecture.Title
+                                                                            </a>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="text-muted">
+                                                                                <i class="fas fa-lock me-2"></i>
+                                                                                @lecture.Title
+                                                                            </span>
+                                                                        }
+                                                                    </h6>
+                                                                    <div class="lecture-meta">
+                                                                        <small class="text-muted">
+                                                                            @if (lecture.Materials != null)
+                                                                            {
+                                                                                var videoCount = lecture.Materials.Count(m => m.Type == MaterialType.Video);
+                                                                                var pdfCount = lecture.Materials.Count(m => m.Type == MaterialType.PDF);
+                                                                                <span>
+                                                                                    <i class="fas fa-video me-1"></i> @videoCount videos
+                                                                                    <i class="fas fa-file-pdf ms-2 me-1"></i> @pdfCount PDFs
+                                                                                </span>
+                                                                            }
+                                                                            <span class="ms-2">
+                                                                                <i class="fas fa-clock me-1"></i> @lecture.EstimatedDurationMinutes mins
+                                                                            </span>
+                                                                        </small>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="text-end">
+                                                                    @if (lecture.IsFreePreview || enrollment != null)
+                                                                    {
+                                                                        <div class="d-flex align-items-center">
+                                                                            <div class="me-3">
+                                                                                <div class="progress" style="width: 100px; height: 5px;">
+                                                                                    <div class="progress-bar @(lectureProgress >= 100 ? "bg-success" : "bg-warning")" 
+                                                                                         style="width: @lectureProgress%"></div>
+                                                                                </div>
+                                                                                <small class="text-muted">@lectureProgress.ToString("0.0")%</small>
+                                                                            </div>
+                                                                            <button class="btn btn-sm @(lectureProgress >= 100 ? "btn-success" : "btn-primary")" 
+                                                                                    @onclick="() => StartLecture(lecture.Id)">
+                                                                                @if (lectureProgress >= 100)
+                                                                                {
+                                                                                    <i class="fas fa-redo"></i>
+                                                                                }
+                                                                                else if (lectureProgress > 0)
+                                                                                {
+                                                                                    <i class="fas fa-play me-1"></i> <span>Continue</span>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <i class="fas fa-play me-1"></i> <span>Start</span>
+                                                                                }
+                                                                            </button>
+                                                                        </div>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="badge bg-secondary">Locked</span>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-5">
+                                    <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">No courses available in this specialization</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Sidebar -->
+                <div class="d-none d-md-block col-lg-4">
+                    <!-- Progress Summary -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Progress Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Overall Progress</span>
+                                    <span>@overallProgress.ToString("0.0")%</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-success" style="width: @overallProgress%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <div class="h4 mb-1">@completedCourses</div>
+                                        <div class="text-muted small">Courses Completed</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <div class="h4 mb-1">@completedLectures</div>
+                                        <div class="text-muted small">Lectures Completed</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="time-spent mt-3">
+                                <h6><i class="fas fa-clock me-2"></i>Time Spent</h6>
+                                <div class="text-center">
+                                    <div class="display-4">@totalTimeSpentHours.ToString("0.0")</div>
+                                    <div class="text-muted">Hours</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary" @onclick="ContinueLearning">
+                                    <i class="fas fa-play me-2"></i> Continue Learning
+                                </button>
+                                <button class="btn btn-outline-secondary" @onclick="DownloadCertificate">
+                                    <i class="fas fa-certificate me-2"></i> Download Certificate
+                                </button>
+                                <button class="btn btn-outline-info" @onclick="ViewNotes">
+                                    <i class="fas fa-sticky-note me-2"></i> View Notes
+                                </button>
+                                <button class="btn btn-outline-warning" @onclick="WriteReview">
+                                    <i class="fas fa-star me-2"></i> Write a Review
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Completion Status -->
+                    @if (overallProgress >= 100)
+                    {
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-trophy fa-3x mb-3"></i>
+                                <h5>Congratulations!</h5>
+                                <p>You have completed this specialization</p>
+                                <p class="small">Completed on: @enrollment.CompletedDate?.ToString("MMM dd, yyyy")</p>
+                                <button class="btn btn-light" @onclick="DownloadCertificate">
+                                    <i class="fas fa-download me-2"></i> Get Certificate
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Mobile Bottom Navigation -->
+                <div class="d-block d-md-none">
+                    <nav class="mobile-bottom-nav fixed-bottom bg-white border-top">
+                        <div class="d-flex justify-content-around p-2">
+                            <a href="/student/dashboard" class="text-decoration-none text-muted text-center">
+                                <i class="fas fa-home fa-lg"></i>
+                                <small class="d-block">Home</small>
+                            </a>
+                            <a href="/student/mylearning" class="text-decoration-none text-primary text-center">
+                                <i class="fas fa-graduation-cap fa-lg"></i>
+                                <small class="d-block">Learning</small>
+                            </a>
+                            <a href="/student/profile" class="text-decoration-none text-muted text-center">
+                                <i class="fas fa-user fa-lg"></i>
+                                <small class="d-block">Profile</small>
+                            </a>
+                        </div>
+                    </nav>
+                    <!-- Spacer for bottom nav -->
+                    <div style="height: 70px;"></div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int SpecializationId { get; set; }
+
+    private SpecializationDto? specialization;
+    private EnrollmentDto? enrollment;
+    private List<EnrollmentDto>? allEnrollments;
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private HashSet<int> expandedCourses = new();
+    private double overallProgress = 0;
+    private int completedCourses = 0;
+    private int completedLectures = 0;
+    private double totalTimeSpentHours = 0;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthentication();
+        await LoadData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeJavascript();
+        }
+    }
+
+    private async Task InitializeJavascript()
+    {
+        await JS.InvokeVoidAsync("initializeSortable");
+    }
+
+    private async Task CheckAuthentication()
+    {
+        isAuthenticated = await TokenService.IsAuthenticatedAsync();
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo($"/account/login?returnUrl=/student/mylearning/specialization/{SpecializationId}");
+        }
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            // Load specialization
+            specialization = await SpecializationService.GetSpecializationAsync(SpecializationId);
+            
+            if (specialization == null)
+            {
+                await ShowToast("error", "Specialization not found");
+                return;
+            }
+
+            // Load all user enrollments
+            allEnrollments = await EnrollmentService.GetMyEnrollmentsAsync();
+            
+            // Find specialization enrollment
+            enrollment = allEnrollments?.FirstOrDefault(e => 
+                e.SpecializationId == SpecializationId || 
+                (e.CourseId.HasValue && specialization.Courses?.Any(c => c.Id == e.CourseId) == true) ||
+                (e.LectureId.HasValue && specialization.Courses?.Any(c => 
+                    c.Lectures?.Any(l => l.Id == e.LectureId) == true) == true));
+
+            if (enrollment == null)
+            {
+                await ShowToast("warning", "You are not enrolled in this specialization");
+                return;
+            }
+
+            // Calculate progress statistics
+            CalculateProgressStatistics();
+            
+            // Auto-expand first course
+            if (specialization.Courses != null && specialization.Courses.Any())
+            {
+                expandedCourses.Add(specialization.Courses.First().Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ShowToast("error", $"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CalculateProgressStatistics()
+    {
+        if (specialization?.Courses == null || enrollment == null) return;
+
+        int totalLectures = 0;
+        int totalCompletedLectures = 0;
+        int totalCompletedCourses = 0;
+        double totalTime = 0;
+
+        foreach (var course in specialization.Courses)
+        {
+            var courseProgress = CalculateCourseProgress(course);
+            if (courseProgress >= 100) totalCompletedCourses++;
+            
+            if (course.Lectures != null)
+            {
+                foreach (var lecture in course.Lectures)
+                {
+                    totalLectures++;
+                    var lectureProgress = CalculateLectureProgress(lecture.Id);
+                    if (lectureProgress >= 100) totalCompletedLectures++;
+                    
+                    // Calculate time spent on this lecture
+                    totalTime += CalculateLectureTimeSpent(lecture.Id);
+                }
+            }
+        }
+
+        completedCourses = totalCompletedCourses;
+        completedLectures = totalCompletedLectures;
+        totalTimeSpentHours = totalTime / 3600; // Convert seconds to hours
+        
+        // Calculate overall progress based on lectures
+        overallProgress = totalLectures > 0 ? (totalCompletedLectures * 100.0) / totalLectures : 0;
+    }
+
+    private double CalculateCourseProgress(CourseDto course)
+    {
+        if (course.Lectures == null || !course.Lectures.Any()) return 0;
+        
+        int totalLectures = course.Lectures.Count;
+        int completedLectures = 0;
+        
+        foreach (var lecture in course.Lectures)
+        {
+            if (CalculateLectureProgress(lecture.Id) >= 100)
+                completedLectures++;
+        }
+        
+        return totalLectures > 0 ? (completedLectures * 100.0) / totalLectures : 0;
+    }
+
+    private double CalculateLectureProgress(int lectureId)
+    {
+        if (enrollment?.ProgressTrackings == null) return 0;
+        
+        // Check if user has specific lecture enrollment
+        var lectureEnrollment = GetLectureEnrollment(lectureId);
+        if (lectureEnrollment != null)
+        {
+            return lectureEnrollment.ProgressPercentage;
+        }
+        
+        // Check progress trackings for materials in this lecture
+        var materialProgresses = enrollment.ProgressTrackings
+            .Where(p => p.Material?.LectureId == lectureId)
+            .ToList();
+        
+        if (!materialProgresses.Any()) return 0;
+        
+        int completedMaterials = materialProgresses.Count(p => p.IsCompleted);
+        return (completedMaterials * 100.0) / materialProgresses.Count;
+    }
+
+    private double CalculateLectureTimeSpent(int lectureId)
+    {
+        if (enrollment?.ProgressTrackings == null) return 0;
+        
+        return enrollment.ProgressTrackings
+            .Where(p => p.Material?.LectureId == lectureId)
+            .Sum(p => p.TimeSpentSeconds);
+    }
+
+    private EnrollmentDto? GetCourseEnrollment(int courseId)
+    {
+        return allEnrollments?.FirstOrDefault(e => e.CourseId == courseId);
+    }
+
+    private EnrollmentDto? GetLectureEnrollment(int lectureId)
+    {
+        return allEnrollments?.FirstOrDefault(e => e.LectureId == lectureId);
+    }
+
+    private double CalculateCourseDuration(CourseDto course)
+    {
+        if (course.Lectures == null) return 0;
+        var totalMinutes = course.Lectures.Sum(l => l.EstimatedDurationMinutes);
+        return Math.Round(totalMinutes / 60.0, 1);
+    }
+
+    private string GetImageUrl(string? url) => ImageUrlService.GetImageUrl(url);
+
+    private async void ToggleCourseLectures(int courseId)
+    {
+        if (expandedCourses.Contains(courseId))
+            expandedCourses.Remove(courseId);
+        else
+            expandedCourses.Add(courseId);
+        
+        StateHasChanged();
+    }
+
+    private async void StartLecture(int lectureId)
+    {
+        // Find the lecture to check if it has free preview
+        var lecture = specialization?.Courses?
+            .SelectMany(c => c.Lectures ?? new List<LectureDto>())
+            .FirstOrDefault(l => l.Id == lectureId);
+        
+        if (lecture == null) return;
+        
+        // Check access
+        if (!lecture.IsFreePreview && enrollment == null)
+        {
+            await ShowToast("warning", "You need to enroll to access this lecture");
+            return;
+        }
+        
+        // Navigate to lecture player
+        Navigation.NavigateTo($"/lecture/{lectureId}");
+    }
+
+    private async void ContinueLearning()
+    {
+        // Find the first incomplete lecture
+        if (specialization?.Courses == null) return;
+        
+        foreach (var course in specialization.Courses.OrderBy(c => c.Order))
+        {
+            if (course.Lectures == null) continue;
+            
+            foreach (var lecture in course.Lectures.OrderBy(l => l.Order))
+            {
+                var progress = CalculateLectureProgress(lecture.Id);
+                if (progress < 100)
+                {
+                    StartLecture(lecture.Id);
+                    return;
+                }
+            }
+        }
+        
+        // If all lectures are complete, start from first
+        var firstLecture = specialization.Courses
+            .OrderBy(c => c.Order)
+            .SelectMany(c => c.Lectures ?? new List<LectureDto>())
+            .OrderBy(l => l.Order)
+            .FirstOrDefault();
+        
+        if (firstLecture != null)
+            StartLecture(firstLecture.Id);
+    }
+
+    private async Task DownloadCertificate()
+    {
+        if (overallProgress < 100)
+        {
+            await ShowToast("warning", "You must complete the specialization to download the certificate");
+            return;
+        }
+        
+        // Generate or download certificate
+        await ShowToast("info", "Certificate download started");
+        // Implement certificate download logic here
+    }
+
+    private async Task ViewNotes()
+    {
+        await ShowToast("info", "Notes feature coming soon");
+    }
+
+    private async Task WriteReview()
+    {
+        Navigation.NavigateTo($"/student/review/specialization/{SpecializationId}");
+    }
+
+    private async Task ShowToast(string type, string message)
+    {
+        await JS.InvokeVoidAsync("showToast", type, message);
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/student/mylearning");
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}

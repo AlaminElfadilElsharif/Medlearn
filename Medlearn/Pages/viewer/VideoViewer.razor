@@ -1,0 +1,707 @@
+﻿@implements IDisposable
+
+<div class="video-container" style="position: relative; width: 100%; height: 100%;">
+    <!-- Custom video controls -->
+    <div class="video-controls bg-dark p-2 d-flex justify-content-between align-items-center">
+        <div class="text-white">
+            <i class="fas fa-video me-2"></i>Video Player - @Material.Title
+        </div>
+        
+        <div class="text-white d-flex align-items-center">
+            <span>Duration: @FormatDuration(Material.DurationSeconds)</span>
+            @if (currentVideoTime > 0)
+            {
+                <span class="ms-3">Current: @FormatDuration(currentVideoTime)</span>
+            }
+        </div>
+        
+        <div>
+            @if (Material.IsDownloadable)
+            {
+                <button class="btn btn-sm btn-outline-light me-2" @onclick="DownloadFile" title="Download">
+                    <i class="fas fa-download"></i>
+                </button>
+            }
+            <button class="btn btn-sm btn-outline-light" @onclick="FullScreenVideo" title="Full Screen">
+                <i class="fas fa-expand-arrows-alt"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Video Display Area -->
+    <div class="video-display-area" 
+         style="height: calc(100% - 60px); overflow: auto; background: #000; position: relative;" 
+         @ref="contentAreaRef"
+         @onmousemove="OnVideoMouseMove"
+         @onmouseleave="OnVideoMouseLeave">
+        @if (videoSrc != null && !isLoading)
+        {
+            <div style="display: flex; justify-content: center; align-items: center; height: 100%;"
+                 @onclick="TogglePlay">
+                <video @ref="videoElement"
+                       class="max-video-size"
+                       style="max-width: 90%; max-height: 90%; cursor: pointer;"
+                       @oncanplay="OnVideoCanPlay"
+                       @ontimeupdate="OnVideoTimeUpdate"
+                       @onplay="OnVideoPlay"
+                       @onpause="OnVideoPause"
+                       @onended="OnVideoEnded"
+                       disablePictureInPicture>
+                    <source src="@videoSrc" type="@GetVideoMimeType(Material.ContentUrl)">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            
+            <!-- Custom video controls overlay -->
+            @if (showVideoControls)
+            {
+                <div class="custom-video-controls" 
+                     style="position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 20px; background: rgba(0,0,0,0.7);"
+                     @onclick="StopPropagation">
+                    
+                    <!-- Progress bar -->
+                    <div class="progress-container mb-2" style="position: relative; cursor: pointer;"
+                         @onclick="HandleVideoProgressClick"
+                         @ref="progressBarRef">
+                        <div class="progress" style="height: 6px; background: rgba(255,255,255,0.3);">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: @(videoProgressPercentage)%; background: #007bff; height: 100%;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Controls row -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <!-- Left controls -->
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-sm btn-outline-light me-2" @onclick="TogglePlay">
+                                <i class="fas @(isVideoPlaying ? "fa-pause" : "fa-play")"></i>
+                            </button>
+                            <span class="text-white ms-2" style="font-size: 14px; min-width: 120px;">
+                                @FormatDuration(currentVideoTime) / @FormatDuration(Material.DurationSeconds)
+                            </span>
+                        </div>
+                        
+                        <!-- Right controls -->
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-sm btn-outline-light me-2" @onclick="SkipBackward" title="Rewind 10 seconds">
+                                <i class="fas fa-backward"></i> 10s
+                            </button>
+                            <button class="btn btn-sm btn-outline-light me-2" @onclick="SkipForward" title="Forward 10 seconds">
+                                <i class="fas fa-forward"></i> 10s
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else if (isLoading)
+        {
+            <div class="loading-overlay">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2 text-white">Loading video...</div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning text-center m-3">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Failed to load video
+            </div>
+        }
+    </div>
+    
+    <!-- Progress tracking section -->
+    @if (CurrentProgress != null && IsAuthenticated && HasAccess)
+    {
+        <ProgressSection Progress="CurrentProgress" 
+                        IsLoading="isLoading"
+                        OnMarkAsCompleted="HandleMarkAsCompleted"
+                        OnSaveProgress="SaveVideoProgress"
+                        ProgressPercentage="@GetProgressPercentage()" />
+    }
+</div>
+
+<style>
+    .video-container {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .max-video-size {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+    }
+    
+    .custom-video-controls {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .video-display-area:hover .custom-video-controls {
+        opacity: 1;
+    }
+    
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+@code {
+    [Parameter] public LearningMaterialDto Material { get; set; }
+    [Parameter] public ProgressTrackingDto? CurrentProgress { get; set; }
+    [Parameter] public int CurrentEnrollmentId { get; set; }
+    [Parameter] public bool IsAuthenticated { get; set; }
+    [Parameter] public bool HasAccess { get; set; }
+    [Parameter] public EventCallback<ProgressUpdateEventArgs> OnProgressUpdated { get; set; }
+    [Parameter] public EventCallback OnMarkAsCompleted { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+    
+    private ElementReference contentAreaRef;
+    private ElementReference videoElement;
+    private ElementReference progressBarRef;
+    private string? videoSrc;
+    private bool isLoading = true;
+    private bool isVideoPlaying = false;
+    private double currentVideoTime = 0;
+    private double videoProgressPercentage = 0;
+    private bool showVideoControls = false;
+    private DateTime lastMouseMove = DateTime.UtcNow;
+    private CancellationTokenSource videoControlsCts = new CancellationTokenSource();
+    private DateTime lastVideoRenderTime = DateTime.UtcNow;
+    private DateTime lastVideoEventTime = DateTime.UtcNow;
+    private bool isProcessingVideoEvent = false;
+    private SemaphoreSlim videoEventLock = new SemaphoreSlim(1, 1);
+    private DateTime lastProgressSave = DateTime.UtcNow;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVideoContent();
+    }
+    
+    private async Task LoadVideoContent()
+    {
+        try
+        {
+            var token = await SecureFileViewerService.GetSecureStreamUrlAsync(Material.Id);
+            if (!string.IsNullOrEmpty(token))
+            {
+                videoSrc = token;
+                isLoading = false;
+            }
+            else
+            {
+                await OnError.InvokeAsync("Failed to load video");
+                isLoading = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync($"Error loading video: {ex.Message}");
+            isLoading = false;
+        }
+    }
+    
+    private async void OnVideoMouseLeave()
+    {
+        try
+        {
+            videoControlsCts?.Cancel();
+            videoControlsCts = new CancellationTokenSource();
+            
+            await Task.Delay(2000, videoControlsCts.Token);
+            
+            if ((DateTime.UtcNow - lastMouseMove).TotalSeconds >= 2)
+            {
+                showVideoControls = false;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (TaskCanceledException) { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in OnVideoMouseLeave: {ex.Message}");
+        }
+    }
+    
+    private void OnVideoMouseMove(MouseEventArgs e)
+    {
+        lastMouseMove = DateTime.UtcNow;
+        
+        videoControlsCts?.Cancel();
+        
+        if (!showVideoControls)
+        {
+            showVideoControls = true;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    private async Task TogglePlay()
+    {
+        if (videoElement.Context == null || isProcessingVideoEvent) return;
+        
+        await videoEventLock.WaitAsync();
+        isProcessingVideoEvent = true;
+        
+        try
+        {
+            await Task.Delay(100);
+            
+            if (isVideoPlaying)
+            {
+                await JS.InvokeVoidAsync("pauseVideo", videoElement);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("playVideo", videoElement);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error toggling play: {ex.Message}");
+        }
+        finally
+        {
+            isProcessingVideoEvent = false;
+            videoEventLock.Release();
+        }
+    }
+    
+    private async Task OnVideoCanPlay()
+    {
+        isLoading = false;
+        
+        // Restore progress if exists
+        if (CurrentProgress != null && CurrentProgress.LastPositionSeconds > 0)
+        {
+            await SeekVideoToTime(CurrentProgress.LastPositionSeconds);
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task OnVideoTimeUpdate()
+    {
+        if ((DateTime.UtcNow - lastVideoEventTime).TotalMilliseconds < 500 || 
+            videoElement.Context == null || 
+            Material.DurationSeconds <= 0 || 
+            isProcessingVideoEvent)
+        {
+            return;
+        }
+
+        await videoEventLock.WaitAsync();
+        isProcessingVideoEvent = true;
+        
+        try
+        {
+            lastVideoEventTime = DateTime.UtcNow;
+            
+            currentVideoTime = await JS.InvokeAsync<double>("getVideoCurrentTime", videoElement);
+            videoProgressPercentage = (currentVideoTime / Material.DurationSeconds) * 100;
+            
+            // Auto-save progress periodically
+            if ((DateTime.UtcNow - lastProgressSave).TotalSeconds > 30)
+            {
+                await SaveVideoProgress();
+                lastProgressSave = DateTime.UtcNow;
+            }
+            
+            if ((DateTime.UtcNow - lastVideoRenderTime).TotalMilliseconds > 500)
+            {
+                lastVideoRenderTime = DateTime.UtcNow;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in video time update: {ex.Message}");
+        }
+        finally
+        {
+            isProcessingVideoEvent = false;
+            videoEventLock.Release();
+        }
+    }
+    
+    private async void OnVideoPlay()
+    {
+        await Task.Delay(50);
+        isVideoPlaying = true;
+        
+        if ((DateTime.UtcNow - lastVideoRenderTime).TotalMilliseconds > 200)
+        {
+            lastVideoRenderTime = DateTime.UtcNow;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    private async void OnVideoPause()
+    {
+        await Task.Delay(50);
+        isVideoPlaying = false;
+        
+        if (CurrentEnrollmentId > 0)
+        {
+            _ = Task.Run(async () => 
+            {
+                await Task.Delay(1000);
+                await SaveVideoProgress();
+            });
+        }
+        
+        if ((DateTime.UtcNow - lastVideoRenderTime).TotalMilliseconds > 200)
+        {
+            lastVideoRenderTime = DateTime.UtcNow;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    private async Task OnVideoEnded()
+    {
+        isVideoPlaying = false;
+        currentVideoTime = Material.DurationSeconds;
+        videoProgressPercentage = 100;
+        
+        if (CurrentEnrollmentId > 0 && CurrentProgress?.IsCompleted != true)
+        {
+            await HandleMarkAsCompleted();
+        }
+        
+        StateHasChanged();
+    }
+    
+    private async Task HandleVideoProgressClick(MouseEventArgs e)
+    {
+        if (videoElement.Context == null || Material.DurationSeconds <= 0) return;
+        
+        try
+        {
+            var rect = await JS.InvokeAsync<DOMRect>("getBoundingClientRect", progressBarRef);
+            var clickX = e.ClientX - rect.Left;
+            var percentage = Math.Max(0, Math.Min(1, clickX / rect.Width));
+            var newTime = Material.DurationSeconds * percentage;
+            
+            await SeekVideoToTime(newTime);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling progress click: {ex.Message}");
+        }
+    }
+    
+    private async Task SkipForward()
+    {
+        if (videoElement.Context == null || isProcessingVideoEvent) return;
+        
+        try
+        {
+            double currentTime = 0;
+            try
+            {
+                currentTime = await JS.InvokeAsync<double>("getVideoCurrentTime", videoElement);
+            }
+            catch
+            {
+                currentTime = currentVideoTime;
+            }
+            
+            var newTime = currentTime + 10;
+            if (Material.DurationSeconds > 0 && newTime > Material.DurationSeconds)
+            {
+                newTime = Material.DurationSeconds;
+            }
+            
+            await SeekVideoToTime(newTime);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error skipping forward: {ex.Message}");
+            currentVideoTime = Math.Min(currentVideoTime + 10, Material.DurationSeconds);
+            videoProgressPercentage = Material.DurationSeconds > 0 ? 
+                (currentVideoTime / Material.DurationSeconds) * 100 : 0;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    private async Task SkipBackward()
+    {
+        if (videoElement.Context == null || isProcessingVideoEvent) return;
+        
+        try
+        {
+            double currentTime = 0;
+            try
+            {
+                currentTime = await JS.InvokeAsync<double>("getVideoCurrentTime", videoElement);
+            }
+            catch
+            {
+                currentTime = currentVideoTime;
+            }
+            
+            var newTime = Math.Max(0, currentTime - 10);
+            await SeekVideoToTime(newTime);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error skipping backward: {ex.Message}");
+            currentVideoTime = Math.Max(0, currentVideoTime - 10);
+            videoProgressPercentage = Material.DurationSeconds > 0 ? 
+                (currentVideoTime / Material.DurationSeconds) * 100 : 0;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    private async Task SeekVideoToTime(double time)
+    {
+        if (videoElement.Context == null || isProcessingVideoEvent) return;
+        
+        await videoEventLock.WaitAsync();
+        isProcessingVideoEvent = true;
+        
+        try
+        {
+            var maxTime = Material.DurationSeconds > 0 ? Material.DurationSeconds : 999999;
+            time = Math.Max(0, Math.Min(maxTime, time));
+            
+            bool wasPlaying = isVideoPlaying;
+            
+            if (wasPlaying)
+            {
+                await JS.InvokeVoidAsync("pauseVideo", videoElement);
+                isVideoPlaying = false;
+                await Task.Delay(100);
+            }
+            
+            bool timeSetSuccessfully = await JS.InvokeAsync<bool>("setVideoCurrentTime", videoElement, time);
+            
+            if (timeSetSuccessfully)
+            {
+                currentVideoTime = time;
+                videoProgressPercentage = Material.DurationSeconds > 0 ? 
+                    (currentVideoTime / Material.DurationSeconds) * 100 : 0;
+            }
+            
+            await InvokeAsync(StateHasChanged);
+            
+            if (wasPlaying)
+            {
+                await Task.Delay(300);
+                await JS.InvokeVoidAsync("playVideo", videoElement);
+                isVideoPlaying = true;
+            }
+            
+            if (CurrentEnrollmentId > 0 && timeSetSuccessfully)
+            {
+                _ = Task.Run(async () => 
+                {
+                    try
+                    {
+                        await UpdateVideoProgressAfterSeek();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error updating progress: {ex.Message}");
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error seeking video: {ex.Message}");
+        }
+        finally
+        {
+            isProcessingVideoEvent = false;
+            videoEventLock.Release();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    private async Task UpdateVideoProgressAfterSeek()
+    {
+        if (!IsAuthenticated || Material == null || CurrentEnrollmentId == 0) return;
+        
+        try
+        {
+            var timeSpent = Math.Max((int)currentVideoTime, CurrentProgress?.TimeSpentSeconds ?? 0);
+            
+            var args = new ProgressUpdateEventArgs
+            {
+                MaterialId = Material.Id,
+                IsCompleted = videoProgressPercentage >= 95,
+                TimeSpentSeconds = timeSpent,
+                LastPositionSeconds = (int)currentVideoTime
+            };
+            
+            await OnProgressUpdated.InvokeAsync(args);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating progress after seek: {ex.Message}");
+        }
+    }
+    
+    private async Task SaveVideoProgress()
+    {
+        if (!IsAuthenticated || Material == null || CurrentEnrollmentId == 0) return;
+        
+        try
+        {
+            int timeSpentSeconds = await CalculateActualVideoTimeWatched();
+            bool isCompleted = videoProgressPercentage >= 95 || 
+                              (Material.DurationSeconds > 0 && 
+                               currentVideoTime >= Material.DurationSeconds * 0.95);
+            
+            var args = new ProgressUpdateEventArgs
+            {
+                MaterialId = Material.Id,
+                IsCompleted = isCompleted,
+                TimeSpentSeconds = timeSpentSeconds,
+                LastPositionSeconds = (int)currentVideoTime
+            };
+            
+            await OnProgressUpdated.InvokeAsync(args);
+            
+            if (isCompleted)
+            {
+                // Show success message
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving video progress: {ex.Message}");
+            await OnError.InvokeAsync("Could not save progress");
+        }
+    }
+    
+    private async Task<int> CalculateActualVideoTimeWatched()
+    {
+        if (CurrentProgress == null) return (int)currentVideoTime;
+        
+        int totalTime = CurrentProgress.TimeSpentSeconds;
+        
+        if (isVideoPlaying)
+        {
+            var timeSinceLastSave = (DateTime.UtcNow - lastProgressSave).TotalSeconds;
+            totalTime += (int)Math.Min(timeSinceLastSave, 60);
+        }
+        
+        return Math.Max(totalTime, (int)currentVideoTime);
+    }
+    
+    private async Task HandleMarkAsCompleted()
+    {
+        await OnMarkAsCompleted.InvokeAsync();
+    }
+    
+    private double GetProgressPercentage()
+    {
+        if (CurrentProgress == null) return 0;
+        
+        if (CurrentProgress.IsCompleted) return 100;
+        
+        if (Material.DurationSeconds > 0)
+        {
+            var percentage = (currentVideoTime / Material.DurationSeconds) * 100;
+            return Math.Min(100, Math.Max(0, percentage));
+        }
+        
+        return 0;
+    }
+    
+    private void StopPropagation(MouseEventArgs e)
+    {
+        // Stop click propagation
+    }
+    
+    private async Task FullScreenVideo()
+    {
+        try
+        {
+            if (videoElement.Context != null)
+            {
+                await JS.InvokeVoidAsync("toggleFullScreen", videoElement);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error entering fullscreen: {ex.Message}");
+        }
+    }
+    
+    private async Task DownloadFile()
+    {
+        try
+        {
+            await SecureFileViewerService.DownloadMaterialAsync(Material.Id, Material.Title);
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync($"Download failed: {ex.Message}");
+        }
+    }
+    
+    private string GetVideoMimeType(string url)
+    {
+        var ext = Path.GetExtension(url)?.ToLower();
+        return ext switch
+        {
+            ".mp4" => "video/mp4",
+            ".webm" => "video/webm",
+            ".ogg" => "video/ogg",
+            _ => "video/mp4"
+        };
+    }
+    
+    private string FormatDuration(double seconds)
+    {
+        var timeSpan = TimeSpan.FromSeconds(seconds);
+        
+        if (timeSpan.Hours > 0)
+        {
+            return $"{timeSpan.Hours:00}:{timeSpan.Minutes:00}:{timeSpan.Seconds:00}";
+        }
+        else
+        {
+            return $"{timeSpan.Minutes:00}:{timeSpan.Seconds:00}";
+        }
+    }
+    
+    private class DOMRect
+    {
+        public double Left { get; set; }
+        public double Top { get; set; }
+        public double Width { get; set; }
+        public double Height { get; set; }
+    }
+    
+    protected override bool ShouldRender()
+    {
+        if ((DateTime.UtcNow - lastVideoRenderTime).TotalMilliseconds < 200)
+        {
+            return false;
+        }
+        return true;
+    }
+    
+    public void Dispose()
+    {
+        videoEventLock?.Dispose();
+        videoControlsCts?.Cancel();
+        videoControlsCts?.Dispose();
+    }
+}

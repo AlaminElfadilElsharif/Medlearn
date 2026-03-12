@@ -1,0 +1,1129 @@
+﻿@page "/student/reviews/write/{enrollmentId:int}"
+@page "/review/{enrollmentId:int}/edit"
+@inject ILogger<WriteReview> Logger
+
+<PageTitle>Write Review</PageTitle>
+
+<div class="container mt-3 mt-md-4 px-2 px-md-3">
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (enrollment == null || !enrollment.IsCompleted)
+    {
+        <!-- Mobile Error View -->
+        <div class="d-block d-md-none">
+            <div class="text-center py-4">
+                <div class="mb-3">
+                    <i class="fas fa-exclamation-circle fa-4x text-danger"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Unable to Review</h5>
+                <p class="text-muted small mb-4">This enrollment is not yet completed or does not exist.</p>
+                <button class="btn btn-primary w-100" @onclick='() => Navigation.NavigateTo("/my-courses")'>
+                    <i class="fas fa-arrow-left me-2"></i> Back to My Courses
+                </button>
+            </div>
+        </div>
+
+        <!-- Desktop Error View -->
+        <div class="d-none d-md-block">
+            <div class="alert alert-danger text-center py-4">
+                <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                <h4>Unable to Review</h4>
+                <p class="mb-4">This enrollment is not yet completed or does not exist.</p>
+                <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/my-courses")'>
+                    <i class="fas fa-arrow-left me-2"></i> Back to My Courses
+                </button>
+            </div>
+        </div>
+    }
+    else if (enrollment.Review != null && !isEditMode)
+    {
+        <!-- Mobile Existing Review View -->
+        <div class="d-block d-md-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white py-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle fa-2x me-3"></i>
+                        <div>
+                            <h5 class="mb-0">Already Reviewed</h5>
+                            <small>Your review has been submitted</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <!-- Mobile Review Display -->
+                    <div class="review-display">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0">Your Review</h6>
+                            <span class="badge bg-light text-dark">@enrollment.Review.ReviewDate.ToString("MMM dd, yyyy")</span>
+                        </div>
+
+                        <!-- Rating Display - Mobile -->
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="rating-display me-2">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <span class="fa @(i <= enrollment.Review.Rating ? "fa-star text-warning" : "fa-star-o text-muted")" style="font-size: 1.2rem;"></span>
+                                    }
+                                </div>
+                                <span class="fw-bold">@enrollment.Review.Rating/5</span>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(enrollment.Review.Comment))
+                        {
+                            <div class="review-comment p-3 bg-light rounded mb-3">
+                                <p class="mb-0 small">@enrollment.Review.Comment</p>
+                            </div>
+                        }
+
+                        <!-- Mobile Action Buttons - Stacked -->
+                        <div class="d-grid gap-2 mt-4">
+                            <button class="btn btn-primary" @onclick="EnableEditMode">
+                                <i class="fa fa-edit me-2"></i> Edit Review
+                            </button>
+                            <button class="btn btn-outline-danger" @onclick="ConfirmDeleteReview">
+                                <i class="fa fa-trash me-2"></i> Delete Review
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/my-courses")'>
+                                <i class="fa fa-arrow-left me-2"></i> Back
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop Existing Review View -->
+        <div class="d-none d-md-block">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Already Reviewed</h4>
+                </div>
+                <div class="card-body">
+                    <p>You have already reviewed this course. You can edit your review or view it below.</p>
+
+                    <!-- Desktop Review Display -->
+                    <div class="review-display mt-3 p-4 border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5>Your Review</h5>
+                            <span class="badge bg-secondary">@enrollment.Review.ReviewDate.ToString("MMMM dd, yyyy")</span>
+                        </div>
+
+                        <!-- Rating Display -->
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="rating-display me-3">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <span class="fa @(i <= enrollment.Review.Rating ? "fa-star text-warning" : "fa-star-o text-muted")" style="font-size: 1.5rem;"></span>
+                                    }
+                                </div>
+                                <span class="fs-5 fw-bold">@enrollment.Review.Rating out of 5</span>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(enrollment.Review.Comment))
+                        {
+                            <div class="review-comment p-3 bg-light rounded mt-3">
+                                <p class="mb-0">@enrollment.Review.Comment</p>
+                            </div>
+                        }
+
+                        <!-- Desktop Action Buttons - Horizontal -->
+                        <div class="mt-4 d-flex gap-2">
+                            <button class="btn btn-primary" @onclick="EnableEditMode">
+                                <i class="fa fa-edit me-2"></i> Edit Review
+                            </button>
+                            <button class="btn btn-outline-danger" @onclick="ConfirmDeleteReview">
+                                <i class="fa fa-trash me-2"></i> Delete Review
+                            </button>
+                            <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/my-courses")'>
+                                <i class="fa fa-arrow-left me-2"></i> Back to My Courses
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Mobile Form View -->
+        <div class="d-block d-md-none">
+            <!-- Mobile Header with Back Button -->
+            <div class="d-flex align-items-center mb-3">
+                <button class="btn btn-link p-0 me-3" @onclick="Cancel">
+                    <i class="fas fa-arrow-left fa-lg"></i>
+                </button>
+                <h5 class="mb-0 flex-grow-1">@(isEditMode ? "Edit Review" : "Write Review")</h5>
+                <span class="badge bg-primary">@(enrollment?.Lecture?.Title ?? enrollment?.Course?.Title ?? "Review")</span>
+            </div>
+
+            <!-- Error Message -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger small py-2 mb-3">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    @errorMessage
+                </div>
+            }
+
+            <!-- Mobile Enrollment Info - Collapsible -->
+            <div class="mb-3">
+                <details class="enrollment-info-details">
+                    <summary class="fw-bold text-primary p-2 bg-light rounded">
+                        <i class="fas fa-info-circle me-2"></i>Review Details
+                    </summary>
+                    <div class="p-3 border rounded bg-light mt-2">
+                        @if (enrollment.Lecture != null)
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted">Lecture</small>
+                                <div class="fw-bold">@enrollment.Lecture.Title</div>
+                                @if (enrollment.Course != null)
+                                {
+                                    <small class="text-muted">Course: @enrollment.Course.Title</small>
+                                }
+                            </div>
+                        }
+                        else if (enrollment.Course != null)
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted">Course</small>
+                                <div class="fw-bold">@enrollment.Course.Title</div>
+                            </div>
+                        }
+                        else if (enrollment.Specialization != null)
+                        {
+                            <div>
+                                <small class="text-muted">Specialization</small>
+                                <div class="fw-bold">@enrollment.Specialization.Title</div>
+                            </div>
+                        }
+
+                        <div class="mt-2 pt-2 border-top small">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Enrolled:</span>
+                                <span>@enrollment.EnrollmentDate.ToString("MMM dd, yyyy")</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Completed:</span>
+                                <span>@(enrollment.CompletedDate?.ToString("MMM dd, yyyy") ?? "N/A")</span>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Mobile Review Form -->
+            <form @onsubmit="HandleSubmit">
+                <!-- Mobile Rating Section -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Rating</label>
+
+                    <!-- Mobile Rating Options - Compact -->
+                    <div class="rating-options-mobile">
+                        @for (int star = 5; star >= 1; star--)
+                        {
+                            <div class="rating-row mb-2" @onclick="() => SelectRating(star)">
+                                <div class="d-flex align-items-center p-2 border rounded @(currentRating == star ? "border-primary bg-light" : "")">
+                                    <div class="me-2">
+                                        <input type="radio"
+                                               name="mobileRating"
+                                               class="form-check-input"
+                                               checked="@(currentRating == star)"
+                                               @onchange="() => SelectRating(star)" />
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="stars">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <span class="fa @(i <= star ? "fa-star text-warning" : "fa-star-o text-muted")"></span>
+                                            }
+                                        </div>
+                                        <div class="small text-muted">
+                                            @GetRatingLabel(star)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @if (ratingError)
+                    {
+                        <div class="alert alert-danger small mt-2 py-2">
+                            <i class="fa fa-exclamation-circle me-1"></i>Please select a rating
+                        </div>
+                    }
+                </div>
+
+                <!-- Mobile Comment Section -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Your Review</label>
+                    <textarea class="form-control @(commentError ? "is-invalid" : "")"
+                              rows="4"
+                              placeholder="Share your experience..."
+                              @bind="commentValue"
+                              @bind:event="oninput"></textarea>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted">Minimum 10 characters</small>
+                        <small class="@(commentValue.Length < 10 ? "text-danger" : "text-success")">
+                            @commentValue.Length/10
+                        </small>
+                    </div>
+                    @if (commentError)
+                    {
+                        <div class="alert alert-danger small mt-2 py-2">
+                            <i class="fa fa-exclamation-circle me-1"></i>Please provide a longer review
+                        </div>
+                    }
+                </div>
+
+                <!-- Mobile Tips - Collapsible -->
+                <div class="mb-4">
+                    <details class="tips-details">
+                        <summary class="text-info p-2 bg-light rounded">
+                            <i class="fas fa-lightbulb me-2"></i>Writing Tips
+                        </summary>
+                        <div class="p-3 bg-light rounded mt-2">
+                            <ul class="small mb-0 ps-3">
+                                <li>Be specific about what you liked</li>
+                                <li>Mention if expectations were met</li>
+                                <li>Provide constructive feedback</li>
+                                <li>Share your learning outcome</li>
+                            </ul>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Mobile Action Buttons - Fixed Bottom -->
+                <div class="fixed-bottom bg-white p-3 border-top d-block d-md-none">
+                    <div class="d-flex gap-2">
+                        <button type="button"
+                                class="btn btn-outline-secondary flex-fill"
+                                @onclick="Cancel">
+                            Cancel
+                        </button>
+                        @if (isEditMode && enrollment.Review != null)
+                        {
+                            <button type="button"
+                                    class="btn btn-outline-danger flex-fill"
+                                    @onclick="ConfirmDeleteReview">
+                                <i class="fa fa-trash me-1"></i> Delete
+                            </button>
+                        }
+                        <button type="submit"
+                                class="btn btn-primary flex-fill"
+                                disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            else
+                            {
+                                <i class="fa fa-paper-plane me-1"></i>
+                            }
+                            @(isEditMode ? "Update" : "Submit")
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Spacer for Mobile -->
+                <div class="mb-5 pb-4"></div>
+            </form>
+
+            <!-- Mobile Existing Reviews -->
+            @if (existingReviews != null && existingReviews.Any() && !isEditMode)
+            {
+                <div class="mt-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="fa fa-comments me-2"></i>Other Reviews
+                    </h6>
+                    <div class="review-list">
+                        @foreach (var review in existingReviews)
+                        {
+                            <div class="card mb-2 border-0 shadow-sm">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="avatar me-2">
+                                            @if (!string.IsNullOrEmpty(review.User?.ProfileImageUrl))
+                                            {
+                                                <img src="@review.User.ProfileImageUrl"
+                                                     class="rounded-circle"
+                                                     style="width: 32px; height: 32px; object-fit: cover;">
+                                            }
+                                            else
+                                            {
+                                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
+                                                     style="width: 32px; height: 32px;">
+                                                    @review.User?.FirstName?.FirstOrDefault()
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold small">@review.User?.FirstName @review.User?.LastName</div>
+                                            <div class="small text-muted">
+                                                @review.ReviewDate.ToString("MMM dd, yyyy")
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            <span class="fa @(i <= review.Rating ? "fa-star text-warning" : "fa-star-o text-muted")" style="font-size: 0.8rem;"></span>
+                                        }
+                                    </div>
+                                    <p class="small mb-0">@review.Comment</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Desktop Form View (Original) -->
+        <div class="d-none d-md-block">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0">
+                                <i class="fa fa-star me-2"></i>
+                                @(isEditMode ? "Edit Your Review" : "Write a Review")
+                            </h4>
+                        </div>
+
+                        <div class="card-body">
+                            <!-- Error Message -->
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger">
+                                    @errorMessage
+                                </div>
+                            }
+
+                            <!-- Enrollment Info -->
+                            <div class="enrollment-info mb-4 p-3 border rounded bg-light">
+                                <h5>Reviewing:</h5>
+                                @if (enrollment.Lecture != null)
+                                {
+                                    <div>
+                                        <strong>Lecture:</strong> @enrollment.Lecture.Title
+                                        @if (enrollment.Course != null)
+                                        {
+                                            <div class="text-muted small">Part of course: @enrollment.Course.Title</div>
+                                        }
+                                    </div>
+                                }
+                                else if (enrollment.Course != null)
+                                {
+                                    <div>
+                                        <strong>Course:</strong> @enrollment.Course.Title
+                                    </div>
+                                }
+                                else if (enrollment.Specialization != null)
+                                {
+                                    <div>
+                                        <strong>Specialization:</strong> @enrollment.Specialization.Title
+                                    </div>
+                                }
+
+                                <div class="mt-2 small text-muted">
+                                    <div>Enrolled on: @enrollment.EnrollmentDate.ToString("MMMM dd, yyyy")</div>
+                                    <div>Completed on: @(enrollment.CompletedDate?.ToString("MMMM dd, yyyy") ?? "N/A")</div>
+                                </div>
+                            </div>
+
+                            <!-- Desktop Review Form -->
+                            <form @onsubmit="HandleSubmit">
+                                <!-- Desktop Rating Section -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">Rating</label>
+                                    <div class="form-text mb-3">
+                                        How would you rate this content? (Select one)
+                                    </div>
+
+                                    <!-- Desktop Rating Options -->
+                                    <div class="rating-options">
+                                        <div class="form-check rating-option mb-2">
+                                            <input class="form-check-input"
+                                                   type="radio"
+                                                   name="rating"
+                                                   id="rating5"
+                                                   value="5"
+                                                   @onchange="() => SelectRating(5)"
+                                                   checked="@(currentRating == 5)" />
+                                            <label class="form-check-label d-flex align-items-center w-100" for="rating5">
+                                                <div class="me-3">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <span class="fa fa-star text-warning"></span>
+                                                    }
+                                                </div>
+                                                <div>
+                                                    <strong>Excellent</strong>
+                                                    <div class="text-muted small">5 stars - Outstanding content</div>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check rating-option mb-2">
+                                            <input class="form-check-input"
+                                                   type="radio"
+                                                   name="rating"
+                                                   id="rating4"
+                                                   value="4"
+                                                   @onchange="() => SelectRating(4)"
+                                                   checked="@(currentRating == 4)" />
+                                            <label class="form-check-label d-flex align-items-center w-100" for="rating4">
+                                                <div class="me-3">
+                                                    @for (int i = 1; i <= 4; i++)
+                                                    {
+                                                        <span class="fa fa-star text-warning"></span>
+                                                    }
+                                                    <span class="fa fa-star-o text-muted"></span>
+                                                </div>
+                                                <div>
+                                                    <strong>Very Good</strong>
+                                                    <div class="text-muted small">4 stars - Great content with minor issues</div>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check rating-option mb-2">
+                                            <input class="form-check-input"
+                                                   type="radio"
+                                                   name="rating"
+                                                   id="rating3"
+                                                   value="3"
+                                                   @onchange="() => SelectRating(3)"
+                                                   checked="@(currentRating == 3)" />
+                                            <label class="form-check-label d-flex align-items-center w-100" for="rating3">
+                                                <div class="me-3">
+                                                    @for (int i = 1; i <= 3; i++)
+                                                    {
+                                                        <span class="fa fa-star text-warning"></span>
+                                                    }
+                                                    @for (int i = 1; i <= 2; i++)
+                                                    {
+                                                        <span class="fa fa-star-o text-muted"></span>
+                                                    }
+                                                </div>
+                                                <div>
+                                                    <strong>Good</strong>
+                                                    <div class="text-muted small">3 stars - Decent but could be better</div>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check rating-option mb-2">
+                                            <input class="form-check-input"
+                                                   type="radio"
+                                                   name="rating"
+                                                   id="rating2"
+                                                   value="2"
+                                                   @onchange="() => SelectRating(2)"
+                                                   checked="@(currentRating == 2)" />
+                                            <label class="form-check-label d-flex align-items-center w-100" for="rating2">
+                                                <div class="me-3">
+                                                    @for (int i = 1; i <= 2; i++)
+                                                    {
+                                                        <span class="fa fa-star text-warning"></span>
+                                                    }
+                                                    @for (int i = 1; i <= 3; i++)
+                                                    {
+                                                        <span class="fa fa-star-o text-muted"></span>
+                                                    }
+                                                </div>
+                                                <div>
+                                                    <strong>Fair</strong>
+                                                    <div class="text-muted small">2 stars - Needs significant improvement</div>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div class="form-check rating-option">
+                                            <input class="form-check-input"
+                                                   type="radio"
+                                                   name="rating"
+                                                   id="rating1"
+                                                   value="1"
+                                                   @onchange="() => SelectRating(1)"
+                                                   checked="@(currentRating == 1)" />
+                                            <label class="form-check-label d-flex align-items-center w-100" for="rating1">
+                                                <div class="me-3">
+                                                    <span class="fa fa-star text-warning"></span>
+                                                    @for (int i = 1; i <= 4; i++)
+                                                    {
+                                                        <span class="fa fa-star-o text-muted"></span>
+                                                    }
+                                                </div>
+                                                <div>
+                                                    <strong>Poor</strong>
+                                                    <div class="text-muted small">1 star - Not recommended</div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    @if (ratingError)
+                                    {
+                                        <div class="alert alert-danger mt-2">
+                                            <i class="fa fa-exclamation-circle me-2"></i>Please select a rating (1-5 stars)
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Desktop Comment -->
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">Your Review</label>
+                                    <textarea class="form-control @(commentError ? "is-invalid" : "")"
+                                              rows="6"
+                                              placeholder="Share your experience with this content. What did you like? What could be improved?"
+                                              @bind="commentValue"
+                                              @bind:event="oninput"></textarea>
+                                    <div class="form-text">
+                                        Your review helps other learners and content creators. Minimum 10 characters.
+                                    </div>
+                                    @if (commentError)
+                                    {
+                                        <div class="alert alert-danger mt-2">
+                                            <i class="fa fa-exclamation-circle me-2"></i>Please provide a review (minimum 10 characters)
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Desktop Tips -->
+                                <div class="alert alert-info">
+                                    <h6><i class="fa fa-lightbulb-o me-2"></i>Writing a helpful review:</h6>
+                                    <ul class="mb-0">
+                                        <li>Be specific about what you liked or didn't like</li>
+                                        <li>Mention if the content met your expectations</li>
+                                        <li>Provide constructive feedback for improvement</li>
+                                        <li>Share how this helped your learning journey</li>
+                                    </ul>
+                                </div>
+
+                                <!-- Desktop Action Buttons -->
+                                <div class="d-flex justify-content-between mt-4">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary"
+                                            @onclick="Cancel">
+                                        <i class="fa fa-times me-2"></i> Cancel
+                                    </button>
+
+                                    <div class="d-flex gap-2">
+                                        @if (isEditMode && enrollment.Review != null)
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-outline-danger"
+                                                    @onclick="ConfirmDeleteReview">
+                                                <i class="fa fa-trash me-2"></i> Delete
+                                            </button>
+                                        }
+
+                                        <button type="submit"
+                                                class="btn btn-primary"
+                                                disabled="@isSubmitting">
+                                            @if (isSubmitting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa fa-paper-plane me-2"></i>
+                                            }
+                                            @(isEditMode ? "Update Review" : "Submit Review")
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Desktop Existing Reviews -->
+                        @if (existingReviews != null && existingReviews.Any() && !isEditMode)
+                        {
+                            <div class="card-footer">
+                                <h5><i class="fa fa-comments me-2"></i>What others are saying</h5>
+                                <div class="row">
+                                    @foreach (var review in existingReviews.Take(2))
+                                    {
+                                        <div class="col-md-6 mb-3">
+                                            <div class="p-3 border rounded h-100">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    @if (!string.IsNullOrEmpty(review.User?.ProfileImageUrl))
+                                                    {
+                                                        <img src="@review.User.ProfileImageUrl"
+                                                             class="rounded-circle me-2"
+                                                             style="width: 32px; height: 32px; object-fit: cover;">
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2"
+                                                             style="width: 32px; height: 32px;">
+                                                            @review.User?.FirstName?.FirstOrDefault()
+                                                        </div>
+                                                    }
+                                                    <div>
+                                                        <strong>@review.User?.FirstName @review.User?.LastName</strong>
+                                                        <div class="small text-muted">
+                                                            @review.ReviewDate.ToString("MMM dd, yyyy")
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-2">
+                                                    @for (int i = 1; i <= 5; i++)
+                                                    {
+                                                        <span class="fa @(i <= review.Rating ? "fa-star text-warning" : "fa-star-o text-muted")" style="font-size: 0.8rem;"></span>
+                                                    }
+                                                </div>
+                                                <p class="mb-0 text-truncate">@review.Comment</p>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                @if (existingReviews.Count > 2)
+                                {
+                                    <div class="text-center mt-3">
+                                        <button @onclick="ViewAllReviews" class="btn btn-sm btn-outline-primary">
+                                            <i class="fa fa-list me-2"></i>View all @existingReviews.Count reviews
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Delete Confirmation Modal (Same for both) -->
+    @if (showDeleteConfirm)
+    {
+        <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-dialog-centered modal-sm modal-md">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fa fa-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                        <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete your review? This action cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CancelDelete">
+                            <i class="fa fa-times me-2"></i> Cancel
+                        </button>
+                        <button type="button" class="btn btn-danger" @onclick="DeleteReview" disabled="@isDeleting">
+                            @if (isDeleting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            else
+                            {
+                                <i class="fa fa-trash me-2"></i>
+                            }
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    /* Mobile Styles */
+    @@media (max-width: 767px) {
+        .rating-row .form-check-input {
+            margin-top: 0;
+        }
+
+        .rating-row .border-primary {
+            border-width: 2px;
+        }
+
+        .enrollment-info-details summary,
+        .tips-details summary {
+            cursor: pointer;
+            list-style: none;
+        }
+
+            .enrollment-info-details summary::-webkit-details-marker,
+            .tips-details summary::-webkit-details-marker {
+                display: none;
+            }
+
+        .fixed-bottom {
+            z-index: 1030;
+        }
+    }
+
+    /* Desktop Rating Styles */
+    @@media (min-width: 768px) {
+        .rating-option {
+            padding: 0.75rem 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+
+            .rating-option:hover {
+                background-color: #f8f9fa;
+                border-color: #adb5bd;
+            }
+
+            .rating-option .form-check-input {
+                margin-top: 0.25rem;
+            }
+
+            .rating-option .fa-star {
+                color: #ffc107;
+            }
+
+            .rating-option .fa-star-o {
+                color: #6c757d;
+            }
+
+        .selected-rating {
+            background-color: #f8f9fa !important;
+        }
+
+        .form-check-input:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+
+        .review-display .fa-star {
+            color: #ffc107;
+        }
+
+        .review-display .fa-star-o {
+            color: #6c757d;
+        }
+    }
+</style>
+
+@code {
+    // ... (keep all your existing code in the @code block exactly as is)
+    [Parameter] public int EnrollmentId { get; set; }
+
+    private EnrollmentDto? enrollment;
+    private List<ReviewDto> existingReviews = new();
+    private CreateReviewDto reviewForm = new CreateReviewDto { Rating = 0 };
+    private UpdateReviewDto updateForm = new UpdateReviewDto { Rating = 0 };
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private bool isDeleting = false;
+    private bool showDeleteConfirm = false;
+    private bool isEditMode = false;
+    private bool ratingError = false;
+    private bool commentError = false;
+    private string? errorMessage;
+
+    // Computed property for current rating
+    private int currentRating => isEditMode ? updateForm.Rating : reviewForm.Rating;
+
+    // Separate property for textarea binding to handle both create and edit modes
+    private string commentValue
+    {
+        get => isEditMode ? (updateForm.Comment ?? "") : (reviewForm.Comment ?? "");
+        set
+        {
+            if (isEditMode)
+                updateForm.Comment = value;
+            else
+                reviewForm.Comment = value;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Check authentication
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo($"/login?returnUrl=/student/reviews/write/{EnrollmentId}");
+                return;
+            }
+
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing review page");
+            errorMessage = "An error occurred while loading the page.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadData()
+    {
+        // Check if we're in edit mode
+        var uri = Navigation.Uri;
+        isEditMode = uri.Contains("/edit");
+
+        // Load enrollment
+        var enrollments = await EnrollmentService.GetMyEnrollmentsAsync();
+        enrollment = enrollments?.FirstOrDefault(e => e.Id == EnrollmentId);
+
+        if (enrollment == null || !enrollment.IsCompleted)
+        {
+            return;
+        }
+
+        // Load existing review if any
+        if (enrollment.Review != null)
+        {
+            // Initialize forms with existing review data
+            reviewForm.Rating = enrollment.Review.Rating;
+            reviewForm.Comment = enrollment.Review.Comment;
+            updateForm.Rating = enrollment.Review.Rating;
+            updateForm.Comment = enrollment.Review.Comment;
+        }
+        else
+        {
+            // Initialize with default values for new review
+            reviewForm.Rating = 0;
+            reviewForm.Comment = "";
+            updateForm.Rating = 0;
+            updateForm.Comment = "";
+        }
+
+        // Load existing reviews for this content
+        await LoadExistingReviews();
+    }
+
+    private async Task LoadExistingReviews()
+    {
+        try
+        {
+            object? reviewsData = null;
+
+            if (enrollment?.LectureId.HasValue == true)
+            {
+                reviewsData = await ReviewService.GetLectureReviewsAsync(enrollment.LectureId.Value, 1, 5);
+            }
+            else if (enrollment?.CourseId.HasValue == true)
+            {
+                reviewsData = await ReviewService.GetCourseReviewsAsync(enrollment.CourseId.Value, 1, 5);
+            }
+            else if (enrollment?.SpecializationId.HasValue == true)
+            {
+                reviewsData = await ReviewService.GetSpecializationReviewsAsync(enrollment.SpecializationId.Value, 1, 5);
+            }
+
+            if (reviewsData != null)
+            {
+                // Parse the response (assuming it returns an object with Reviews property)
+                var type = reviewsData.GetType();
+                var reviewsProperty = type.GetProperty("Reviews");
+                if (reviewsProperty != null)
+                {
+                    var reviews = reviewsProperty.GetValue(reviewsData);
+                    if (reviews is List<ReviewDto> reviewsList)
+                    {
+                        // Filter out current user's review if exists
+                        var currentUser = await AuthService.GetCurrentUserAsync();
+                        existingReviews = reviewsList
+                            .Where(r => enrollment.Review == null || r.Id != enrollment.Review.Id) // Don't show user's own review
+                            .Take(2)
+                            .ToList();
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading existing reviews");
+        }
+    }
+
+    private string GetRatingLabel(int rating)
+    {
+        return rating switch
+        {
+            5 => "Excellent - Outstanding content",
+            4 => "Very Good - Great content with minor issues",
+            3 => "Good - Decent but could be better",
+            2 => "Fair - Needs significant improvement",
+            1 => "Poor - Not recommended",
+            _ => ""
+        };
+    }
+
+    private void SelectRating(int rating)
+    {
+        if (isEditMode)
+        {
+            updateForm.Rating = rating;
+        }
+        else
+        {
+            reviewForm.Rating = rating;
+        }
+        ratingError = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (!ValidateForm())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            if (isEditMode && enrollment?.Review != null)
+            {
+                // Update existing review
+                var success = await ReviewService.UpdateReviewAsync(enrollment.Review.Id, updateForm);
+                if (success)
+                {
+                    // Show success message and redirect
+                    Navigation.NavigateTo($"/my-courses?reviewUpdated=true");
+                }
+                else
+                {
+                    errorMessage = "Failed to update review. Please try again.";
+                }
+            }
+            else
+            {
+                // Create new review
+                var createDto = new CreateReviewDto
+                {
+                    EnrollmentId = EnrollmentId,
+                    Rating = reviewForm.Rating,
+                    Comment = reviewForm.Comment
+                };
+
+                var result = await ReviewService.CreateReviewAsync(createDto);
+                if (result != null)
+                {
+                    // Show success message and redirect
+                    Navigation.NavigateTo($"/my-courses?reviewSubmitted=true");
+                }
+                else
+                {
+                    errorMessage = "Failed to submit review. Please try again.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error submitting review");
+            errorMessage = "An error occurred while submitting your review.";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        int currentRating = isEditMode ? updateForm.Rating : reviewForm.Rating;
+        string currentComment = isEditMode ? (updateForm.Comment ?? "") : (reviewForm.Comment ?? "");
+
+        ratingError = currentRating < 1 || currentRating > 5;
+        commentError = string.IsNullOrWhiteSpace(currentComment) || currentComment.Length < 10;
+
+        return !ratingError && !commentError;
+    }
+
+    private void EnableEditMode()
+    {
+        isEditMode = true;
+        Navigation.NavigateTo($"/review/{EnrollmentId}/edit");
+    }
+
+    private void Cancel()
+    {
+        if (isEditMode)
+        {
+            Navigation.NavigateTo($"/student/reviews/write/{EnrollmentId}");
+        }
+        else
+        {
+            Navigation.NavigateTo("/my-courses");
+        }
+    }
+
+    private void ConfirmDeleteReview()
+    {
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+    }
+
+    private async Task DeleteReview()
+    {
+        if (enrollment?.Review == null) return;
+
+        isDeleting = true;
+
+        try
+        {
+            var success = await ReviewService.DeleteReviewAsync(enrollment.Review.Id);
+            if (success)
+            {
+                showDeleteConfirm = false;
+                Navigation.NavigateTo($"/student/reviews/write/{EnrollmentId}?deleted=true");
+            }
+            else
+            {
+                errorMessage = "Failed to delete review. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting review");
+            errorMessage = "An error occurred while deleting your review.";
+        }
+        finally
+        {
+            isDeleting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ViewAllReviews()
+    {
+        if (enrollment?.LectureId.HasValue == true)
+        {
+            Navigation.NavigateTo($"/lecture/{enrollment.LectureId.Value}/reviews");
+        }
+        else if (enrollment?.CourseId.HasValue == true)
+        {
+            Navigation.NavigateTo($"/course/{enrollment.CourseId.Value}/reviews");
+        }
+        else if (enrollment?.SpecializationId.HasValue == true)
+        {
+            Navigation.NavigateTo($"/specialization/{enrollment.SpecializationId.Value}/reviews");
+        }
+    }
+}
